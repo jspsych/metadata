@@ -4,7 +4,8 @@
   "description": "A library and CLI tool to generate Psych-DS compliant metadata for jsPsych experiments",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "esbuild src/index.ts --bundle --minify --outfile=dist/index.js"
   },
   "repository": {
     "type": "git",
