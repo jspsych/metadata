@@ -62,16 +62,18 @@ export function JSON2CSV(objArray) {
   return result;
 }
 
-export function parseCSV(input){
-  parse(input, {
-    columns: true, // Treat the first row as headers
-    delimiter: ',' // Specify the delimiter (e.g., comma)
-  }, (err, records) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    return records;
+export async function parseCSV(input) {
+  console.log("input:", input);
+  return new Promise((resolve, reject) => {
+    parse(input, {
+      columns: true, // Treat the first row as headers
+      delimiter: ',' // Specify the delimiter (e.g., comma)
+    }, (err, records) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(records);
+      }
+    });
   });
 }
-
