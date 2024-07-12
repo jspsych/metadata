@@ -1,42 +1,34 @@
 import path from "path";
 
 import JsPsychMetadata from "../metadata-package/dist/index.js";
-import { processData } from "./data.js";
+import { processData, processOptions } from "./data.js";
 
 const metadata = new JsPsychMetadata();
 
-const relativePath = process.argv[2];
-
-if (!relativePath) {
+// Path to the directory files, need to work in absolute paths as well
+const dataRelativePath = process.argv[2];
+if (!process.argv[2]) {
   console.error("Providing the path is a required argument");
   process.exit(1);
 }
+const dataPath = path.resolve(process.cwd(), dataRelativePath);
 
-const directoryPath = path.resolve(process.cwd(), relativePath);
+// Processes the different arguments
+const update = async () => {
+  await processData(metadata, dataPath);
 
-const dataFiles = processData(metadata, directoryPath);
+  if (process.argv[3]){ // only call if 
+    processOptions(metadata, process.argv[3]);
+  }
+}
 
-// process the metadata_options file
-// var metadata_options;
-// if (process.argv[3]) {
-//   const metadata_options_path = path.resolve(process.cwd(), process.argv[3]);
+// figuring out the logic on how to save the data and how shoudl dicate hwo to write hte method to save it 
+const onFinish = () => {
+  console.log(metadata.getMetadata());
+}
 
-//   try {
-//     const data = fs.readFileSync(metadata_options_path, "utf8"); // synchronous read
-//     console.log("metadata options:", data); // log the raw data
-//     metadata_options = JSON.parse(data); // parse the JSON data
-//     metadata.updateMetadata(metadata_options);
-//   } catch (error) {
-//     console.error("Error reading or parsing metadata options:", error);
-//   }
-// };
+await update();
+onFinish();
 
-// const generateFromData = async () => {
-//   try {
-//     console.log(`Reading file: ${file}:`);
-
-//   } catch (err) {
-//     console.error("Error generating from data file:", data);
-//   }
-
-// }
+// add another to pass in existing metadata and add more dataa
+  // will probably want to make a CLI to interface in case want to use an old interface
