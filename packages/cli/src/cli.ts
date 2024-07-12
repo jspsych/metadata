@@ -1,6 +1,6 @@
 import path from "path";
 
-import JsPsychMetadata from "../../metadata-package/dist/index.js";
+import JsPsychMetadata from "../../metadata-package/dist/index.cjs";
 import { processData, processOptions } from "./data.js";
 
 const metadata = new JsPsychMetadata();
@@ -27,8 +27,12 @@ const onFinish = () => {
   console.log(metadata.getMetadata());
 }
 
-await update();
-onFinish();
 
+async function main() {
+  await update();
+  onFinish();
+}
+
+main();
 // add another to pass in existing metadata and add more dataa
   // will probably want to make a CLI to interface in case want to use an old interface

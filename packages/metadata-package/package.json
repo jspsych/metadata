@@ -18,7 +18,7 @@
   "scripts": {
     "test": "jest",
     "test:watch": "npm test -- --watch",
-    "build": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.js",
+    "build": "esbuild src/index.ts --bundle --format=cjs --platform=node --outfile=dist/index.js",
     "build:watch": "npm run build -- --watch"
   },
   "repository": {
@@ -38,11 +38,13 @@
   "devDependencies": {
     "@jspsych/config": "^2.0.0",
     "@jspsych/test-utils": "^1.1.2",
+    "@types/csv-parse": "^1.2.2",
     "@types/jest": "^29.5.12",
     "husky": "^9.0.11",
     "ts-jest": "^29.1.4"
   },
   "dependencies": {
-    "csv": "^6.3.9"
+    "csv": "^6.3.9",
+    "csv-parse": "^5.5.6"
   }
 }

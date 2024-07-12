@@ -4,8 +4,9 @@
   "main": "cli.js",
   "type": "module",
   "scripts": {
-    "start": "node cli.js",
-    "build": "esbuild src/cli.ts --bundle --format=cjs --platform=node --outfile=cli.js"
+    "data": "node dist/cli.js ../../dev/data",
+    "options": "node dist/cli.js ../../dev/data ../../dev/options/metadata-options.json",
+    "build": "esbuild src/cli.ts --bundle --format=esm --platform=node --outfile=dist/cli.js"
   },
   "dependencies": {
 
