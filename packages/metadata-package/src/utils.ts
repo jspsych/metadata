@@ -1,3 +1,5 @@
+import {parse} from 'csv-parse/browser/esm';
+
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
   const blobToSave = new Blob([textstr], {
@@ -59,3 +61,8 @@ export function JSON2CSV(objArray) {
 
   return result;
 }
+
+export function parseCSV(input){
+  return parse(input);
+}
+

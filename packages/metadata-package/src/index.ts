@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile } from "./utils";
+import { saveTextToFile, parseCSV } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -275,6 +275,7 @@ export default class JsPsychMetadata {
    */
   async generate(data, metadata = {}, csv = false) {
     if (csv) {
+      data = parseCSV(data);
       data = this.CSV2JSON(data);
     } else if (typeof data === "string") {
       data = JSON.parse(data);
