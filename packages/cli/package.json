@@ -1,0 +1,12 @@
+{
+  "name": "metadata-cli",
+  "version": "1.0.0",
+  "main": "cli.js",
+  "type": "module",
+  "scripts": {
+    "start": "node cli.js"
+  },
+  "dependencies": {
+
+  }
+}

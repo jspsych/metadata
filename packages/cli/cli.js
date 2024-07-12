@@ -1,6 +1,6 @@
 import path from "path";
 
-import JsPsychMetadata from "../dist/index.js";
+import JsPsychMetadata from "../metadata-package/dist/index.js";
 import { processData } from "./data.js";
 
 const metadata = new JsPsychMetadata();
