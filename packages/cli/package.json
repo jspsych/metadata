@@ -1,5 +1,5 @@
 {
-  "name": "metadata-cli",
+  "name": "@jspsych/metadata-cli",
   "version": "1.0.0",
   "main": "cli.js",
   "type": "module",

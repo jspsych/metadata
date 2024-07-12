@@ -1,5 +1,4 @@
 {
-  "extends": "@jspsych/config/tsconfig.core.json",
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2018"
