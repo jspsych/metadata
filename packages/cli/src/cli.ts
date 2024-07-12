@@ -30,7 +30,7 @@ const onFinish = () => {
 
 async function main() {
   await update();
-  // onFinish();
+  onFinish();
 }
 
 main();

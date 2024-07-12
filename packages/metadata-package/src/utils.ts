@@ -63,6 +63,15 @@ export function JSON2CSV(objArray) {
 }
 
 export function parseCSV(input){
-  return parse(input);
+  parse(input, {
+    columns: true, // Treat the first row as headers
+    delimiter: ',' // Specify the delimiter (e.g., comma)
+  }, (err, records) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    return records;
+  });
 }
 

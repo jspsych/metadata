@@ -9,13 +9,14 @@ const processFile = async (metadata, directoryPath, file) => {
   try {
     const data = await fs.promises.readFile(filePath, "utf8");
     const fileExtension = path.extname(file).toLowerCase();
-    console.log("File extension:", fileExtension);
 
     switch (fileExtension){
       case '.json':
         await metadata.generate(data);
+        break;
       case '.csv':
-        await metadata.generate(data, {}, true);
+        await metadata.generate(data, {}, 'csv');
+        break;
       default:
         console.error("File is not .csv or .json", file);
     }

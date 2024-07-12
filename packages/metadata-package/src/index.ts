@@ -273,26 +273,41 @@ export default class JsPsychMetadata {
    * @param {Object} [metadata={}] - Optional metadata to be processed. Each key-value pair in this object will be processed individually.
    * @param {boolean} [csv=false] - Flag indicating if the data is in a string CSV. If true, the data will be parsed as CSV.
    */
-  async generate(data, metadata = {}, csv = false) {
-    if (csv) {
-      // data = parseCSV(data);
-      console.log(data);
+  async generate(data, metadata = {}, ext = 'json') {
+    var parsed_data;
+
+    if (ext === 'csv') {
+      parsed_data = await parseCSV(data);
+      console.log("POST PARSECSV:", parsed_data);
       // data = this.CSV2JSON(data);
-    } else if (typeof data === "string") {
-      data = JSON.parse(data);
     }
 
-    if (typeof data !== "object") {
-      console.error("Unable to parse data object object, not in correct format");
+    if (ext === 'json') {
+      try {
+        parsed_data = JSON.parse(data);
+      } catch (error) {
+        console.error("Error parsing JSON data:", error);
+        return;
+      }
+    } 
+    
+    // Check if parsed_data is an array (assuming it's an array of observations)
+    if (!Array.isArray(parsed_data)) {
+      console.error("Parsed data is not in correct format: Expected an array");
       return;
     }
 
-    for (const observation of data) {
+    if (typeof parsed_data !== "object") {
+      console.error("Unable to parse data object, not in correct format:", typeof parsed_data);
+      return;
+    }
+
+    for (const observation of parsed_data) {
       await this.generateObservation(observation);
     }
 
     for (const key in metadata) {
-      this.processMetadata(metadata, key);
+      await this.processMetadata(metadata, key);
     }
   }
 
