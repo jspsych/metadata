@@ -220,43 +220,43 @@ export default class JsPsychMetadata {
    * @param {*} csv - CSV that is represented as string
    * @returns {*} - Returns a json object
    */
-  private CSV2JSON(csvString) {
-    const lines = csvString.split("\r\n");
-    const result = [];
-    const headers = lines[0].split(",").map((header) => header.replace(/""/g, '"').slice(1, -1));
+  // private CSV2JSON(csvString) {
+  //   const lines = csvString.split("\r\n");
+  //   const result = [];
+  //   const headers = lines[0].split(",").map((header) => header.replace(/""/g, '"').slice(1, -1));
 
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i]) continue; // Skip empty lines
-      const obj = {};
-      const currentLine = lines[i]
-        .split(",")
-        .map((value) => value.replace(/""/g, '"').slice(1, -1));
+  //   for (let i = 1; i < lines.length; i++) {
+  //     if (!lines[i]) continue; // Skip empty lines
+  //     const obj = {};
+  //     const currentLine = lines[i]
+  //       .split(",")
+  //       .map((value) => value.replace(/""/g, '"').slice(1, -1));
 
-      headers.forEach((header, index) => {
-        const value = currentLine[index];
-        if (value !== undefined && value !== "") {
-          if (!isNaN(value)) {
-            obj[header] = parseFloat(value); // Convert to number if possible
-          } else if (value.toLowerCase() === "null") {
-            obj[header] = null; // Set as null if the string is "null"
-          } else {
-            try {
-              obj[header] = JSON.parse(value); // Try to parse as JSON (handles objects and arrays)
-            } catch (e) {
-              obj[header] = value; // Use the string value if parsing fails
-            }
-          }
-        }
-        // If value is undefined or empty, skip adding it to the object
-      });
+  //     headers.forEach((header, index) => {
+  //       const value = currentLine[index];
+  //       if (value !== undefined && value !== "") {
+  //         if (!isNaN(value)) {
+  //           obj[header] = parseFloat(value); // Convert to number if possible
+  //         } else if (value.toLowerCase() === "null") {
+  //           obj[header] = null; // Set as null if the string is "null"
+  //         } else {
+  //           try {
+  //             obj[header] = JSON.parse(value); // Try to parse as JSON (handles objects and arrays)
+  //           } catch (e) {
+  //             obj[header] = value; // Use the string value if parsing fails
+  //           }
+  //         }
+  //       }
+  //       // If value is undefined or empty, skip adding it to the object
+  //     });
 
-      if (Object.keys(obj).length > 0) {
-        result.push(obj);
-      }
-    }
+  //     if (Object.keys(obj).length > 0) {
+  //       result.push(obj);
+  //     }
+  //   }
 
-    return result;
-  }
+  //   return result;
+  // }
 
   /**
    * Generates observations based on the input data and processes optional metadata.
@@ -275,8 +275,9 @@ export default class JsPsychMetadata {
    */
   async generate(data, metadata = {}, csv = false) {
     if (csv) {
-      data = parseCSV(data);
-      data = this.CSV2JSON(data);
+      // data = parseCSV(data);
+      console.log(data);
+      // data = this.CSV2JSON(data);
     } else if (typeof data === "string") {
       data = JSON.parse(data);
     }
