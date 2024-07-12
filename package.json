@@ -1,0 +1,26 @@
+{
+  "name": "@jspsych/metadata",
+  "version": "0.0.1",
+  "description": "A library and CLI tool to generate Psych-DS compliant metadata for jsPsych experiments",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jspsych/metadata.git"
+  },
+  "keywords": [
+    "jsPsych",
+    "Psych-DS"
+  ],
+  "author": "Victor Zhang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jspsych/metadata/issues"
+  },
+  "homepage": "https://github.com/jspsych/metadata#readme",
+  "dependencies": {
+    "@changesets/cli": "^2.27.7"
+  }
+}
