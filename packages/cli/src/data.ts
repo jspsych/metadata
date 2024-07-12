@@ -2,25 +2,42 @@
 import fs from "fs";
 import path from "path";
 
+// processing single file
+const processFile = async (metadata, directoryPath, file) => {
+  const filePath = path.join(directoryPath, file);
+
+  try {
+    const data = await fs.promises.readFile(filePath, "utf8");
+    const fileExtension = path.extname(file).toLowerCase();
+    console.log("File extension:", fileExtension);
+
+    switch (fileExtension){
+      case '.json':
+        await metadata.generate(data);
+      case '.csv':
+        await metadata.generate(data, {}, true);
+      default:
+        console.error("File is not .csv or .json", file);
+    }
+  } catch (err) {
+    console.error(`Error reading file ${file}:`, err);
+  }
+}
+
 // Loading the data for generating metadata
-export const processData = async (metadata, directoryPath) => {
+export const processDirectory = async (metadata, directoryPath) => {
   try {
     const files = await fs.promises.readdir(directoryPath);
 
     for (const file of files) {
-      const filePath = path.join(directoryPath, file);
-
-      try {
-        const data = await fs.promises.readFile(filePath, "utf8");
-        await metadata.generate(data);
-      } catch (err) {
-        console.error(`Error reading file ${file}:`, err);
-      }
+      await processFile(metadata, directoryPath, file);
     }
   } catch (err) {
     console.error("Error reading directory:", err);
   }
 };
+
+
 
 // Processing metadata options json
 export const processOptions = async (metadata, filePath) => {

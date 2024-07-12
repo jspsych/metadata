@@ -1,7 +1,7 @@
 import path from "path";
 
 import JsPsychMetadata from "../../metadata-package/dist/index.cjs";
-import { processData, processOptions } from "./data.js";
+import { processDirectory, processOptions } from "./data.js";
 
 const metadata = new JsPsychMetadata();
 
@@ -15,7 +15,7 @@ const dataPath = path.resolve(process.cwd(), dataRelativePath);
 
 // Processes the different arguments
 const update = async () => {
-  await processData(metadata, dataPath);
+  await processDirectory(metadata, dataPath);
 
   if (process.argv[3]){ // only call if pass in metadata options
     processOptions(metadata, process.argv[3]);
@@ -30,7 +30,7 @@ const onFinish = () => {
 
 async function main() {
   await update();
-  onFinish();
+  // onFinish();
 }
 
 main();
