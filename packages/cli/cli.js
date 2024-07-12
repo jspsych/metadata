@@ -17,7 +17,7 @@ const dataPath = path.resolve(process.cwd(), dataRelativePath);
 const update = async () => {
   await processData(metadata, dataPath);
 
-  if (process.argv[3]){ // only call if 
+  if (process.argv[3]){ // only call if pass in metadata options
     processOptions(metadata, process.argv[3]);
   }
 }
