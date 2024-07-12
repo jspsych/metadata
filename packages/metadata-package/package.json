@@ -18,7 +18,7 @@
   "scripts": {
     "test": "jest",
     "test:watch": "npm test -- --watch",
-    "build": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.cjs",
+    "build": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.js",
     "build:watch": "npm run build -- --watch"
   },
   "repository": {
