@@ -1,6 +1,14 @@
-// import JsPsychMetadata from "../dist/index.js";
 import fs from "fs";
 import path from "path";
+
+// creating path
+export const generatePath = (inputPath) => {
+  if (path.isAbsolute(inputPath)) {
+    return inputPath;
+  } else {
+    return path.resolve(process.cwd(), inputPath);
+  }
+};
 
 // processing single file
 const processFile = async (metadata, directoryPath, file) => {
@@ -26,30 +34,45 @@ const processFile = async (metadata, directoryPath, file) => {
   }
 }
 
-// Loading the data for generating metadata
+// Processing directory recursively up to one level
 export const processDirectory = async (metadata, directoryPath) => {
-  try {
-    const files = await fs.promises.readdir(directoryPath);
-
-    // Sort files to process 'dataset_description.json' first
-    files.sort((fileA, fileB) => {
-      if (fileA === 'dataset_description.json') return -1;
-      if (fileB === 'dataset_description.json') return 1;
-      return 0;
-    });
-
-    for (const file of files) {
-      await processFile(metadata, directoryPath, file);
+  const processDirectoryRecursive = async (currentPath, level) => {
+    if (level > 1){ 
+      console.warn("Can only read subdirectories one level deep:", directoryPath);
+      return;
     }
-  } catch (err) {
-    console.error("Error reading directory:", err);
-  }
+
+    try {
+      const items = await fs.promises.readdir(currentPath, { withFileTypes: true });
+
+      // Sort files to process 'dataset_description.json' first
+      items.sort((itemA, itemB) => {
+        if (itemA.name === 'dataset_description.json') return -1;
+        if (itemB.name === 'dataset_description.json') return 1;
+        return 0;
+      });
+
+      for (const item of items) {
+        const itemPath = path.join(currentPath, item.name);
+        if (item.isDirectory()) {
+          await processDirectoryRecursive(itemPath, level + 1);
+        } else {
+          await processFile(metadata, currentPath, item.name);
+        }
+      }
+    } catch (err) {
+      console.error(`Error reading directory ${currentPath}:`, err);
+    }
+  };
+
+  await processDirectoryRecursive(directoryPath, 0);
 };
+
 
 // Processing metadata options json
 export const processOptions = async (metadata, filePath) => {
   try {
-    const metadata_options_path = path.resolve(process.cwd(), filePath);
+    const metadata_options_path = generatePath(filePath);
     const data = fs.readFileSync(metadata_options_path, "utf8"); // synchronous read
 
     console.log("\nmetadata options:", data, "\n"); // log the raw data

@@ -5,15 +5,18 @@
   "type": "module",
   "scripts": {
     "data": "node dist/cli.js ../../dev/data",
+    "data:rec": "node dist/cli.js ../../dev/data-rec",
     "options": "node dist/cli.js ../../dev/data ../../dev/options/metadata-options.json",
     "build": "esbuild src/cli.ts --bundle --format=esm --platform=node --outfile=dist/cli.js",
-
-    "build:cli": "esbuild src/index.ts --bundle --format=esm --platform=node --outfile=dist/index.js",
+    "build:cli": "esbuild src/index.ts --format=esm --platform=node --outfile=dist/index.js",
     "cli": "node dist/index.js",
     "build-and-run-cli": "npm run build:cli && npm run cli"
   },
   "dependencies": {
     "@inquirer/prompts": "^5.1.2",
+    "fuzzy": "^0.1.3",
+    "inquirer": "^10.0.1",
+    "inquirer-autocomplete-prompt": "^3.0.1",
     "metadata": "file:../metadata/"
   }
 }

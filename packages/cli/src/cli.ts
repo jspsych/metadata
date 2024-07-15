@@ -1,19 +1,13 @@
-import path from "path";
-
 import JsPsychMetadata from "metadata";
-// import JsPsychMetadata from "../../metadata/src/index.js";
-import { processDirectory, processOptions, saveTextToFile } from "./data.js";
+import { processDirectory, processOptions, saveTextToFile, generatePath } from "./data.js";
 
 const metadata = new JsPsychMetadata();
 
-// Path to the directory files, need to work in absolute paths as well
-// also need to work in calling on specific files and directories
-const dataRelativePath = process.argv[2];
 if (!process.argv[2]) {
   console.error("Providing the path is a required argument");
   process.exit(1);
 }
-const dataPath = path.resolve(process.cwd(), dataRelativePath);
+const dataPath = generatePath(process.argv[2]);
 
 // Processes the different arguments
 const update = async () => {
@@ -31,12 +25,9 @@ const onFinish = () => {
   saveTextToFile(metadataString, "dataset_description.json", dataPath);
 }
 
-
 async function main() {
   await update();
   onFinish();
 }
 
 main();
-// add another to pass in existing metadata and add more dataa
-  // will probably want to make a CLI to interface in case want to use an old interface
