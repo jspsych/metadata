@@ -12,6 +12,7 @@ const processFile = async (metadata, directoryPath, file) => {
 
     switch (fileExtension){
       case '.json':
+        if (file === "dataset_description.json") return;
         await metadata.generate(data);
         break;
       case '.csv':

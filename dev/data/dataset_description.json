@@ -4,27 +4,26 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "description": "Dataset generated using JsPsych",
-  "randomField": "this is a field",
-  "author": [
-    {
-      "name": "John",
-      "givenName": "Johnathan"
-    }
-  ],
+  "author": [],
   "variableMeasured": [
     {
       "@type": "PropertyValue",
       "name": "trial_type",
-      "description": {
-        "jsPsych": "The name of the plugin used to run the trial.",
-        "chat-plugin": "this chat plugin allows you to talk to gpt!"
-      },
+      "description": "The name of the plugin used to run the trial.",
       "value": "string",
       "levels": [
         "preload",
         "html-keyboard-response",
         "image-keyboard-response"
       ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "trial_index",
+      "description": "The index of the current trial across the whole experiment.",
+      "value": "numeric",
+      "minValue": 0,
+      "maxValue": 16
     },
     {
       "@type": "PropertyValue",
@@ -120,14 +119,6 @@
       "levels": [
         "y"
       ]
-    },
-    {
-      "@type": "PropertyValue",
-      "name": "index",
-      "description": "The index of the current trial across the whole experiment.",
-      "value": "numeric",
-      "minValue": 0,
-      "maxValue": 16
     }
   ]
 }

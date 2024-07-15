@@ -245,7 +245,7 @@ export default class JsPsychMetadata {
     
     // Check if parsed_data is an array (assuming it's an array of observations)
     if (!Array.isArray(parsed_data)) {
-      console.error("Parsed data is not in correct format: Expected an array");
+      console.error("Parsed data is not in correct format: Expected an array", parsed_data);
       return;
     }
 
