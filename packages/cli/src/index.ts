@@ -1,13 +1,9 @@
 import { input, select, confirm } from '@inquirer/prompts';
-import inquirer from 'inquirer';
-import inquirerPrompt from 'inquirer-autocomplete-prompt';
-import fs from 'fs';
-import path from 'path';
 import JsPsychMetadata from "metadata";
+import { processDirectory, processOptions, saveTextToFile, generatePath } from "./data.js";
 
 const metadata = new JsPsychMetadata();
 
-import fuzzy from 'fuzzy';
 
 // async function main() {
 //   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
@@ -16,13 +12,18 @@ import fuzzy from 'fuzzy';
 
 // main();
 
+
 async function dataPath(){
 
 }
 
 async function metadataOptions(){
   const optionsPath = await input({
-    message: "Enter the path to the metadata.options file:"
+    message: 'Enter the path to the metadata options file in json format:',
+    validate: async (input) => {
+      if (await processOptions(metadata, input)) return true;
+      return "Please enter a valid path to a json file";
+    }
   });
 
   console.log(optionsPath);

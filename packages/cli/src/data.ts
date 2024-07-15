@@ -79,8 +79,10 @@ export const processOptions = async (metadata, filePath) => {
     var metadata_options = JSON.parse(data); // parse the JSON data
     
     metadata.updateMetadata(metadata_options);
+    return true;
   } catch (error) {
     console.error("Error reading or parsing metadata options:", error);
+    return false;
   }
 }
 
