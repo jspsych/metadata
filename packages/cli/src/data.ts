@@ -60,12 +60,15 @@ export const processDirectory = async (metadata, directoryPath) => {
           await processFile(metadata, currentPath, item.name);
         }
       }
+
+      return true; // might not work when doesn't have a csv/json
     } catch (err) {
       console.error(`Error reading directory ${currentPath}:`, err);
+      return false;
     }
   };
 
-  await processDirectoryRecursive(directoryPath, 0);
+  return await processDirectoryRecursive(directoryPath, 0);
 };
 
 

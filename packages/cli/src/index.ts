@@ -4,20 +4,44 @@ import { processDirectory, processOptions, saveTextToFile, generatePath } from "
 
 const metadata = new JsPsychMetadata();
 
-
-// async function main() {
-//   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
-//   console.log(metadataString); // Pretty print with 2 spaces for indentation
-// }
-
-// main();
-
-
-async function dataPath(){
-
+  // has it ask if would want to create the data -> take the answer and trigger logic
+async function existingMetadata(){
+  const answer = await select({
+    message: 'How would you like to use the JSPsych metadata CLI?',
+    choices: [
+      {
+        name: 'Generate new',
+        value: 'generate',
+        description: 'Given data files, can automatically download generate metadata file.',
+      },
+      {
+        name: 'Edit existing',
+        value: 'edit',
+        description: 'Can edit existing metadata file and update using new data or specified options.',
+      },
+    ],
+  });
 }
 
-async function metadataOptions(){
+await existingMetadata();
+
+async function dataPathPrompt(){
+  const dataPath = await input({
+    message: 'Enter the path to the data directory:',
+    validate: async (input) => {
+      if (await processDirectory(metadata, input)) return true;
+      return "Please enter a valid path to a valid directory";
+    }
+  });
+
+  console.log(dataPath);
+  return dataPath;
+}
+
+const dataPath = await dataPathPrompt();
+
+async function metadataOptionsPrompt(){
+  // have this first ask if want to customize using metadata options 
   const optionsPath = await input({
     message: 'Enter the path to the metadata options file in json format:',
     validate: async (input) => {
@@ -27,9 +51,10 @@ async function metadataOptions(){
   });
 
   console.log(optionsPath);
+  return optionsPath;
 }
 
-metadataOptions();
+const optionsPath = await metadataOptionsPrompt();
 
 
 // async function promptEmail() {
@@ -78,3 +103,6 @@ metadataOptions();
 // }
 
 // main();
+
+
+// TODO -- have the very last call be the printing to terminal and have the saving()
