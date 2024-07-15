@@ -1,4 +1,15 @@
 import { input } from '@inquirer/prompts';
 
-const answer = await input({ message: 'Enter your name' });
-// console.log("index.ts is working");
+import JsPsychMetadata from "../../metadata-package/src/index.js";
+
+const metadata = new JsPsychMetadata();
+
+async function main() {
+  const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
+  console.log(metadataString); // Pretty print with 2 spaces for indentation
+}
+
+main();
+
+// const answer = await input({ message: 'Enter your name' });
+// console.log("answer:", answer);
