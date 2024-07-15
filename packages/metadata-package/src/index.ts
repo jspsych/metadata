@@ -211,6 +211,27 @@ export default class JsPsychMetadata {
     saveTextToFile(data_string, "dataset_description.json");
   }
 
+  loadMetadata(stringMetadata: string): void {
+    const meta = JSON.parse(stringMetadata);
+    // include a method to clear authors and variables measured, might not need because only defaults
+
+    for (const field_key in meta){
+      if (field_key === "variableMeasured"){
+        for (const variable of meta[field_key]){
+          this.setVariable(variable);
+        }
+      } 
+      else if (field_key === "author"){
+        for (const author of meta[field_key]){
+          this.setAuthor(author);
+        }
+      }
+      else {
+        this.setMetadataField(field_key, meta[field_key]);
+      }
+    }
+  }
+
   /**
    * Generates observations based on the input data and processes optional metadata.
    *

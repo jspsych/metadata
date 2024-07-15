@@ -4,7 +4,22 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "description": "Dataset generated using JsPsych",
-  "author": [],
+  "randomField": "this is a field",
+  "manually_added_field": "This field tests the loading method",
+  "author": [
+    {
+      "name": "John",
+      "givenName": "Johnathan"
+    },
+    {
+      "name": "Testing",
+      "givenName": "This is meant to test the manual adding method"
+    },
+    {
+      "name": "Manually added",
+      "givenName": "This is testing manual adding and loading"
+    }
+  ],
   "variableMeasured": [
     {
       "@type": "PropertyValue",
@@ -119,6 +134,12 @@
       "levels": [
         "y"
       ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "Manually added",
+      "description": "This is manually added method to to test loading metadata",
+      "value": "string"
     }
   ]
 }

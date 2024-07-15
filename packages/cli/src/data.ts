@@ -7,16 +7,16 @@ const processFile = async (metadata, directoryPath, file) => {
   const filePath = path.join(directoryPath, file);
 
   try {
-    const data = await fs.promises.readFile(filePath, "utf8");
+    const content = await fs.promises.readFile(filePath, "utf8");
     const fileExtension = path.extname(file).toLowerCase();
 
     switch (fileExtension){
       case '.json':
-        if (file === "dataset_description.json") return;
-        await metadata.generate(data);
+        if (file === "dataset_description.json") metadata.loadMetadata(content);
+        else await metadata.generate(content);
         break;
       case '.csv':
-        await metadata.generate(data, {}, 'csv');
+        await metadata.generate(content, {}, 'csv');
         break;
       default:
         console.error("File is not .csv or .json", file);
@@ -38,8 +38,6 @@ export const processDirectory = async (metadata, directoryPath) => {
     console.error("Error reading directory:", err);
   }
 };
-
-
 
 // Processing metadata options json
 export const processOptions = async (metadata, filePath) => {
