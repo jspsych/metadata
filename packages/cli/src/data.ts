@@ -54,3 +54,16 @@ export const processOptions = async (metadata, filePath) => {
     console.error("Error reading or parsing metadata options:", error);
   }
 }
+
+// Saving data
+export function saveTextToFile(textstr, filename, directory = '.') {
+  const filePath = path.join(directory, filename);
+
+  fs.writeFile(filePath, textstr, 'utf8', (err) => {
+    if (err) {
+      console.error(`Error writing to file ${filePath}:`, err);
+    } else {
+      console.log(`File ${filePath} has been saved.`);
+    }
+  });
+}

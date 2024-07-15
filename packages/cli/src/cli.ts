@@ -1,11 +1,12 @@
 import path from "path";
 
 import JsPsychMetadata from "../../metadata-package/src/index.js";
-import { processDirectory, processOptions } from "./data.js";
+import { processDirectory, processOptions, saveTextToFile } from "./data.js";
 
 const metadata = new JsPsychMetadata();
 
 // Path to the directory files, need to work in absolute paths as well
+// also need to work in calling on specific files and directories
 const dataRelativePath = process.argv[2];
 if (!process.argv[2]) {
   console.error("Providing the path is a required argument");
@@ -24,8 +25,9 @@ const update = async () => {
 
 // figuring out the logic on how to save the data and how shoudl dicate hwo to write hte method to save it 
 const onFinish = () => {
-  const metadataString = metadata.getMetadata(); // Assuming getMetadata() is the function that retrieves your metadata
-  console.log(JSON.stringify(metadataString, null, 2)); // Pretty print with 2 spaces for indentation
+  const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
+  console.log(metadataString); // Pretty print with 2 spaces for indentation
+  saveTextToFile(metadataString, "dataset_description.json", dataPath);
 }
 
 

@@ -287,10 +287,15 @@ export default class JsPsychMetadata {
 
       if (value === null || value === undefined || value === '' || value === 'null') continue; // Error checking
 
-      // handling type conversion from csv by converting back into number
-      if (type === "string" && !isNaN(Number(value))){
-        type = "number";
-        value = parseFloat(value);
+      // handling type conversion from csv by converting back into number, should think about booleans as well
+      if (type === "string") {
+        if (!isNaN(Number(value))) {
+          type = "number";
+          value = parseFloat(value);
+        } else if (value.toLowerCase() === "true" || value.toLowerCase() === "false") {
+          type = "boolean";
+          value = (value.toLowerCase() === "true");
+        }
       }
 
       if (ignored_fields.has(variable)) this.updateFields(variable, value, type);
