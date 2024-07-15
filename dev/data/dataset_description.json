@@ -24,7 +24,7 @@
     {
       "@type": "PropertyValue",
       "name": "trial_type",
-      "description": "The name of the plugin used to run the trial.",
+      "description": "this chat plugin allows you to talk to gpt!",
       "value": "string",
       "levels": [
         "preload",
@@ -140,6 +140,14 @@
       "name": "Manually added",
       "description": "This is manually added method to to test loading metadata",
       "value": "string"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "index",
+      "description": "The index of the current trial across the whole experiment.",
+      "value": "numeric",
+      "minValue": 0,
+      "maxValue": 16
     }
   ]
 }
