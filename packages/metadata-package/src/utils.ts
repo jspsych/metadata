@@ -63,7 +63,7 @@ export function JSON2CSV(objArray) {
 }
 
 export async function parseCSV(input) {
-  console.log("input:", input);
+  // console.log("input:", input);
   return new Promise((resolve, reject) => {
     parse(input, {
       columns: true, // Treat the first row as headers

@@ -24,7 +24,8 @@ const update = async () => {
 
 // figuring out the logic on how to save the data and how shoudl dicate hwo to write hte method to save it 
 const onFinish = () => {
-  console.log(metadata.getMetadata());
+  const metadataString = metadata.getMetadata(); // Assuming getMetadata() is the function that retrieves your metadata
+  console.log(JSON.stringify(metadataString, null, 2)); // Pretty print with 2 spaces for indentation
 }
 
 

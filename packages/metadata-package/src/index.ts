@@ -212,53 +212,6 @@ export default class JsPsychMetadata {
   }
 
   /**
-   * Function to convert string csv into a javascript json object.
-   *
-   * Created by reversing function in datamodule using ChatGPT.
-   *
-   * @private
-   * @param {*} csv - CSV that is represented as string
-   * @returns {*} - Returns a json object
-   */
-  // private CSV2JSON(csvString) {
-  //   const lines = csvString.split("\r\n");
-  //   const result = [];
-  //   const headers = lines[0].split(",").map((header) => header.replace(/""/g, '"').slice(1, -1));
-
-  //   for (let i = 1; i < lines.length; i++) {
-  //     if (!lines[i]) continue; // Skip empty lines
-  //     const obj = {};
-  //     const currentLine = lines[i]
-  //       .split(",")
-  //       .map((value) => value.replace(/""/g, '"').slice(1, -1));
-
-  //     headers.forEach((header, index) => {
-  //       const value = currentLine[index];
-  //       if (value !== undefined && value !== "") {
-  //         if (!isNaN(value)) {
-  //           obj[header] = parseFloat(value); // Convert to number if possible
-  //         } else if (value.toLowerCase() === "null") {
-  //           obj[header] = null; // Set as null if the string is "null"
-  //         } else {
-  //           try {
-  //             obj[header] = JSON.parse(value); // Try to parse as JSON (handles objects and arrays)
-  //           } catch (e) {
-  //             obj[header] = value; // Use the string value if parsing fails
-  //           }
-  //         }
-  //       }
-  //       // If value is undefined or empty, skip adding it to the object
-  //     });
-
-  //     if (Object.keys(obj).length > 0) {
-  //       result.push(obj);
-  //     }
-  //   }
-
-  //   return result;
-  // }
-
-  /**
    * Generates observations based on the input data and processes optional metadata.
    *
    * This method accepts data, which can be an array of observation objects, a JSON string,
@@ -278,8 +231,7 @@ export default class JsPsychMetadata {
 
     if (ext === 'csv') {
       parsed_data = await parseCSV(data);
-      console.log("POST PARSECSV:", parsed_data);
-      // data = this.CSV2JSON(data);
+      // console.log("POST PARSECSV:", parsed_data);
     }
 
     if (ext === 'json') {
@@ -330,11 +282,18 @@ export default class JsPsychMetadata {
     ]);
 
     for (const variable in observation) {
-      const value = observation[variable];
+      var value = observation[variable];
+      var type = typeof value;
 
-      if (value === null || value === undefined) continue; // Error checking
+      if (value === null || value === undefined || value === '' || value === 'null') continue; // Error checking
 
-      if (ignored_fields.has(variable)) this.updateFields(variable, value, typeof value);
+      // handling type conversion from csv by converting back into number
+      if (type === "string" && !isNaN(Number(value))){
+        type = "number";
+        value = parseFloat(value);
+      }
+
+      if (ignored_fields.has(variable)) this.updateFields(variable, value, type);
       else {
         await this.generateMetadata(variable, value, pluginType, version);
         // if (extensionType) {
@@ -355,7 +314,7 @@ export default class JsPsychMetadata {
     const new_description = description
       ? { [pluginType]: description }
       : { [pluginType]: "unknown" };
-    const type = typeof value;
+    var type = typeof value;
 
     if (!this.containsVariable(variable)) {
       // probs should have update description called here
