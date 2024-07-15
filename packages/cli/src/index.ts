@@ -1,6 +1,6 @@
 import { input } from '@inquirer/prompts';
 
-import JsPsychMetadata from "../../metadata-package/src/index.js";
+import JsPsychMetadata from "metadata";
 
 const metadata = new JsPsychMetadata();
 

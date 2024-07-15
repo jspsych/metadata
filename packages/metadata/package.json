@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "jsPsych package for creating and customizing metadata according to Psych-DS standards.",
   "type": "module",
-  "main": "dist/index.cjs",
+  "main": "dist/index.js",
   "exports": {
     "import": "./dist/index.js",
     "require": "./dist/index.cjs"

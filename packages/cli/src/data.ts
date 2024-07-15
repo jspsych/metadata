@@ -12,7 +12,7 @@ const processFile = async (metadata, directoryPath, file) => {
 
     switch (fileExtension){
       case '.json':
-        if (file === "dataset_description.json") metadata.loadMetadata(content);
+        if (file === "dataset_description.json") metadata.loadMetadata(content); // this does not do that good of a job because it doesn't do this first -- so therefore might not work as intended
         else await metadata.generate(content);
         break;
       case '.csv':
@@ -30,6 +30,13 @@ const processFile = async (metadata, directoryPath, file) => {
 export const processDirectory = async (metadata, directoryPath) => {
   try {
     const files = await fs.promises.readdir(directoryPath);
+
+    // Sort files to process 'dataset_description.json' first
+    files.sort((fileA, fileB) => {
+      if (fileA === 'dataset_description.json') return -1;
+      if (fileB === 'dataset_description.json') return 1;
+      return 0;
+    });
 
     for (const file of files) {
       await processFile(metadata, directoryPath, file);
