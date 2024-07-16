@@ -22,21 +22,21 @@ async function existingMetadata(metadata){
     ],
   });
   
-  let dataPath: string = "";
+  let dataset_description_path: string = "";
 
   try {
     switch(answer){
       case "generate":
         break;
       case "edit":
-        dataPath = await input({
+        dataset_description_path = await input({
           message: 'Enter the path to the existing dataset_description.json file:',
           validate: async (input) => {
             if (validateJson(input, "dataset_description.json")) return true;
             return "Please enter a valid path to a json file";
           }
         });     
-        await loadMetadata(metadata, dataPath);
+        await loadMetadata(metadata, dataset_description_path);
         break;
       default: 
         console.error("Existing metadata answer is not added/configured:", answer);
@@ -45,9 +45,8 @@ async function existingMetadata(metadata){
 
   }
 
-  return dataPath;
+  return dataset_description_path;
 }
-
 
 async function dataPathPrompt(metadata){
   const dataPath = await input({
@@ -102,7 +101,7 @@ async function metadataOptionsPrompt(metadata){
 const main = async() => {
   const metadata = new JsPsychMetadata();
 
-  const oldData = await existingMetadata(metadata); // will want to write to this path when writing final json
+  const dataset_description_path = await existingMetadata(metadata); // will want to write to this path when writing final json
   const dataPath = await dataPathPrompt(metadata);
   const optionsPath = await metadataOptionsPrompt(metadata);
 
@@ -110,11 +109,11 @@ const main = async() => {
   console.log(metadataString); // Pretty print with 2 spaces for indentation
 
   // saving to old Data file if provided, otherwise new data file
-  if (oldData === "" || oldData === undefined || oldData === null){
+  if (dataset_description_path === "" || dataset_description_path === undefined || dataset_description_path === null){
     saveTextToFile(metadataString, "dataset_description.json", dataPath);
   }
   else{
-    saveTextToPath(metadataString, oldData);
+    saveTextToPath(metadataString, dataset_description_path);
   }
 }
 

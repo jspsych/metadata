@@ -51,7 +51,8 @@ export class PluginCache {
     //   version,
     //   "), extension(" + extension + ")"
     // );
-    const unpkgUrl = `http://localhost:3000/plugin/${pluginType}/index.ts`;
+    // const unpkgUrl = `http://localhost:3000/plugin/${pluginType}/index.ts`;
+    const unpkgUrl = `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`;
 
     try {
       const response = await fetch(unpkgUrl);

@@ -4,33 +4,26 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "description": "Dataset generated using JsPsych",
-  "randomField": "this is a field",
-  "manually_added_field": "This field tests the loading method",
-  "author": [
-    {
-      "name": "John",
-      "givenName": "Johnathan"
-    },
-    {
-      "name": "Testing",
-      "givenName": "This is meant to test the manual adding method"
-    },
-    {
-      "name": "Manually added",
-      "givenName": "This is testing manual adding and loading"
-    }
-  ],
+  "author": [],
   "variableMeasured": [
     {
       "@type": "PropertyValue",
       "name": "trial_type",
-      "description": "this chat plugin allows you to talk to gpt!",
+      "description": "The name of the plugin used to run the trial.",
       "value": "string",
       "levels": [
         "preload",
         "html-keyboard-response",
         "image-keyboard-response"
       ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "trial_index",
+      "description": "The index of the current trial across the whole experiment.",
+      "value": "numeric",
+      "minValue": 0,
+      "maxValue": 16
     },
     {
       "@type": "PropertyValue",
@@ -126,20 +119,6 @@
       "levels": [
         "y"
       ]
-    },
-    {
-      "@type": "PropertyValue",
-      "name": "Manually added",
-      "description": "This is manually added method to to test loading metadata",
-      "value": "string"
-    },
-    {
-      "@type": "PropertyValue",
-      "name": "index",
-      "description": "The index of the current trial across the whole experiment.",
-      "value": "numeric",
-      "minValue": 0,
-      "maxValue": 16
     }
   ]
 }
