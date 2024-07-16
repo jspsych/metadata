@@ -211,6 +211,13 @@ export default class JsPsychMetadata {
     saveTextToFile(data_string, "dataset_description.json");
   }
 
+  /**
+   * This method loads the metadata into the metadata object. This takes in the"dataset_description.json" string content 
+   * and first parses it as an object. This then loads in all the fields, authors and variables into the metadata object by calling all the 
+   * relevant methods that overwrites the default data.
+   *
+   * @param {string} stringMetadata - String version of the metadata to be loaded from "dataset_description.json".
+   */
   loadMetadata(stringMetadata: string): void {
     const meta = JSON.parse(stringMetadata);
     // include a method to clear authors and variables measured, might not need because only defaults
@@ -238,7 +245,7 @@ export default class JsPsychMetadata {
    * This method accepts data, which can be an array of observation objects, a JSON string,
    * or a CSV string. If the data is in CSV format, set the `csv` parameter to `true` to
    * parse it into a JSON object. Each observation is processed asynchronously using the
-   * `generateObservation` method. Optionally, metadata can be provided in the form of an
+   * `generateObservation` method. Optionally, metadata options can be provided in the form of an
    * object, and each key-value pair in the metadata object will be processed by the
    * `processMetadata` method.
    *
@@ -278,10 +285,8 @@ export default class JsPsychMetadata {
     for (const observation of parsed_data) {
       await this.generateObservation(observation);
     }
-
-    for (const key in metadata) {
-      await this.processMetadata(metadata, key);
-    }
+    
+    await this.updateMetadata(metadata); // can refactor later
   }
 
   private async generateObservation(observation) {
@@ -371,7 +376,28 @@ export default class JsPsychMetadata {
     }
   }
 
-  private processMetadata(metadata, key) {
+  /**
+   * Iterates through the entire metadata options object by calling processMetadata() to act upon each of the 
+   * individual fields at one time. 
+   *
+   * @async
+   * @param {*} metadata - Metadata options that contains all the metadata according to Psych-DS formatting. 
+   */
+  async updateMetadata(metadata) {
+    for (const key in metadata) {
+      await this.processMetadata(metadata, key);    // can refactor this to include: key, metadata[value] -> change in method
+    }
+  }
+
+  /**
+   * This is the method that processes each individual element of the metadata options to be updated. This can be called through generate or outside of it, 
+   * and this processes each element. 
+   *
+   * @private
+   * @param {*} metadata - An object that contains all of the metadata. This is used to access the value. 
+   * @param {*} key - String key that denotes what key-value mapping is being iterated upon. 
+   */
+  private processMetadata(metadata: {}, key: string) {
     const value = metadata[key];
 
     // iterating through variables metadata
@@ -439,9 +465,5 @@ export default class JsPsychMetadata {
     return this.pluginCache.getPluginInfo(pluginType, variableName, version, extension);
   }
 
-  updateMetadata(metadata) {
-    for (const key in metadata) {
-      this.processMetadata(metadata, key);
-    }
-  }
+
 }

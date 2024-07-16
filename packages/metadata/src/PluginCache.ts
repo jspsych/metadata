@@ -69,7 +69,7 @@ export class PluginCache {
     }
   }
 
-  // written with the help of chatgpt
+  // written with the help of chatgpt, try to parse javadoc and 
   private parseJavadocString(script: string) {
     const dataString = script.match(/data:\s*{([\s\S]*?)};\s*/).join();
     const result = {};

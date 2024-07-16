@@ -34,14 +34,6 @@
     },
     {
       "@type": "PropertyValue",
-      "name": "trial_index",
-      "description": "The index of the current trial across the whole experiment.",
-      "value": "numeric",
-      "minValue": 0,
-      "maxValue": 16
-    },
-    {
-      "@type": "PropertyValue",
       "name": "time_elapsed",
       "description": "The number of milliseconds between the start of the experiment and when the trial ended.",
       "value": "numeric",
