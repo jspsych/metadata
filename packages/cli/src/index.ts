@@ -22,21 +22,21 @@ async function existingMetadata(metadata){
     ],
   });
   
-  let oldData: string = "";
+  let dataPath: string = "";
 
   try {
     switch(answer){
       case "generate":
         break;
       case "edit":
-        oldData = await input({
+        dataPath = await input({
           message: 'Enter the path to the existing dataset_description.json file:',
           validate: async (input) => {
             if (validateJson(input, "dataset_description.json")) return true;
             return "Please enter a valid path to a json file";
           }
         });     
-        await loadMetadata(oldData, "dataset_description.json");
+        await loadMetadata(metadata, dataPath);
         break;
       default: 
         console.error("Existing metadata answer is not added/configured:", answer);
@@ -45,7 +45,7 @@ async function existingMetadata(metadata){
 
   }
 
-  return oldData;
+  return dataPath;
 }
 
 
