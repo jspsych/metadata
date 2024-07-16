@@ -46,11 +46,11 @@ export class PluginCache {
     // implement logic here how to use version field
     // match upon name (extension version) and name ->
     // const unpkgUrl = `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`;
-    console.log(
-      "fetchScript parameters: pluginType (" + pluginType + "), version (",
-      version,
-      "), extension(" + extension + ")"
-    ); // console logging each fetch
+    // console.log(
+    //   "fetchScript parameters: pluginType (" + pluginType + "), version (",
+    //   version,
+    //   "), extension(" + extension + ")"
+    // );
     const unpkgUrl = `http://localhost:3000/plugin/${pluginType}/index.ts`;
 
     try {

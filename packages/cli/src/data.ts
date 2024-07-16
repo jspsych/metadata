@@ -10,9 +10,10 @@ export const generatePath = (inputPath) => {
   }
 };
 
-// processing single file
+// processing single file, need to refactor this into a seperate call
 const processFile = async (metadata, directoryPath, file) => {
   const filePath = path.join(directoryPath, file);
+  console.log("\nReading file:", filePath, "\n")
 
   try {
     const content = await fs.promises.readFile(filePath, "utf8");
@@ -100,4 +101,36 @@ export function saveTextToFile(textstr, filename, directory = '.') {
       console.log(`File ${filePath} has been saved.`);
     }
   });
+}
+
+// 
+export function saveTextToPath(textstr, filePath = './file.txt') {
+  fs.writeFile(filePath, textstr, 'utf8', (err) => {
+    if (err) {
+      console.error(`Error writing to file ${filePath}:`, err);
+    } else {
+      console.log(`File ${filePath} has been saved.`);
+    }
+  });
+}
+
+
+// function for loading metadata
+export const loadMetadata = async (metadata, filePath) => {
+  const fileName = path.basename(filePath).toLowerCase(); // Extract the file name from the filePath
+
+  try {
+    const content = await fs.promises.readFile(filePath, "utf8");
+
+    if (fileName === "dataset_description.json"){
+      metadata.loadMetadata(content); 
+      console.log("\nContents of dataset_description.json:\n", content)
+      return true;
+    }
+    else console.error("dataset_description.json is not found at path:", filePath);
+  } catch (err) {
+    console.error(`Error reading file ${fileName}:`, err);
+  }
+
+  return false;
 }

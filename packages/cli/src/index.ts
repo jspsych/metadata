@@ -1,11 +1,8 @@
 import { input, select, confirm } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
-import { processDirectory, processOptions, saveTextToFile, generatePath } from "./data.js";
+import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath } from "./data.js";
 
-const metadata = new JsPsychMetadata();
-
-  // has it ask if would want to create the data -> take the answer and trigger logic
-async function existingMetadata(){
+async function existingMetadata(metadata){
   const answer = await select({
     message: 'How would you like to use the JSPsych metadata CLI?',
     choices: [
@@ -21,11 +18,34 @@ async function existingMetadata(){
       },
     ],
   });
+  
+  let oldData: string = "";
+
+  try {
+    switch(answer){
+      case "generate":
+        break;
+      case "edit":
+        oldData = await input({
+          message: 'Enter the path to the existing dataset_description.json file:',
+          validate: async (input) => {
+            if (await loadMetadata(metadata, input)) return true;
+            return "Please enter a valid path to a json file";
+          }
+        });     
+        break;
+      default: 
+        console.error("Existing metadata answer is not added/configured:", answer);
+    }
+  } catch (err){
+
+  }
+
+  return oldData;
 }
 
-await existingMetadata();
 
-async function dataPathPrompt(){
+async function dataPathPrompt(metadata){
   const dataPath = await input({
     message: 'Enter the path to the data directory:',
     validate: async (input) => {
@@ -34,75 +54,60 @@ async function dataPathPrompt(){
     }
   });
 
-  console.log(dataPath);
   return dataPath;
 }
 
-const dataPath = await dataPathPrompt();
-
-async function metadataOptionsPrompt(){
-  // have this first ask if want to customize using metadata options 
-  const optionsPath = await input({
-    message: 'Enter the path to the metadata options file in json format:',
-    validate: async (input) => {
-      if (await processOptions(metadata, input)) return true;
-      return "Please enter a valid path to a json file";
-    }
+async function metadataOptionsPrompt(metadata){
+  const answer = await select({
+    message: 'Would you like to customize the metadata by providing a .json specifying changes?',
+    choices: [
+      {
+        name: 'Use default metadata',
+        value: false,
+        description: 'Can edit using text editor or rerun this CLI with a metadata options file.',
+      },
+      {
+        name: 'Customize metadata',
+        value: true,
+        description: 'Should only customize if you have a prepared .json with format according to the Psych-DS and JsPsych metadata specifications.',
+      },
+    ],
   });
 
-  console.log(optionsPath);
+  var optionsPath: string = "";
+
+  if (answer){
+    optionsPath = await input({
+      message: 'Enter the path to the metadata options file in json format:',
+      validate: async (input) => {
+        if (await processOptions(metadata, input)) return true;
+        return "Please enter a valid path to a json file";
+      }
+    });
+  }
+
   return optionsPath;
+
 }
 
-const optionsPath = await metadataOptionsPrompt();
+const main = async() => {
+  const metadata = new JsPsychMetadata();
 
+  const oldData = await existingMetadata(metadata); // will want to write to this path when writing final json
+  const dataPath = await dataPathPrompt(metadata);
+  const optionsPath = await metadataOptionsPrompt(metadata);
 
-// async function promptEmail() {
-//   const emailAnswer = await input({
-//     message: 'Enter your email address:',
-//     validate: (input) => {
-//       if (/\S+@\S+\.\S+/.test(input)) {
-//         return true;
-//       }
-//       return 'Please enter a valid email address.';
-//     },
-//   });
+  const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
+  console.log(metadataString); // Pretty print with 2 spaces for indentation
+  // saving to old Data file if provided, otherwise new data file
+  if (oldData === "" || oldData === undefined || oldData === null){
+    saveTextToFile(metadataString, "dataset_description.json", dataPath);
+  }
+  else{
+    saveTextToPath(metadataString, oldData);
+  }
+}
 
-//   console.log(`Your email address is ${emailAnswer}.`);
-// }
-
-// // promptEmail();
-
-// async function main() {
-//   try {
-//     const nameAnswer = await input({
-//       message: 'Enter your name:',
-//     });
-
-//     // Call a function here
-//     await someFunction();
-
-//     const proceedAnswer = await confirm({
-//       message: `Hello, ${nameAnswer}! Do you want to proceed?`,
-//     });
-
-//     if (proceedAnswer) {
-//       console.log(`Great! Let's proceed, ${nameAnswer}.`);
-//       // Call another function or perform additional prompts here
-//     } else {
-//       console.log(`Okay, ${nameAnswer}. Maybe next time.`);
-//     }
-//   } catch (error) {
-//     console.error('Error during prompt:', error);
-//   }
-// }
-
-// async function someFunction() {
-//   // Example of another async function call
-//   console.log('Executing some function...');
-// }
-
-// main();
-
+await main();
 
 // TODO -- have the very last call be the printing to terminal and have the saving()
