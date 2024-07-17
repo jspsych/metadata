@@ -35,16 +35,27 @@ export class PluginCache {
     const script = await this.fetchScript(pluginType, version, extension);
 
     // parses if they exist
-    if (script !== undefined && script !== null && script !== "")
-      return this.parseJavadocString(script);
+    if (script !== undefined && script !== null && script !== ""){
+      try {
+        return this.parseJavadocString(script);
+      } 
+      catch (err) { // make this more descriptive
+        console.warn("error parsing", pluginType);
+        return {};
+      }
+    }
     else {
       return {}; // returns empty if can't fetch
     }
   }
 
   private generateUnpkg(pluginType, version, extension?){
+    // webgazer is the broken one
     if (extension){
-      console.log("extension", extension);
+      if (version){
+        return `https://unpkg.com/@jspsych/extension-${pluginType}@${version}/src/index.ts`;
+      }
+      else return `https://unpkg.com/@jspsych/extension-${pluginType}/src/index.ts`; // most common case - plugin with no version
     }
 
     // pluginLogic
@@ -55,13 +66,6 @@ export class PluginCache {
   }
 
   private async fetchScript(pluginType: string, version: string, extension?: boolean) {
-    // const unpkgUrl = `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`;
-    // console.log(
-    //   "fetchScript parameters: pluginType (" + pluginType + "), version (",
-    //   version,
-    //   "), extension(" + extension + ")"
-    // );
-    // const unpkgUrl = `http://localhost:3000/plugin/${pluginType}/index.ts`;
     const unpkgUrl = this.generateUnpkg(pluginType, version, extension);
     console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl);
 

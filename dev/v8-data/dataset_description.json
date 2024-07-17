@@ -16,6 +16,7 @@
         "html-button-response",
         "audio-slider-response",
         "categorize-html",
+        "initialize-camera",
         "html-keyboard-response",
         "image-keyboard-response"
       ]
@@ -26,7 +27,7 @@
       "description": "The index of the current trial across the whole experiment.",
       "value": "numeric",
       "minValue": 0,
-      "maxValue": 12
+      "maxValue": 16
     },
     {
       "@type": "PropertyValue",
@@ -100,7 +101,7 @@
       },
       "value": "number",
       "minValue": -5443808,
-      "maxValue": 1398
+      "maxValue": 8097
     },
     {
       "@type": "PropertyValue",
@@ -113,15 +114,19 @@
       },
       "value": "string",
       "levels": [
-        "<div style=\"max-width:600px;\"><p>Some browsers now require the user to interact with a page before it can play audio. Clicking the button below counts as an interaction.</p><p>Be aware of this when planning audio experiments if you want the first trial to include audio.</p></div>",
+        "<div style=\"max-width:600px;\"><p>Some browsers now...",
         "sound/speech_joke.mp3",
         "sound/speech_red.mp3",
         "sound/hammer.mp3",
-        "<div style=\"margin: auto; width: 200px; height: 200px; background-color: blue;\"></div>",
-        "<p style='text-align:center; font-size:80px;'>+</p>",
+        "<div style=\"margin: auto; width: 200px; height: 20...",
+        "<div style=\"width:100vw; height:100vh; position: r...",
+        "img/happy_face_1.jpg",
         "img/happy_face_2.jpg",
         "img/happy_face_3.jpg",
-        "img/happy_face_1.jpg"
+        "img/happy_face_4.jpg",
+        "<div id=\"target\" style=\"width:250px; height: 250px...",
+        "<p style=\"margin-bottom:0px;\"><strong>Trial data:<...",
+        "<p style='text-align:center; font-size:80px;'>+</p..."
       ]
     },
     {
@@ -156,6 +161,58 @@
       "levels": [
         false
       ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "device_id",
+      "description": "The [device ID](https://developer.mozilla.org/en-US/docs/Web/API/MediaDeviceInfo/deviceId) of the selected camera.",
+      "value": "string",
+      "levels": [
+        "ed812fc33d145bfb870d47b64ec9702b3456f6640af448d78b..."
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "extension_type",
+      "description": "The name(s) of the extension(s) used in the trial.",
+      "value": "string"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "extension_version",
+      "description": "The version(s) of the extension(s) used in the trial.",
+      "value": "numeric"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "record_video_data",
+      "description": "unknown",
+      "value": "string",
+      "levels": [
+        "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGF..."
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "task",
+      "description": "unknown",
+      "value": "string",
+      "levels": [
+        "draw",
+        "replay"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "mouse_tracking_data",
+      "description": "unknown",
+      "value": "object"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "mouse_tracking_targets",
+      "description": "unknown",
+      "value": "object"
     }
   ]
 }

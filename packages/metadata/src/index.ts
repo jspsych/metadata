@@ -35,6 +35,14 @@ export default class JsPsychMetadata {
 
   private pluginCache: PluginCache;
 
+  private ignored_fields = new Set([
+    "trial_type",
+    "trial_index",
+    "time_elapsed",
+    "extenstion_type",
+    "extension_version",
+  ]);
+
   /**
    * Creates an instance of JsPsychMetadata while passing in JsPsych object to have access to context
    *  allowing it to access the screen printing information.
@@ -297,21 +305,15 @@ export default class JsPsychMetadata {
     const extensionType = observation["extension_type"]; // fix for non-list (single item extension)
     const extensionVersion = observation["extension_version"];
 
-    if (extensionType) this.generateDefaultExtensionVariables(); // After first call, generation is stopped.
-
-    const ignored_fields = new Set([
-      "trial_type",
-      "trial_index",
-      "time_elapsed",
-      "extenstion_type",
-      "extension_version",
-    ]);
+    if (extensionType) this.generateDefaultExtensionVariables(); // After first call, generation is stopped
 
     for (const variable in observation) {
       var value = observation[variable];
       var type = typeof value;
 
-      if (value === null || value === undefined || value === '' || value === 'null') continue; // Error checking
+      if (value === null || value === undefined || value === '' || value === "null"){ 
+        continue; // Error checking
+      }
 
       // handling type conversion from csv by converting back into number, should think about booleans as well
       if (type === "string") {
@@ -324,22 +326,27 @@ export default class JsPsychMetadata {
         }
       }
 
-      if (ignored_fields.has(variable)) this.updateFields(variable, value, type);
+      if (this.ignored_fields.has(variable)) this.updateFields(variable, value, type);
       else {
         await this.generateMetadata(variable, value, pluginType, version);
-        // if (extensionType) {
-        //   await Promise.all(
-        //     extensionType.map((ext, index) =>
-        //       this.generateMetadata(variable, value, ext, extensionVersion[index])
-        //     )
-        //   );
-        // }
+
+        if (extensionType) {
+          await Promise.all(
+            extensionType.map((ext, index) => {
+              if (ext && extensionVersion[index])
+                this.generateMetadata(variable, value, ext, extensionVersion[index], true);
+            })
+          );
+        }
       }
     }
   }
 
   // need to update the type with the different types that are possible?
   private async generateMetadata(variable, value, pluginType, version, extension?) {
+    if (!pluginType) { 
+      return;
+    }
     // probably should work in a call to the plugin here
     const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
     const description = pluginInfo["description"];
