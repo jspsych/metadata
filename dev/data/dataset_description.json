@@ -4,7 +4,13 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "description": "Dataset generated using JsPsych",
-  "author": [],
+  "randomField": "this is a field",
+  "author": [
+    {
+      "name": "John",
+      "givenName": "Johnathan"
+    }
+  ],
   "variableMeasured": [
     {
       "@type": "PropertyValue",
@@ -100,7 +106,8 @@
         "img/happy_face_1.jpg",
         "img/happy_face_2.jpg",
         "img/happy_face_3.jpg",
-        "img/happy_face_4.jpg"
+        "img/happy_face_4.jpg",
+        "<p style='text-align:center; font-size:80px;'>+</p..."
       ]
     },
     {
