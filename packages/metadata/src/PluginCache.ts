@@ -42,9 +42,19 @@ export class PluginCache {
     }
   }
 
+  private generateUnpkg(pluginType, version, extension?){
+    if (extension){
+      console.log("extension", extension);
+    }
+
+    // pluginLogic
+    if (version){
+      return `https://unpkg.com/@jspsych/plugin-${pluginType}@${version}/src/index.ts`;
+    }
+    else return `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`; // most common case - plugin with no version
+  }
+
   private async fetchScript(pluginType: string, version: string, extension?: boolean) {
-    // implement logic here how to use version field
-    // match upon name (extension version) and name ->
     // const unpkgUrl = `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`;
     // console.log(
     //   "fetchScript parameters: pluginType (" + pluginType + "), version (",
@@ -52,7 +62,8 @@ export class PluginCache {
     //   "), extension(" + extension + ")"
     // );
     // const unpkgUrl = `http://localhost:3000/plugin/${pluginType}/index.ts`;
-    const unpkgUrl = `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`;
+    const unpkgUrl = this.generateUnpkg(pluginType, version, extension);
+    console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl);
 
     try {
       const response = await fetch(unpkgUrl);

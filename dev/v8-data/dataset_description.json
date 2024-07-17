@@ -1,0 +1,161 @@
+{
+  "name": "title",
+  "schemaVersion": "Psych-DS 0.4.0",
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "description": "Dataset generated using JsPsych",
+  "author": [],
+  "variableMeasured": [
+    {
+      "@type": "PropertyValue",
+      "name": "trial_type",
+      "description": "The name of the plugin used to run the trial.",
+      "value": "string",
+      "levels": [
+        "preload",
+        "html-button-response",
+        "audio-slider-response",
+        "categorize-html",
+        "html-keyboard-response",
+        "image-keyboard-response"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "trial_index",
+      "description": "The index of the current trial across the whole experiment.",
+      "value": "numeric",
+      "minValue": 0,
+      "maxValue": 12
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "time_elapsed",
+      "description": "The number of milliseconds between the start of the experiment and when the trial ended.",
+      "value": "numeric",
+      "minValue": 5,
+      "maxValue": 12999
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "success",
+      "description": "If `true`, then all files loaded successfully within the `max_load_time`. If `false`, then one or * more file requests returned a failure and/or the file loading did not complete within the `max_load_time` duration.",
+      "value": "boolean",
+      "levels": [
+        true
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "timeout",
+      "description": "If `true`, then the files did not finish loading within the `max_load_time` duration. * If `false`, then the file loading did not timeout. Note that when the preload trial does not timeout * (`timeout: false`), it is still possible for loading to fail (`success: false`). This happens if * one or more files fails to load and all file requests trigger either a success or failure event before * the `max_load_time` duration.",
+      "value": "boolean",
+      "levels": [
+        false
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "failed_images",
+      "description": "One or more image file paths that produced a loading failure before the trial ended.",
+      "value": "string",
+      "levels": [
+        "[]"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "failed_audio",
+      "description": "One or more audio file paths that produced a loading failure before the trial ended.",
+      "value": "string",
+      "levels": [
+        "[]"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "failed_video",
+      "description": "One or more video file paths that produced a loading failure before the trial ended.",
+      "value": "string",
+      "levels": [
+        "[]"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "plugin_version",
+      "description": "unknown",
+      "value": "string",
+      "levels": [
+        "2.0.0"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "rt",
+      "description": {
+        "html-button-response": "The response time in milliseconds for the participant to make a response. The time is measured from when the stimulus first appears on the screen until the participant's response.",
+        "audio-slider-response": "The time in milliseconds for the participant to make a response. The time is measured from when the stimulus first * began playing until the participant's response.",
+        "image-keyboard-response": "The response time in milliseconds for the participant to make a response. The time is measured from when the stimulus * first appears on the screen until the participant's response."
+      },
+      "value": "number",
+      "minValue": -5443808,
+      "maxValue": 1398
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "stimulus",
+      "description": {
+        "audio-slider-response": "The path of the audio file that was played.",
+        "categorize-html": "Either the path to the image file or the string containing the HTML formatted content that the participant saw on this trial.",
+        "html-button-response, html-keyboard-response": "The HTML content that was displayed on the screen.",
+        "image-keyboard-response": "The path of the image that was displayed."
+      },
+      "value": "string",
+      "levels": [
+        "<div style=\"max-width:600px;\"><p>Some browsers now require the user to interact with a page before it can play audio. Clicking the button below counts as an interaction.</p><p>Be aware of this when planning audio experiments if you want the first trial to include audio.</p></div>",
+        "sound/speech_joke.mp3",
+        "sound/speech_red.mp3",
+        "sound/hammer.mp3",
+        "<div style=\"margin: auto; width: 200px; height: 200px; background-color: blue;\"></div>",
+        "<p style='text-align:center; font-size:80px;'>+</p>",
+        "img/happy_face_2.jpg",
+        "img/happy_face_3.jpg",
+        "img/happy_face_1.jpg"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "response",
+      "description": {
+        "html-button-response": "Indicates which button the participant pressed. The first button in the `choices` array is 0, the second is 1, and so on.",
+        "audio-slider-response": "The numeric value of the slider.",
+        "image-keyboard-response": "Indicates which key the participant pressed."
+      },
+      "value": "number",
+      "minValue": 0,
+      "maxValue": 100,
+      "levels": [
+        "y",
+        "n"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "slider_start",
+      "description": "The starting value of the slider.",
+      "value": "number",
+      "minValue": 50,
+      "maxValue": 50
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "correct",
+      "description": "`true` if the participant got the correct answer, `false` otherwise.",
+      "value": "boolean",
+      "levels": [
+        false
+      ]
+    }
+  ]
+}

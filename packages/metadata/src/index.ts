@@ -291,7 +291,7 @@ export default class JsPsychMetadata {
 
   private async generateObservation(observation) {
     // variables can be thought of mapping of one column in a row
-    const version = observation["version"] ? observation["version"] : null; // changed
+    const version = observation["plugin_version"] ? observation["plugin_version"] : null; // changed
     const pluginType = observation["trial_type"];
 
     const extensionType = observation["extension_type"]; // fix for non-list (single item extension)
@@ -338,6 +338,7 @@ export default class JsPsychMetadata {
     }
   }
 
+  // need to update the type with the different types that are possible?
   private async generateMetadata(variable, value, pluginType, version, extension?) {
     // probably should work in a call to the plugin here
     const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
