@@ -13,7 +13,7 @@ export const generatePath = (inputPath) => {
 // processing single file, need to refactor this into a seperate call
 const processFile = async (metadata, directoryPath, file) => {
   const filePath = path.join(directoryPath, file);
-  console.log("\nReading file:", filePath, "\n")
+  console.log("Reading file:", filePath);
 
   try {
     const content = await fs.promises.readFile(filePath, "utf8");
@@ -21,7 +21,7 @@ const processFile = async (metadata, directoryPath, file) => {
 
     switch (fileExtension){
       case '.json':
-        if (file === "dataset_description.json") metadata.loadMetadata(content); // this does not do that good of a job because it doesn't do this first -- so therefore might not work as intended
+        if (file === "dataset_description.json") metadata.loadMetadata(content); // need to remove this for the files that are being called with the CLI
         else await metadata.generate(content);
         break;
       case '.csv':
@@ -103,7 +103,7 @@ export function saveTextToFile(textstr, filename, directory = '.') {
   });
 }
 
-// 
+// in case path goes to file already
 export function saveTextToPath(textstr, filePath = './file.txt') {
   fs.writeFile(filePath, textstr, 'utf8', (err) => {
     if (err) {
@@ -133,4 +133,42 @@ export const loadMetadata = async (metadata, filePath) => {
   }
 
   return false;
+}
+
+// Validating if input is a directory
+export const validateDirectory = async (filePath) => {
+  try {
+    const stats = await fs.promises.stat(filePath);
+
+    if (!stats.isDirectory()) {
+      console.error(`Error: ${filePath} is not a directory`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    return false;
+  }
+};
+
+// Validating if input is a json file 
+export const validateJson = (filePath, fileName?) => {
+  try {
+    if (fileName && path.basename(filePath).toLowerCase() !== fileName){
+      console.error("File name does not match:", fileName);
+      return false;
+    }
+
+    // Check if the file has a .json extension
+    if (path.extname(filePath).toLowerCase() !== '.json') {
+      console.error(`Error: ${filePath} is not a JSON file`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    return false;
+  }
 }
