@@ -4,11 +4,13 @@ The metadata module contains functions for interacting metadata according to [Ps
 
 ---
 
-## metadata.generate
+TODO: Figure out where to include asynchronous descriptions of functions.gç
+
+## metadata.generate 
 
 ```javascript
 var metadata = new jsPsychMetadata();
-metadata.generate(properties);
+await metadata.generate(properties);
 ```
 
 ### Parameters

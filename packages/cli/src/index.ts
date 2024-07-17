@@ -2,8 +2,10 @@ import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
 import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath, validateDirectory, validateJson } from "./data.js";
 
-// figure out how to make it -> check the validate and then see what happens
-// -> refactor the method to first check if is a valid directory
+// Figure out what to do with processDirectory method
+// -> do we leave it the same for the CLI no prompting ot work with overwriting and updating
+// -> what to do with the path in the ClI prompting -- write to data directory or overwrite the other fiel
+    // -> do we want to load data directory as well
 
 async function existingMetadata(metadata){
   const answer = await select({
