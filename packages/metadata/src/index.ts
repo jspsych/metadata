@@ -332,9 +332,9 @@ export default class JsPsychMetadata {
 
         if (extensionType) {
           await Promise.all(
-            extensionType.map((ext, index) => {
+            extensionType.map(async (ext, index) => {
               if (ext && extensionVersion[index])
-                this.generateMetadata(variable, value, ext, extensionVersion[index], true);
+                await this.generateMetadata(variable, value, ext, extensionVersion[index], true);
             })
           );
         }
@@ -472,6 +472,4 @@ export default class JsPsychMetadata {
   private async getPluginInfo(pluginType: string, variableName: string, version, extension?) {
     return this.pluginCache.getPluginInfo(pluginType, variableName, version, extension);
   }
-
-
 }

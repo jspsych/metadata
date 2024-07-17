@@ -40,7 +40,7 @@ export class PluginCache {
         return this.parseJavadocString(script);
       } 
       catch (err) { // make this more descriptive
-        console.warn("error parsing", pluginType);
+        console.warn("* Error parsing", pluginType);
         return {};
       }
     }
