@@ -4,7 +4,7 @@ The metadata module contains functions for interacting metadata according to [Ps
 
 ---
 
-TODO: Figure out where to include asynchronous descriptions of functions.gç
+TODO: Figure out where to include asynchronous descriptions of functions.
 
 ## metadata.generate 
 
