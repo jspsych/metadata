@@ -68,7 +68,10 @@ export function JSON2CSV(objArray) {
   return result;
 }
 
-export async function parseCSV(input) {
+export async function parseCSV(input) {''
+  if (!parse) {
+    throw new Error('Parser module not loaded');
+  }
   // console.log("input:", input);
   return new Promise((resolve, reject) => {
     parse(input, {

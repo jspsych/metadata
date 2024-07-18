@@ -1,0 +1,6 @@
+"success","timeout","failed_images","failed_audio","failed_video","trial_type","trial_index","plugin_version","time_elapsed","rt","stimulus","response","slider_start"
+"true","false","[]","[]","[]","preload","0","2.0.0","26","","","",""
+"","","","","","html-button-response","1","2.0.0","1200","920","<div style=""max-width:600px;""><p>Some browsers now require the user to interact with a page before it can play audio. Clicking the button below counts as an interaction.</p><p>Be aware of this when planning audio experiments if you want the first trial to include audio.</p></div>","0",""
+"","","","","","audio-slider-response","2","2.0.0","3465","-1521640","sound/speech_joke.mp3","6","50"
+"","","","","","audio-slider-response","3","2.0.0","5133","-3782974","sound/speech_red.mp3","93","50"
+"","","","","","audio-slider-response","4","2.0.0","12999","-5443808","sound/hammer.mp3","100","50"

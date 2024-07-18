@@ -16,6 +16,7 @@
   ],
   "source": "src/index.ts",
   "scripts": {
+    "prepare": "npm run build",
     "test": "jest",
     "test:watch": "npm test -- --watch",
     "build": "node esbuild.config.mjs",
