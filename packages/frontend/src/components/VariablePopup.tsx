@@ -3,6 +3,8 @@ import { useState } from 'react';
 type VariablePopup = {
   onClose: () => void;
   onSave: (formData: VariableFormData) => void;
+  currentPopup: string;
+  setPopupType: (type: string) => void;
 }
 
 export type VariableFormData = {
@@ -21,7 +23,7 @@ export type VariableFormData = {
   privacy: string;
 }
 
-const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave }) => {
+const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup, setPopupType }) => {
   const [formData, setFormData] = useState<VariableFormData>({
     "@type": "",
     name: "", // required
@@ -62,6 +64,11 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave }) => {
   return (
     <div className="popup-overlay">
       <div className="popup-content">
+        <div>
+          <button className={currentPopup === 'field' ? 'activePopup' : ''} onClick={() => setPopupType('field')}>Add Field</button>
+          <button className={currentPopup === 'author' ? 'activePopup' : ''} onClick={() => setPopupType('author')}>Add Author</button>
+          <button className={currentPopup === 'variables' ? 'activePopup' : ''} onClick={() => setPopupType('variables')}>Add Variables</button>
+        </div>
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>

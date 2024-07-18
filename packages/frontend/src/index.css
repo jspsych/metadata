@@ -98,3 +98,8 @@ button:focus-visible {
   font-size: 16px;
   cursor: pointer;
 }
+
+.activePopup {
+  background-color: #4CAF50; /* Green background */
+  color: white;
+}

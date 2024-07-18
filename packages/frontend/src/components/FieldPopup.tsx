@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 type FieldPopup = {
   onClose: () => void;
   onSave: (formData: FieldFormData) => void;
+  currentPopup: string;
+  setPopupType: (type: string) => void;
 };
 
 export type FieldFormData = {
@@ -10,7 +12,7 @@ export type FieldFormData = {
   fieldDescription: string;
 };
 
-const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave }) => {
+const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave,currentPopup, setPopupType }) => {
   const [formData, setFormData] = useState<FieldFormData>({
     fieldName: '',
     fieldDescription: '',
@@ -33,10 +35,15 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave }) => {
   return (
     <div className="popup-overlay">
       <div className="popup-content">
+        <div>
+          <button className={currentPopup === 'field' ? 'activePopup' : ''} onClick={() => setPopupType('field')}>Add Field</button>
+          <button className={currentPopup === 'author' ? 'activePopup' : ''} onClick={() => setPopupType('author')}>Add Author</button>
+          <button className={currentPopup === 'variables' ? 'activePopup' : ''} onClick={() => setPopupType('variables')}>Add Variables</button>
+        </div>
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="field">Field Name</label>
+            <label htmlFor="fieldName">Field Name</label>
             <input
               type="text"
               id="fieldName"

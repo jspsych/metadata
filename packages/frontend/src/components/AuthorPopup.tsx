@@ -3,6 +3,8 @@ import { useState } from 'react';
 type AuthorPopup = {
   onClose: () => void,
   onSave: (formData: AuthorFormData) => void;
+  currentPopup: string;
+  setPopupType: (type: string) => void;
 }
 
 export type AuthorFormData = {
@@ -12,7 +14,7 @@ export type AuthorFormData = {
   identifier: string,
 }
 
-const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave } ) => {
+const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, setPopupType } ) => {
   const [formData, setFormData] = useState<AuthorFormData>({
     "@type": "",
     givenName: "",
@@ -37,6 +39,11 @@ const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave } ) => {
   return (
     <div className="popup-overlay">
       <div className="popup-content">
+        <div>
+          <button className={currentPopup === 'field' ? 'activePopup' : ''} onClick={() => setPopupType('field')}>Add Field</button>
+          <button className={currentPopup === 'author' ? 'activePopup' : ''} onClick={() => setPopupType('author')}>Add Author</button>
+          <button className={currentPopup === 'variables' ? 'activePopup' : ''} onClick={() => setPopupType('variables')}>Add Variables</button>
+        </div>
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>
