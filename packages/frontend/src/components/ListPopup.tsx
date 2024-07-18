@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 type ListPopup = {
   onClose: () => void;
   metadata: Metadata;
-  currentPopup: string;
-  setPopupType: (type: string, data?: any) => void; // Update setPopupType to accept optional data
+  setPopupType: (type: string) => void; // Update setPopupType to accept optional data
+  setPopupData: (type: any) => void;
 }
 
 type Author = {
@@ -48,20 +48,40 @@ type Metadata = {
 }
 
 
-const ListPopup: React.FC<ListPopup> = ( { onClose, metadata, currentPopup, setPopupType } ) => { 
+const ListPopup: React.FC<ListPopup> = ( { onClose, metadata, setPopupType, setPopupData} ) => { 
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
       const value = metadata[key];
 
       if (key === "variableMeasured"){
+        for (const variable_key in value){
+          const variable = value[variable_key];
 
+          res.push(<button key={"variable" + variable_key} onClick={() => { 
+            setPopupType('variables');
+            setPopupData(variable);
+          }}>            
+            Variable: {variable["name"]}
+          </button>);
+        }
       } else if (key === "author"){
-        console.log("authors");
-        // <button onClick={() => setPopupType('author')}>Add Author</button>
+        for (const author_key in value){
+          const author = value[author_key];
+
+          res.push(<button key={"author" + author_key} onClick={() => { 
+            setPopupType('author');
+            setPopupData(author);
+          }}>            
+            Author: {author["name"]}
+          </button>);
+        }
       } else {
         res.push(
-          <button key={key} onClick={() => setPopupType('field', { key, value })}>
+          <button key={"field" + key} onClick={() => { 
+            setPopupType('field');
+            setPopupData({ fieldName: key, fieldDescription: value });
+          }}>            
             {key}: {value}
           </button>
         );}

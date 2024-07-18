@@ -5,6 +5,7 @@ type FieldPopup = {
   onSave: (formData: FieldFormData) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
+  popupData: any;
 };
 
 export type FieldFormData = {
@@ -12,11 +13,10 @@ export type FieldFormData = {
   fieldDescription: string;
 };
 
-const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave,currentPopup, setPopupType }) => {
-  const [formData, setFormData] = useState<FieldFormData>({
-    fieldName: '',
-    fieldDescription: '',
-  });
+const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave,currentPopup, setPopupType, popupData }) => {
+  const [formData, setFormData] = useState<FieldFormData>(
+    popupData ? { fieldName: popupData.fieldName, fieldDescription: popupData.fieldDescription } : { fieldName: '', fieldDescription: '' }
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

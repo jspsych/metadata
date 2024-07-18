@@ -5,6 +5,7 @@ type VariablePopup = {
   onSave: (formData: VariableFormData) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
+  popupData: any;
 }
 
 export type VariableFormData = {
@@ -23,21 +24,21 @@ export type VariableFormData = {
   privacy: string;
 }
 
-const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup, setPopupType }) => {
+const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup, setPopupType, popupData }) => {
   const [formData, setFormData] = useState<VariableFormData>({
-    "@type": "",
-    name: "", // required
-    description: "",
-    value: "", // string, boolean, or number
-    identifier: "", // identifier that distinguish across dataset (URL), confusing should check description
-    minValue: undefined,
-    maxValue: undefined,
-    levels: [],
-    levelsOrdered: undefined,
-    na: undefined,
-    naValue: "",
-    alternateName: "",
-    privacy: "",
+    "@type": popupData["@type"] || "",
+    name: popupData["name"] || "", // required
+    description: popupData["description"] || "",
+    value: popupData["value"] ||  "", // string, boolean, or number
+    identifier: popupData["identifier"] || "", // identifier that distinguish across dataset (URL), confusing should check description
+    minValue: popupData["minValue"] || undefined,
+    maxValue: popupData["maxValue"] || undefined,
+    levels: popupData["levels"] || [],
+    levelsOrdered: popupData["levelsOrdered"] || undefined,
+    na: popupData["na"] || undefined,
+    naValue: popupData["naValue"] || "",
+    alternateName: popupData["alternateName"] || "",
+    privacy: popupData["privacy"] || "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
