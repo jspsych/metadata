@@ -6,9 +6,9 @@ await esbuild.build({
   bundle: true,
   outfile: 'dist/index.browser.js',
   platform: 'browser',
-  define: {
-    'process.env.TARGET': '"browser"'
-  }
+  alias: {
+    'csv-parse': 'csv-parse/browser/esm',
+  },
 });
 
 // Node build configuration
@@ -17,7 +17,4 @@ await esbuild.build({
   bundle: true,
   outfile: 'dist/index.node.js',
   platform: 'node',
-  define: {
-    'process.env.TARGET': '"node"'
-  }
 });
