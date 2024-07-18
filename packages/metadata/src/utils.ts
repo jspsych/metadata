@@ -1,4 +1,10 @@
-import { parse } from 'csv-parse';
+let parse;
+
+if (process.env.TARGET === 'browser') {
+  parse = (await import('csv-parse/browser/esm')).parse;
+} else {
+  parse = (await import('csv-parse')).parse;
+}
 
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
