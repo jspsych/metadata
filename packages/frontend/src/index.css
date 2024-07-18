@@ -103,3 +103,8 @@ button:focus-visible {
   background-color: #4CAF50; /* Green background */
   color: white;
 }
+
+.button-container {
+  display: flex;
+  flex-direction: column;
+}

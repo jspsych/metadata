@@ -8,28 +8,31 @@ import metadata from '../assets/dataset_description.json';
 const Options: React.FC = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState('');
+  // const [popupData, setPopupData] = useState<any>(null); // State to hold popup-specific data
 
-  const openPopup = (type: string) => {
+  const openPopup = (type: string, data?: any) => {
     setPopupType(type);
     setIsPopupOpen(true);
+    // setPopupData(data); // Set optional data to pass to child popups
   };
 
   const closePopup = () => {
     setIsPopupOpen(false);
     setPopupType('');
+    // setPopupData(null);
   };
-
 
   // want to include the other ones here as well
   const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData) => {
     console.log('Form Data:', formData);
+    closePopup(); // Close popup after saving
     // Perform save action here
   };
 
   const renderPopup = () => {
     switch (popupType) {
       case 'list':
-        return <ListPopup onClose={closePopup} metadata={metadata}/>;
+        return <ListPopup onClose={closePopup} metadata={metadata} currentPopup={popupType} setPopupType={setPopupType} />;
       case 'field':
         // add optional possibilities of object to add into the fields 
         return <FieldPopup onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} />;
