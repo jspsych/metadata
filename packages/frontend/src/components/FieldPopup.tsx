@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 
 type FieldPopup = {
   onClose: () => void;
-  onSave: (formData: PopupFormData) => void;
+  onSave: (formData: FieldFormData) => void;
 };
 
-type PopupFormData = {
+export type FieldFormData = {
   fieldName: string;
   fieldDescription: string;
 };
 
 const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave }) => {
-  const [formData, setFormData] = useState<PopupFormData>({
+  const [formData, setFormData] = useState<FieldFormData>({
     fieldName: '',
     fieldDescription: '',
   });
@@ -36,7 +36,7 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave }) => {
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="field1">Field Name</label>
+            <label htmlFor="field">Field Name</label>
             <input
               type="text"
               id="fieldName"

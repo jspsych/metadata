@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
-import FieldPopup from '../components/FieldPopup';
-
-type FieldFormData = {
-  fieldName: string;
-  fieldDescription: string;
-};
+import FieldPopup, { FieldFormData } from '../components/FieldPopup';
+import AuthorPopup, { AuthorFormData } from '../components/AuthorPopup';
+import VariablePopup, { VariableFormData } from '../components/VariablePopup';
 
 const Options: React.FC = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -20,7 +17,8 @@ const Options: React.FC = () => {
     setPopupType('');
   };
 
-  const handleSave = (formData: FieldFormData) => {
+  // want to include the other ones here as well
+  const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData) => {
     console.log('Form Data:', formData);
     // Perform save action here
   };
@@ -30,11 +28,10 @@ const Options: React.FC = () => {
       case 'field':
         return <FieldPopup onClose={closePopup} onSave={handleSave} />;
       case 'author':
-        // return <AuthorFormPopup onClose={closePopup} onSave={handleSave} />;
-        return <FieldPopup onClose={closePopup} onSave={handleSave} />;
+        return <AuthorPopup onClose={closePopup} onSave={handleSave} />;
       case 'variables':
-        return <FieldPopup onClose={closePopup} onSave={handleSave} />;
-        // return <VariableFormPopup onClose={closePopup} onSave={handleSave} />;
+        // return <FieldPopup onClose={closePopup} onSave={handleSave} />;
+        return <VariablePopup onClose={closePopup} onSave={handleSave} />;
       default:
         return null;
     }
@@ -42,7 +39,7 @@ const Options: React.FC = () => {
 
   return (
     <>
-      <h1>This is the options page</h1>
+      <h1>Metadata Options</h1>
       <button onClick={() => openPopup('field')}>Edit field</button>
       <button onClick={() => openPopup('author')}>Edit author</button>
       <button onClick={() => openPopup('variables')}>Edit variables</button>
