@@ -21,9 +21,9 @@ function App() {
     <>
     <ExistingMetadata setMetadata={setMetadata} />
     <UploadData setData={setData} />
+    <Options />
     <GenerateButton data={data} metadata={metadata} setFinalMetadata={setFinalMetadata} />
     <MetadataPreview finalMetadata={finalMetadata} />
-    <Options />
     </>
   )
 }
