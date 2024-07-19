@@ -3,10 +3,12 @@ import { Button, VStack } from '@chakra-ui/react'
 // import useExternalScripts from './useExternalScripts'
 //import JsPsychMetadata from '../../metadata/src/index'
 import { FaUpload } from "react-icons/fa"; // Icon for the upload button/Likely will finetune
-import ExistingMetadata from './existingMetadata';
+import ExistingMetadata from './pages/existingMetadata.tsx';
 import Options from './pages/Options.tsx'
-import UploadData from './uploadData';
-import GenerateButton from './generateMetadata';
+import UploadData from './pages/uploadData.tsx';
+import GenerateButton from './pages/generateMetadata.tsx';
+
+
 
 import './App.css'
 

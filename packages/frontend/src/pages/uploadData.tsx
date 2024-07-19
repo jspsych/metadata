@@ -1,28 +1,35 @@
 import { useState } from 'react'
 
+
 type UploadDataProps = {
     setData: (data: string[]) => void;
   };
+
+
+
+
   
 export default function UploadData({ setData }: UploadDataProps) {
-    const [files, setFiles] = useState<File[]>([]);
     //const jsPsychpath = "/index.js";
+
+    const [fileString, setFileString] = useState<string[]>();
   
     //useExternalScripts(jsPsychpath);
   
     let filesInAnArray: string[] = [];
   
-    function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
   
       if (event.target.files) {
-        console.log(event.target.files);
-        setFiles([...event.target.files]);
     
-        const promises = Array.from(files).map(file => {
+        const fileList = [...event.target.files];
+
+        const promises = fileList.map(file => {
           return new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
     
             reader.onload = () => {
+              console.log(reader.result);
               resolve(reader.result as string); // Resolve the promise with the file content.
             };
     
@@ -35,15 +42,18 @@ export default function UploadData({ setData }: UploadDataProps) {
         Promise.all(promises).then(contents => {
           filesInAnArray = contents; // Update filesInAnArray with all file contents.
           setData(filesInAnArray); // Update the state with the new array.
-          console.log(filesInAnArray);
+          setFileString(filesInAnArray);
         }).catch(error => {
           console.error("Error reading files:", error);
         });
       
     }
     }
-    function loadFiles() {
+    function loadFiles(event: React.FormEvent<HTMLFormElement>) {
+      console.log('loadFiles', filesInAnArray);
+      event.preventDefault();
       setData(filesInAnArray);
+      console.log('set', filesInAnArray);
     }
   
     return (
