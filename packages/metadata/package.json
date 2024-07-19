@@ -19,7 +19,7 @@
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "npm test -- --watch",
-    "build": "esbuild src/index.ts --bundle --format=esm --platform=node --outfile=dist/index.js",
+    "build": "node esbuild.config.mjs",
     "build:watch": "npm run build -- --watch"
   },
   "repository": {
