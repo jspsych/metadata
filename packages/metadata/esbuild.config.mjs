@@ -15,6 +15,6 @@ await esbuild.build({
 await esbuild.build({
   entryPoints: ['src/index.ts'],
   bundle: true,
-  outfile: 'dist/index.node.js',
+  outfile: 'dist/index.js',
   platform: 'node',
 });
