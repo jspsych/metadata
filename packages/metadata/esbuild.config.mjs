@@ -11,10 +11,21 @@ await esbuild.build({
   },
 });
 
-// Node build configuration
+// Browser minified build configuration
 await esbuild.build({
   entryPoints: ['src/index.ts'],
   bundle: true,
+  outfile: 'dist/index.browser.min.js',
+  platform: 'browser',
+  minify: true,
+  alias: {
+    'csv-parse': 'csv-parse/browser/esm',
+  },
+});
+
+// Node build configuration
+await esbuild.build({
+  entryPoints: ['src/index.ts'],
   outfile: 'dist/index.js',
   platform: 'node',
 });
