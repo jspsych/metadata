@@ -4,6 +4,7 @@ import { Button, VStack } from '@chakra-ui/react'
 //import JsPsychMetadata from '../../metadata/src/index'
 import { FaUpload } from "react-icons/fa"; // Icon for the upload button/Likely will finetune
 import ExistingMetadata from './existingMetadata';
+import Options from './pages/Options.tsx'
 import UploadData from './uploadData';
 import GenerateButton from './generateMetadata';
 
@@ -22,6 +23,7 @@ function App() {
     <UploadData setData={setData} />
     <GenerateButton data={data} metadata={metadata} setFinalMetadata={setFinalMetadata} />
     <MetadataPreview finalMetadata={finalMetadata} />
+    <Options />
     </>
   )
 }

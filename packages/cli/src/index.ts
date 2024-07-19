@@ -1,6 +1,11 @@
-import { input, select, confirm } from '@inquirer/prompts';
+import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
-import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath } from "./data.js";
+import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath, validateDirectory, validateJson } from "./data.js";
+
+// Figure out what to do with processDirectory method
+// -> do we leave it the same for the CLI no prompting ot work with overwriting and updating
+// -> what to do with the path in the ClI prompting -- write to data directory or overwrite the other fiel
+    // -> do we want to load data directory as well
 
 async function existingMetadata(metadata){
   const answer = await select({
@@ -19,20 +24,21 @@ async function existingMetadata(metadata){
     ],
   });
   
-  let oldData: string = "";
+  let dataset_description_path: string = "";
 
   try {
     switch(answer){
       case "generate":
         break;
       case "edit":
-        oldData = await input({
+        dataset_description_path = await input({
           message: 'Enter the path to the existing dataset_description.json file:',
           validate: async (input) => {
-            if (await loadMetadata(metadata, input)) return true;
+            if (validateJson(input, "dataset_description.json")) return true;
             return "Please enter a valid path to a json file";
           }
         });     
+        await loadMetadata(metadata, dataset_description_path);
         break;
       default: 
         console.error("Existing metadata answer is not added/configured:", answer);
@@ -41,19 +47,21 @@ async function existingMetadata(metadata){
 
   }
 
-  return oldData;
+  return dataset_description_path;
 }
-
 
 async function dataPathPrompt(metadata){
   const dataPath = await input({
     message: 'Enter the path to the data directory:',
     validate: async (input) => {
-      if (await processDirectory(metadata, input)) return true;
+      if (await validateDirectory(input)){ 
+        return true;
+      }
       return "Please enter a valid path to a valid directory";
     }
   });
 
+  await processDirectory(metadata, dataPath);
   return dataPath;
 }
 
@@ -80,10 +88,12 @@ async function metadataOptionsPrompt(metadata){
     optionsPath = await input({
       message: 'Enter the path to the metadata options file in json format:',
       validate: async (input) => {
-        if (await processOptions(metadata, input)) return true;
+        if (validateJson(input)) return true;
         return "Please enter a valid path to a json file";
       }
     });
+
+    await processOptions(metadata, optionsPath);
   }
 
   return optionsPath;
@@ -93,21 +103,20 @@ async function metadataOptionsPrompt(metadata){
 const main = async() => {
   const metadata = new JsPsychMetadata();
 
-  const oldData = await existingMetadata(metadata); // will want to write to this path when writing final json
+  const dataset_description_path = await existingMetadata(metadata); // will want to write to this path when writing final json
   const dataPath = await dataPathPrompt(metadata);
   const optionsPath = await metadataOptionsPrompt(metadata);
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   console.log(metadataString); // Pretty print with 2 spaces for indentation
+
   // saving to old Data file if provided, otherwise new data file
-  if (oldData === "" || oldData === undefined || oldData === null){
+  if (dataset_description_path === "" || dataset_description_path === undefined || dataset_description_path === null){
     saveTextToFile(metadataString, "dataset_description.json", dataPath);
   }
   else{
-    saveTextToPath(metadataString, oldData);
+    saveTextToPath(metadataString, dataset_description_path);
   }
 }
 
 await main();
-
-// TODO -- have the very last call be the printing to terminal and have the saving()

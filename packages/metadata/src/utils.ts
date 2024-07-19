@@ -1,4 +1,6 @@
 import { parse } from 'csv-parse';
+// import {parse} from 'csv-parse/browser/esm';
+
 
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
@@ -62,7 +64,10 @@ export function JSON2CSV(objArray) {
   return result;
 }
 
-export async function parseCSV(input) {
+export async function parseCSV(input) {''
+  if (!parse) {
+    throw new Error('Parser module not loaded');
+  }
   // console.log("input:", input);
   return new Promise((resolve, reject) => {
     parse(input, {

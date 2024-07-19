@@ -297,6 +297,16 @@ export class VariablesMap {
    * @param {*} added_value - The value being added to the levels field.
    */
   private updateLevels(updated_var, added_value): void {
+    if (typeof added_value === "object")
+      return;
+
+    const MAX_LENGTH = 50;  // Define the maximum length for the added value
+    
+    // Trim the added value if it exceeds the maximum length
+    if (added_value.length > MAX_LENGTH) {
+      added_value = added_value.substring(0, MAX_LENGTH) + "...";
+    }
+    
     if (!Array.isArray(updated_var["levels"])) {
       updated_var["levels"] = [];
     }
