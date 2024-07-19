@@ -23,6 +23,17 @@ await esbuild.build({
   },
 });
 
+// Browser ESM module
+await esbuild.build({
+  entryPoints: ['src/index.ts'],
+  bundle: true,
+  outfile: 'dist/index.esm.js',
+  format: 'esm',
+  alias: {
+    'csv-parse': 'csv-parse/browser/esm',
+  },
+});
+
 // Node build configuration
 await esbuild.build({
   entryPoints: ['src/index.ts'],
