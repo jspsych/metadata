@@ -8,7 +8,10 @@
       "csv-parse/browser/esm": ["node_modules/csv-parse/lib/browser/esm/index.d.ts"]
     },
     "resolveJsonModule": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "declaration": true,
+    "outDir": "./dist", // Output directory for compiled files
+    "rootDir": "./src" // Root directory of input files
   },
   "include": ["src", "tests/metadata-module.test.ts"]
 }
