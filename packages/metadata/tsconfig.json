@@ -11,7 +11,8 @@
     "esModuleInterop": true,
     "declaration": true,
     "outDir": "./dist", // Output directory for compiled files
-    "rootDir": "./src" // Root directory of input files
+    "rootDir": "./src", // Root directory of input files
+    "declarationDir": "./dist", // Directory for declaration files
   },
-  "include": ["src", "tests/metadata-module.test.ts"]
+  "include": ["src"]
 }

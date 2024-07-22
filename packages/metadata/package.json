@@ -10,7 +10,8 @@
         "node": "./dist/index.js",
         "default": "./dist/index.esm.js"
       },
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts" 
     }
   },
   "typings": "dist/index.d.ts",
