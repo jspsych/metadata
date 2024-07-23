@@ -13,10 +13,10 @@ export default function Metadata() {
 
   return (
     <>
-    <ExistingMetadata setMetadata={setMetadata} />
-    <UploadData setData={setData} setFinalMetadata={setFinalMetadata} />
-    <GenerateMetadata data={data} metadata={metadata} setFinalMetadata={setFinalMetadata}/>
-    <MetadataPreview finalMetadata={finalMetadata} />
+      <ExistingMetadata setMetadata={setMetadata} />
+      <UploadData setData={setData} setFinalMetadata={setFinalMetadata} />
+      <GenerateMetadata data={data} metadata={metadata} setFinalMetadata={setFinalMetadata}/>
+      <MetadataPreview finalMetadata={finalMetadata} />
     </>
   )
 }
