@@ -1,15 +1,18 @@
-import Metadata from "./pages/Metadata";
+import Metadata from "./pages/Upload.tsx";
 import Options from './pages/Options.tsx'
 import JsPsychMetadata from 'metadata';
+import { useState } from 'react';
 import './App.css'
 
-var jsPsychMetadata = new JsPsychMetadata();
 
 function App() {
-  console.log(jsPsychMetadata.getMetadata());
+  const jsPsychMetadata = new JsPsychMetadata();
+  const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata())); // this is the metadata string that willl keep track of metadata
+
   return (
     <>
-      <Metadata />
+      <Metadata jsPsychMetadata={jsPsychMetadata}/>
+      {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>console.logMetadata</button> */}
       <Options />
     </>
   )

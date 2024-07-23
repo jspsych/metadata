@@ -25,9 +25,9 @@ export default function UploadData({ setData, setFinalMetadata }: UploadDataProp
   
       if (event.target.files) {
         setFileList([...event.target.files]);
+      }
     }
-    
-    }
+
     function loadFiles(event: React.FormEvent<HTMLFormElement>) {
       console.log('loadFiles', filesInAnArray);
       event.preventDefault();
