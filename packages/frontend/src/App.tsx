@@ -7,7 +7,7 @@ import './App.css'
 
 
 function App() {
-  const jsPsychMetadata = new JsPsychMetadata();
+  const [jsPsychMetadata] = useState(new JsPsychMetadata());
   const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata(), null, 2)); // this is the metadata string that willl keep track of metadata
 
     // whenever updates will just call pretty version 
