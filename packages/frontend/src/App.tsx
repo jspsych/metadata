@@ -7,7 +7,7 @@ import './App.css'
 
 function App() {
   const jsPsychMetadata = new JsPsychMetadata();
-  const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata())); // this is the metadata string that willl keep track of metadata
+  // const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata())); // this is the metadata string that willl keep track of metadata
 
   return (
     <>

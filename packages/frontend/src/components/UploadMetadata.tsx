@@ -33,13 +33,14 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {setMetadata, jsPsychMet
       }).catch(error => {console.error("Error reading metadata file:", error);});
     }
   }
+
   
   return (
     <div className="App">
       <h2>Metadata file upload</h2>
       <form onSubmit={loadMetadata}>
-      <input type='file' onChange={handleMetadataUpload}/>
-      <button type="submit">Upload</button>
+        <input type='file' onChange={handleMetadataUpload}/>
+        <button type="submit">Upload</button> 
       </form>
     </div>
   )
