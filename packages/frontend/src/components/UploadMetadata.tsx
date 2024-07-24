@@ -2,11 +2,10 @@ import JsPsychMetadata from 'metadata';
 import { useState } from 'react'
 
 type UploadMetadataProps = {
-  setMetadata: (metadata: string) => void;
   jsPsychMetadata: JsPsychMetadata;
 };
 
-const UploadMetadata: React.FC<UploadMetadataProps> = ( {setMetadata, jsPsychMetadata } ) => {
+const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata } ) => {
   const [metadataHolder, setMetadataHolder] = useState<File>();
   
   function handleMetadataUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -27,8 +26,6 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {setMetadata, jsPsychMet
       });
 
       promise.then(metadata => {
-        setMetadata(metadata);
-
         jsPsychMetadata.loadMetadata(metadata);
       }).catch(error => {console.error("Error reading metadata file:", error);});
     }

@@ -2,8 +2,6 @@ import JsPsychMetadata from 'metadata';
 import React, { useState, useRef, useEffect } from 'react';
 
 type UploadDataProps = {
-  setData: (data: FileData[]) => void;
-  setFinalMetadata: (metadata: string) => void;
   jsPsychMetadata: JsPsychMetadata;
 };
 
@@ -14,7 +12,7 @@ type FileData = {
   filePath: string;
 };
 
-export default function UploadData({ setData, setFinalMetadata, jsPsychMetadata }: UploadDataProps) {
+export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
   const [fileList, setFileList] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,7 +54,6 @@ export default function UploadData({ setData, setFinalMetadata, jsPsychMetadata 
     
     try {
       const fileDataArray = await processFiles(fileList);
-      setData(fileDataArray); // Update the state with the new array.
   
       // Process each file data asynchronously
       for (const { name, content, fileType, filePath } of fileDataArray) {
@@ -90,6 +87,8 @@ export default function UploadData({ setData, setFinalMetadata, jsPsychMetadata 
     for (const file of fileList) {
       console.log(file);
     }
+
+    console.log(jsPsychMetadata.getMetadata());
   };
 
   return (

@@ -1,6 +1,8 @@
+import JsPsychMetadata from 'metadata';
 import React, { useState } from 'react';
 
 type FieldPopup = {
+  jsPsychMetadata: JsPsychMetadata; // maybe unecessary
   onClose: () => void;
   onSave: (formData: FieldFormData) => void;
   currentPopup: string;

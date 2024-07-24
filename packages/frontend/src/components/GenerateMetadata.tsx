@@ -1,24 +1,12 @@
-interface GenerateButtonProps {
-  data: string[] | undefined;
-  metadata: string | undefined;
-  setFinalMetadata: (metadata: string) => void; 
+import JsPsychMetadata from "metadata";
+
+interface GenerateMetadataProps {
+  jsPsychMetadata: JsPsychMetadata;
 }
 
-export default function GenerateMetadata({data, metadata, setFinalMetadata}: GenerateButtonProps) {
-  
+const GenerateMetadata:React.FC<GenerateMetadataProps> = ( {jsPsychMetadata} ) => {
   function generateMetadata(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    console.log("Data", data);
-    console.log("Metadata", metadata)
-    
-    if (!data) {
-      console.log("No data files uploaded");
-      return;
-    }
-    if (!metadata) console.log("No metadata file uploaded");
-
-    setFinalMetadata("Data files uploaded: " + data + "Metadata file uploaded: " + metadata + "Metadata generated");
-
   }
 
   return (
@@ -29,3 +17,5 @@ export default function GenerateMetadata({data, metadata, setFinalMetadata}: Gen
     </div>
   )
 }
+
+export default GenerateMetadata;

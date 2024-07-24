@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import JsPsychMetadata from 'metadata';
 
 type VariablePopup = {
+  jsPsychMetadata: JsPsychMetadata; // maybe unnecesssary
   onClose: () => void;
   onSave: (formData: VariableFormData) => void;
   currentPopup: string;

@@ -1,8 +1,9 @@
+import JsPsychMetadata from 'metadata';
 import React from 'react';
 
 type ListPopup = {
+  jsPsychMetadata: JsPsychMetadata;
   onClose: () => void;
-  metadata: Metadata;
   setPopupType: (type: string) => void; // Update setPopupType to accept optional data
   setPopupData: (type: any) => void;
 }
@@ -48,7 +49,7 @@ type Metadata = {
 }
 
 
-const ListPopup: React.FC<ListPopup> = ( { onClose, metadata, setPopupType, setPopupData} ) => { 
+const ListPopup: React.FC<ListPopup> = ( { jsPsychMetadata, onClose, setPopupType, setPopupData} ) => { 
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
@@ -90,6 +91,7 @@ const ListPopup: React.FC<ListPopup> = ( { onClose, metadata, setPopupType, setP
     return res;
   } 
 
+  const metadata = jsPsychMetadata.getMetadata() as Metadata; // typecasting
   const buttons = generateButtons(metadata);
 
   return (

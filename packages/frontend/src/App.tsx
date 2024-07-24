@@ -13,7 +13,7 @@ function App() {
     <>
       <Metadata jsPsychMetadata={jsPsychMetadata}/>
       {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>console.logMetadata</button> */}
-      <Options />
+      <Options jsPsychMetadata={jsPsychMetadata}/>
     </>
   )
 }

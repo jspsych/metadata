@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import ExistingMetadata from '../components/UploadMetadata.tsx';
+import UploadMetadata from '../components/UploadMetadata.tsx';
 import UploadData from '../components/UploadData.tsx';
 import GenerateMetadata from '../components/GenerateMetadata.tsx';
 import Preview from '../components/Preview.tsx'; // will need to include with the rest
@@ -10,16 +9,11 @@ interface UploadProps {
 } 
 
 const Upload: React.FC<UploadProps> = ( { jsPsychMetadata }) => {
-
-  const [metadata, setMetadata] = useState<string>(); // pretty sure can be deleted
-  const [data, setData] = useState<string[]>();
-  const [finalMetadata, setFinalMetadata] = useState<string>(); // pretty sure can deleted 
-
   return (
     <>
-      <ExistingMetadata setMetadata={setMetadata} jsPsychMetadata={jsPsychMetadata}/>
-      <UploadData setData={setData} setFinalMetadata={setFinalMetadata} jsPsychMetadata={jsPsychMetadata} />
-      <GenerateMetadata data={data} metadata={metadata} setFinalMetadata={setFinalMetadata}/>
+      <UploadMetadata jsPsychMetadata={jsPsychMetadata} />
+      <UploadData jsPsychMetadata={jsPsychMetadata} />
+      <GenerateMetadata jsPsychMetadata={jsPsychMetadata} />
       {/* include a preview here later */}
     </>
   )

@@ -1,6 +1,8 @@
+import JsPsychMetadata from 'metadata';
 import { useState } from 'react';
 
 type AuthorPopup = {
+  jsPsychMetadata: JsPsychMetadata; // maybe unnecessary
   onClose: () => void,
   onSave: (formData: AuthorFormData) => void;
   currentPopup: string;
@@ -17,8 +19,6 @@ export type AuthorFormData = {
 }
 
 const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, setPopupType, popupData } ) => {
-  console.log("AuthorPOpup", popupData);
-
   const [formData, setFormData] = useState<AuthorFormData>({
     "@type": popupData["@type"] || "",
     name: popupData["name"] || "",

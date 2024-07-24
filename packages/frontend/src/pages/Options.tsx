@@ -3,9 +3,13 @@ import FieldPopup, { FieldFormData } from '../components/FieldPopup';
 import AuthorPopup, { AuthorFormData } from '../components/AuthorPopup';
 import VariablePopup, { VariableFormData } from '../components/VariablePopup';
 import ListPopup from '../components/ListPopup';
-import metadata from '../assets/dataset_description.json';
+import JsPsychMetadata from 'metadata';
 
-const Options: React.FC = () => {
+interface OptionsProps {
+  jsPsychMetadata: JsPsychMetadata;
+}
+
+const Options: React.FC<OptionsProps> = ( { jsPsychMetadata } ) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState('');
   const [popupData, setPopupData] = useState<any>({}); // State to hold popup-specific data
@@ -31,13 +35,13 @@ const Options: React.FC = () => {
   const renderPopup = () => {
     switch (popupType) {
       case 'list':
-        return <ListPopup onClose={closePopup} metadata={metadata} setPopupType={setPopupType} setPopupData={setPopupData} />;
+        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} />;
       case 'field':
-        return <FieldPopup onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
+        return <FieldPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
       case 'author':
-        return <AuthorPopup onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
+        return <AuthorPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
       case 'variables':
-        return <VariablePopup onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData}/>;
+        return <VariablePopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData}/>;
       default:
         return null;
     }
