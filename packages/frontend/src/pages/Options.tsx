@@ -3,7 +3,7 @@ import FieldPopup, { FieldFormData } from '../components/FieldPopup';
 import AuthorPopup, { AuthorFormData } from '../components/AuthorPopup';
 import VariablePopup, { VariableFormData } from '../components/VariablePopup';
 import ListPopup from '../components/ListPopup';
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata, { AuthorFields, VariableFields } from 'metadata';
 
 interface OptionsProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -34,25 +34,28 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata } ) => {
       return acc;
     }, {} as Record<string, any>);
   }
-  
+
   // want to include the other ones here as well
   const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData, type: string) => {
     console.log('Form Data:', formData, "type:", type);
     switch (type){
       case 'field':
         const fieldData = formData as FieldFormData; // typecasting
-        jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
+        
+        if ("fieldName" in fieldData && "fieldDescription" in fieldData) jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
         break;
       case 'author':
-        // const fieldData = formData as FieldFormData; // typecasting
-        // jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
-        console.log("author");
+        const author = formData as AuthorFormData; // typecasting
+        const filteredAuthor = filterEmptyFields(author) as AuthorFields;
+
+        if ("name" in filteredAuthor) jsPsychMetadata.setAuthor(filteredAuthor); // else case error? -> this else shouldn't be reachable so not sure how to handle
         break;
       case 'variable':
-        console.log("variable");
+        const variable = formData as VariableFormData;
+        const filteredVariable = filterEmptyFields(variable) as VariableFields;
+
+        if ("name" in filteredVariable) jsPsychMetadata.setVariable(filteredVariable); // else case error? -> this else shouldn't be reachable so not sure how to handle
         break;
-        // const fieldData = formData as FieldFormData; // typecasting
-        // jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
       default: 
         console.warn("Submitting form returning with undefined type:", type);
     }

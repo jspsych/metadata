@@ -473,3 +473,8 @@ export default class JsPsychMetadata {
     return this.pluginCache.getPluginInfo(pluginType, variableName, version, extension);
   }
 }
+
+export { 
+  AuthorFields, 
+  VariableFields
+}

@@ -17,7 +17,10 @@ export type FieldFormData = {
 
 const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPopupType, popupData }) => {
   const [formData, setFormData] = useState<FieldFormData>(
-    popupData ? { fieldName: popupData.fieldName, fieldDescription: popupData.fieldDescription } : { fieldName: '', fieldDescription: '' }
+    {
+      fieldName: popupData["fieldName"] || "",
+      fieldDescription: popupData["fieldDescription"] || "",
+    }
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
