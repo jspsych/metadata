@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 type FieldPopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unecessary
   onClose: () => void;
-  onSave: (formData: FieldFormData) => void;
+  onSave: (formData: FieldFormData, type: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
@@ -15,7 +15,7 @@ export type FieldFormData = {
   fieldDescription: string;
 };
 
-const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave,currentPopup, setPopupType, popupData }) => {
+const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPopupType, popupData }) => {
   const [formData, setFormData] = useState<FieldFormData>(
     popupData ? { fieldName: popupData.fieldName, fieldDescription: popupData.fieldDescription } : { fieldName: '', fieldDescription: '' }
   );
@@ -30,7 +30,7 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave,currentPopup, setPop
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData, 'field');
     onClose();
   };
 

@@ -26,10 +26,37 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata } ) => {
     setPopupData({});
   };
 
+  const filterEmptyFields = (obj: Record<string, any>): Record<string, any> => {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+      if (value !== undefined && value !== "" && (Array.isArray(value) ? value.length > 0 : true)) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+  }
+  
   // want to include the other ones here as well
-  const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData) => {
-    console.log('Form Data:', formData);
-    // Perform save action here
+  const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData, type: string) => {
+    console.log('Form Data:', formData, "type:", type);
+    switch (type){
+      case 'field':
+        const fieldData = formData as FieldFormData; // typecasting
+        jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
+        break;
+      case 'author':
+        // const fieldData = formData as FieldFormData; // typecasting
+        // jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
+        console.log("author");
+        break;
+      case 'variable':
+        console.log("variable");
+        break;
+        // const fieldData = formData as FieldFormData; // typecasting
+        // jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
+      default: 
+        console.warn("Submitting form returning with undefined type:", type);
+    }
+
   }
 
   const renderPopup = () => {

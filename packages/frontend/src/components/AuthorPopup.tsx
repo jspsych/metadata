@@ -4,7 +4,7 @@ import { useState } from 'react';
 type AuthorPopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unnecessary
   onClose: () => void,
-  onSave: (formData: AuthorFormData) => void;
+  onSave: (formData: AuthorFormData, type: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
@@ -37,7 +37,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, se
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData, 'author');
     onClose();
   }
 

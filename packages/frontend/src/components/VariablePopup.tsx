@@ -4,7 +4,7 @@ import JsPsychMetadata from 'metadata';
 type VariablePopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unnecesssary
   onClose: () => void;
-  onSave: (formData: VariableFormData) => void;
+  onSave: (formData: VariableFormData, type: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
@@ -60,7 +60,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData, 'variable');
     onClose();
   };
 
