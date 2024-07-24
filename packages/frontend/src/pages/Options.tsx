@@ -7,9 +7,10 @@ import JsPsychMetadata, { AuthorFields, VariableFields } from 'metadata';
 
 interface OptionsProps {
   jsPsychMetadata: JsPsychMetadata;
+  updateMetadataString: () => void;
 }
 
-const Options: React.FC<OptionsProps> = ( { jsPsychMetadata } ) => {
+const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataString } ) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState('');
   const [popupData, setPopupData] = useState<any>({}); // State to hold popup-specific data
@@ -58,8 +59,12 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata } ) => {
         break;
       default: 
         console.warn("Submitting form returning with undefined type:", type);
+        return;
     }
 
+    console.log("Before updateMetadataString:", jsPsychMetadata.getMetadata());
+    updateMetadataString(); // calls update to the UI string and is broken
+    console.log("After updateMetadataString:", jsPsychMetadata.getMetadata());
   }
 
   const renderPopup = () => {
@@ -83,6 +88,8 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata } ) => {
       <button onClick={() => openPopup('list')}>Edit existing field</button>
       <button onClick={() => openPopup('field')}>Add metadata field</button>
       {isPopupOpen && renderPopup()}
+
+      <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button>
     </>
   );
 };

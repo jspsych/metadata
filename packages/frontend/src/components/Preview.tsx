@@ -2,15 +2,18 @@ import JsPsychMetadata from 'metadata';
 
 interface PreviewProps {
   jsPsychMetadata: JsPsychMetadata;
+  metadataString: string;
 } 
 
-const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata } ) => {
+const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, metadataString } ) => {
   return (
     <div className="App">
       <h2>Metadata preview</h2>
-      <p>
-        <pre>{JSON.stringify(jsPsychMetadata.getMetadata(), null, 2)}</pre>
-      </p>    
+      <div>
+        <pre>
+          {metadataString}
+        </pre>
+      </div>    
     </div>
   )
 }
