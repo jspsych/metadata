@@ -88,8 +88,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
       <button onClick={() => openPopup('list')}>Edit existing field</button>
       <button onClick={() => openPopup('field')}>Add metadata field</button>
       {isPopupOpen && renderPopup()}
-
-      <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button>
+      {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button> */}
     </>
   );
 };

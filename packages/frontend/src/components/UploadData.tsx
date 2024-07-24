@@ -83,13 +83,13 @@ export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
     }
   }, []);
 
-  const generate = () => {
-    for (const file of fileList) {
-      console.log(file);
-    }
+  // const generate = () => {
+  //   for (const file of fileList) {
+  //     console.log(file);
+  //   }
 
-    console.log(jsPsychMetadata.getMetadata());
-  };
+  //   console.log(jsPsychMetadata.getMetadata());
+  // };
 
   return (
     <div className="App">
@@ -103,7 +103,7 @@ export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
         />
         <button type="submit">Upload</button>
       </form>
-      <button onClick={generate}>Generate</button>
+      {/* <button onClick={generate}>file info for debugging</button> */}
     </div>
   );
 }

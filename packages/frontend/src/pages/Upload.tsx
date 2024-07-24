@@ -6,15 +6,19 @@ import JsPsychMetadata from 'metadata';
 
 interface UploadProps {
   jsPsychMetadata: JsPsychMetadata;
+  setPage: (s: string) => void;
 } 
 
-const Upload: React.FC<UploadProps> = ( { jsPsychMetadata }) => {
+const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage }) => {
   return (
     <>
-      <UploadMetadata jsPsychMetadata={jsPsychMetadata} />
-      <UploadData jsPsychMetadata={jsPsychMetadata} />
-      <GenerateMetadata jsPsychMetadata={jsPsychMetadata} />
-      {/* include a preview here later */}
+      <div className="uploadPage">
+        <UploadMetadata jsPsychMetadata={jsPsychMetadata} />
+        <UploadData jsPsychMetadata={jsPsychMetadata} />
+        <button onClick={() => setPage('viewOptions')}>continue</button>
+        {/* <GenerateMetadata jsPsychMetadata={jsPsychMetadata} /> */}
+        {/* include a preview here later */}
+      </div>
     </>
   )
 }
