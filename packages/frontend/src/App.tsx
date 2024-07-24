@@ -19,9 +19,9 @@ function App() {
   const renderPage = () => {
     switch (page) {
       case 'upload':
-        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage}/>;
+        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage}/>; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
       case 'viewOptions':
-        return <ViewOptions jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} updateMetadataString={updateMetadataString}/>;
+        return <ViewOptions jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} updateMetadataString={updateMetadataString}/>; // NEED TO PASS SETPAGE ELEMENT
       default:
         return null;
     }
