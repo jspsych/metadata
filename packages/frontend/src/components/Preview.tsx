@@ -8,7 +8,9 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata } ) => {
   return (
     <div className="App">
       <h2>Metadata preview</h2>
-      <p>{JSON.stringify(jsPsychMetadata.getMetadata())}</p>
+      <p>
+        <pre>{JSON.stringify(jsPsychMetadata.getMetadata(), null, 2)}</pre>
+      </p>    
     </div>
   )
 }

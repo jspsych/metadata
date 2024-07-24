@@ -1,6 +1,7 @@
 import Metadata from "./pages/Upload.tsx";
 import Options from './pages/Options.tsx'
 import JsPsychMetadata from 'metadata';
+import ViewOptions from "./pages/ViewOptions.tsx";
 import { useState } from 'react';
 import './App.css'
 
@@ -11,9 +12,10 @@ function App() {
 
   return (
     <>
-      <Metadata jsPsychMetadata={jsPsychMetadata}/>
+      {/* <Metadata jsPsychMetadata={jsPsychMetadata}/> / */}
       {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>console.logMetadata</button> */}
-      <Options jsPsychMetadata={jsPsychMetadata}/>
+      {/* <Options jsPsychMetadata={jsPsychMetadata}/> */}
+      <ViewOptions jsPsychMetadata={jsPsychMetadata} />
     </>
   )
 }
