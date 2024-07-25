@@ -43,6 +43,8 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
     privacy: popupData["privacy"] || "",
   });
 
+  const [nameError, setNameError] = useState<string | null>(null);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
@@ -60,8 +62,18 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData, 'variable');
-    onClose();
+    let valid = true;
+    if (!formData.name) {
+      setNameError('Name is required');
+      valid = false;
+    } else {
+      setNameError(null);
+    }
+
+    if (valid) {
+      onSave(formData, 'variable');
+      onClose();
+    }
   };
 
   return (
@@ -85,7 +97,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             />
           </div>
           <div>
-            <label htmlFor="name">name</label>
+            <label htmlFor="name">name <span style={{ color: 'red' }}>*</span></label>
             <input
               type="text"
               id="name"
@@ -93,6 +105,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
               value={formData.name}
               onChange={handleChange}
             />
+            {nameError && <div style={{ color: 'red' }}>{nameError}</div>}
           </div>
           <div>
             <label htmlFor="description">description</label>
@@ -105,7 +118,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             />
           </div>
           <div>
-            <label htmlFor="value">Value</label>
+            <label htmlFor="value">value</label>
             <select
               id="value"
               name="value"

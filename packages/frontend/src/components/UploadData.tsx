@@ -65,8 +65,6 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
         try {
           if (name === "dataset_description.json"){ 
             screenName = name + " [skipped, please upload below]";
-            setFilesReadStatus(prevFilesRead => [...prevFilesRead, screenName]);
-            continue;
           }
           else if (fileType === "json") {
             await jsPsychMetadata.generate(content); // Use the text content with jsPsychMetadata.

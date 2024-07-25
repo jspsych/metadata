@@ -1,45 +1,57 @@
 import JsPsychMetadata from 'metadata';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 type AuthorPopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unnecessary
-  onClose: () => void,
+  onClose: () => void;
   onSave: (formData: AuthorFormData, type: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
-}
+};
 
 export type AuthorFormData = {
-  "@type": string,
-  name: "",
-  givenName: string,
-  familyName: string,
-  identifier: string,
-}
+  "@type": string;
+  name: string;
+  givenName: string;
+  familyName: string;
+  identifier: string;
+};
 
-const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, setPopupType, popupData } ) => {
+const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, setPopupType, popupData }) => {
   const [formData, setFormData] = useState<AuthorFormData>({
     "@type": popupData["@type"] || "",
     name: popupData["name"] || "",
     givenName: popupData["givenName"] || "",
     familyName: popupData["familyName"] || "",
     identifier: popupData["identifier"] || "",
-  })
+  });
+
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
-      ...prevState, 
+      ...prevState,
       [name]: value
     }));
-  }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData, 'author');
-    onClose();
-  }
+    let valid = true;
+    if (!formData.name) {
+      setNameError('Name is required');
+      valid = false;
+    } else {
+      setNameError(null);
+    }
+
+    if (valid) {
+      onSave(formData, 'author');
+      onClose();
+    }
+  };
 
   return (
     <div className="popup-overlay">
@@ -60,9 +72,9 @@ const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, se
               value={formData["@type"]}
               onChange={handleChange}
             />
-          </div>          
+          </div>
           <div>
-            <label htmlFor="name">name</label>
+            <label htmlFor="name">name <span style={{ color: 'red' }}>*</span></label>
             <input
               type="text"
               id="name"
@@ -70,6 +82,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, se
               value={formData["name"]}
               onChange={handleChange}
             />
+            {nameError && <div style={{ color: 'red' }}>{nameError}</div>}
           </div>
           <div>
             <label htmlFor="givenName">givenName</label>
@@ -105,7 +118,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ( { onClose, onSave, currentPopup, se
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default AuthorPopup;

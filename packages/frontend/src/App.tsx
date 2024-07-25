@@ -7,15 +7,17 @@ import './App.css'
 
 
 function App() {
-  const [jsPsychMetadata] = useState(new JsPsychMetadata());
+  const [jsPsychMetadata] = useState(new JsPsychMetadata()); // metadata objct
   const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata(), null, 2)); // this is the metadata string that willl keep track of metadata
-  const [ page, setPage ] = useState('upload');
+  const [ page, setPage ] = useState('upload'); // page logic
+  // const [ fileList, setFileList ] = useState<File[]>([]); -> this allows to download and save
 
   // whenever updates will just call pretty version 
   const updateMetadataString = () => { 
     setMetadataString(JSON.stringify(jsPsychMetadata.getMetadata(), null, 2));
   }
 
+  // logic for rendering pages
   const renderPage = () => {
     switch (page) {
       case 'upload':
@@ -26,17 +28,13 @@ function App() {
         console.warn("uncaught page render:", page);
         return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage} updateMetadataString={updateMetadataString} />; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
     }
+
   };
 
   return (
     <>
       <div className="appPage">
         {renderPage()}
-
-        {/* <Upload jsPsychMetadata={jsPsychMetadata}/> / */}
-        {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>console.logMetadata</button> */}
-        {/* <Options jsPsychMetadata={jsPsychMetadata}/> */}
-        {/* <ViewOptions jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} updateMetadataString={updateMetadataString}/> */}
       </div>
     </>
   )

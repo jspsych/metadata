@@ -2,7 +2,7 @@ import JsPsychMetadata from 'metadata';
 import React, { useState } from 'react';
 
 type FieldPopup = {
-  jsPsychMetadata: JsPsychMetadata; // maybe unecessary
+  jsPsychMetadata: JsPsychMetadata; // maybe unnecessary
   onClose: () => void;
   onSave: (formData: FieldFormData, type: string) => void;
   currentPopup: string;
@@ -16,12 +16,13 @@ export type FieldFormData = {
 };
 
 const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPopupType, popupData }) => {
-  const [formData, setFormData] = useState<FieldFormData>(
-    {
-      fieldName: popupData["fieldName"] || "",
-      fieldDescription: popupData["fieldDescription"] || "",
-    }
-  );
+  const [formData, setFormData] = useState<FieldFormData>({
+    fieldName: popupData["fieldName"] || "",
+    fieldDescription: popupData["fieldDescription"] || "",
+  });
+
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -33,8 +34,23 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData, 'field');
-    onClose();
+    let valid = true;
+    if (!formData.fieldName) {
+      setNameError('Field name is required');
+      valid = false;
+    } else {
+      setNameError(null);
+    }
+    if (!formData.fieldDescription) {
+      setDescriptionError('Field description is required');
+      valid = false;
+    } else {
+      setDescriptionError(null);
+    }
+    if (valid) {
+      onSave(formData, 'field');
+      onClose();
+    }
   };
 
   return (
@@ -48,7 +64,7 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPo
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="fieldName">Field Name</label>
+            <label htmlFor="fieldName">field name <span style={{ color: 'red' }}>*</span></label>
             <input
               type="text"
               id="fieldName"
@@ -56,9 +72,10 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPo
               value={formData.fieldName}
               onChange={handleChange}
             />
+            {nameError && <div style={{ color: 'red' }}>{nameError}</div>}
           </div>
           <div>
-            <label htmlFor="fieldDescription">Field Description</label>
+            <label htmlFor="fieldDescription">field description <span style={{ color: 'red' }}>*</span></label>
             <input
               type="text"
               id="fieldDescription"
@@ -66,6 +83,7 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPo
               value={formData.fieldDescription}
               onChange={handleChange}
             />
+            {descriptionError && <div style={{ color: 'red' }}>{descriptionError}</div>}
           </div>
           <button type="submit">Save</button>
         </form>
