@@ -67,6 +67,17 @@ html, body {
 .button-container {
   display: flex;
   flex-direction: column;
+  align-items: center; /* Center align buttons horizontally */
+  gap: 8px; /* Space between buttons */
+}
+
+.variable-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd; /* Optional: add border for better separation */
+  border-radius: 10px; /* Optional: add rounded corners */
+  gap: 5px;
 }
 
 /* Styling  Pages */

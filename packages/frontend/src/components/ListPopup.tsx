@@ -5,7 +5,7 @@ type ListPopup = {
   jsPsychMetadata: JsPsychMetadata;
   onClose: () => void;
   setPopupType: (type: string) => void; // Update setPopupType to accept optional data
-  setPopupData: (type: any) => void;
+  setPopupData: (data: any) => void;
 }
 
 type Author = {
@@ -48,8 +48,7 @@ type Metadata = {
   [key: string]: any;
 }
 
-
-const ListPopup: React.FC<ListPopup> = ( { jsPsychMetadata, onClose, setPopupType, setPopupData} ) => { 
+const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType, setPopupData }) => { 
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
@@ -59,33 +58,53 @@ const ListPopup: React.FC<ListPopup> = ( { jsPsychMetadata, onClose, setPopupTyp
         for (const variable_key in value){
           const variable = value[variable_key];
 
-          res.push(<button key={"variable" + variable_key} onClick={() => { 
-            setPopupType('variables');
-            setPopupData(variable);
-          }}>            
-            Variable: {variable["name"]}
-          </button>);
+          res.push(
+            <div key={"variable" + variable_key} className="variable-item">
+              <button onClick={() => { 
+                setPopupType('variables');
+                setPopupData(variable);
+              }}>            
+                <span style={{ color: 'gray' }}>[Variable] </span> 
+                <span >{variable["name"]}</span>              
+              </button>
+              <button 
+                onClick={() => console.log("deleted", variable)}
+                className="delete-button"
+              >
+                Delete
+              </button>
+            </div>
+          );
         }
       } else if (key === "author"){
         for (const author_key in value){
           const author = value[author_key];
 
-          res.push(<button key={"author" + author_key} onClick={() => { 
-            setPopupType('author');
-            setPopupData(author);
-          }}>            
-            Author: {author["name"]}
-          </button>);
+          res.push(
+            <div key={"author" + author_key} className="author-item">
+              <button onClick={() => { 
+                setPopupType('author');
+                setPopupData(author);
+              }}>            
+                <span style={{ color: 'gray' }}>[Author] </span> 
+                <span>{author["name"]}</span>                  
+              </button>
+            </div>
+          );
         }
       } else {
         res.push(
-          <button key={"field" + key} onClick={() => { 
-            setPopupType('field');
-            setPopupData({ fieldName: key, fieldDescription: value });
-          }}>            
-            {key}: {value}
-          </button>
-        );}
+          <div key={"field" + key} className="field-item">
+            <button onClick={() => { 
+              setPopupType('field');
+              setPopupData({ fieldName: key, fieldDescription: value });
+            }}>            
+              <span style={{ color: 'gray' }}>[{key}] </span> 
+              <span>{value}</span>    
+            </button>
+          </div>
+        );
+      }
     }
 
     return res;
@@ -97,7 +116,7 @@ const ListPopup: React.FC<ListPopup> = ( { jsPsychMetadata, onClose, setPopupTyp
   return (
     <div className="popup-overlay">
       <div className="popup-content">
-        <p>this is the listPopup page</p>
+        <p>This is the listPopup page</p>
         <button className="close-button" onClick={onClose}>X</button>
         <div className="button-container">
           {buttons}
