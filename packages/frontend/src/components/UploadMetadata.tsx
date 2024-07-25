@@ -7,7 +7,8 @@ type UploadMetadataProps = {
 };
 
 const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, updateMetadataString } ) => {
-  const [metadataHolder, setMetadataHolder] = useState<File>();
+  const [ metadataHolder, setMetadataHolder ] = useState<File>();
+  const [ metadataStatus, setMetadataStatus ] = useState(""); 
   
   function handleMetadataUpload(event: React.ChangeEvent<HTMLInputElement>) {
     if (event.target.files) setMetadataHolder(event.target.files[0]);
@@ -29,7 +30,11 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
       promise.then(metadata => {
         jsPsychMetadata.loadMetadata(metadata);
         updateMetadataString();
-      }).catch(error => {console.error("Error reading metadata file:", error);});
+        setMetadataStatus("Success")
+      }).catch(error => {
+        setMetadataStatus("Error reading metadata file:" + error);
+        console.error("Error reading metadata file:", error);
+      });
     }
   }
 
@@ -45,6 +50,7 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
         <input type='file' onChange={handleMetadataUpload}/>
         <button type="submit">Upload</button> 
       </form>
+      <p>{metadataStatus}</p>
     </div>
   )
 };

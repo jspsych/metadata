@@ -15,7 +15,7 @@ type FileData = {
 
 const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadataString }) => {
   const [ fileList, setFileList ] = useState<File[]>([]);
-  const [ filesRead, setFilesRead ] = useState<string[]>([]);
+  const [ filesReadStatus, setFilesReadStatus ] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,7 +65,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
         try {
           if (name === "dataset_description.json"){ 
             screenName = name + " [skipped, please upload below]";
-            setFilesRead(prevFilesRead => [...prevFilesRead, screenName]);
+            setFilesReadStatus(prevFilesRead => [...prevFilesRead, screenName]);
             continue;
           }
           else if (fileType === "json") {
@@ -83,7 +83,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
           console.error(`Error processing file ${name}:`, generateError);
         }
 
-        setFilesRead(prevFilesRead => [...prevFilesRead, screenName]);
+        setFilesReadStatus(prevFilesRead => [...prevFilesRead, screenName]);
       }
     } catch (error) {
       console.error("Error reading files:", error);
@@ -126,7 +126,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
         <button type="submit">Upload</button>
       </form>
       <ul className="uploadDataFiles">
-        {filesRead.map((file, index) => (
+        {filesReadStatus.map((file, index) => (
           <li className="uploadDataFileItem" key={index}>{file}</li>
         ))}
       </ul>
