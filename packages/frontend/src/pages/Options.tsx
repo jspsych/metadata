@@ -85,6 +85,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
   return (
     <>
       <h1>Metadata Options</h1>
+      <p>It is highly advised you enter author information and edit the title </p>
       <button onClick={() => openPopup('list')}>Edit existing field</button>
       <button onClick={() => openPopup('field')}>Add metadata field</button>
       {isPopupOpen && renderPopup()}

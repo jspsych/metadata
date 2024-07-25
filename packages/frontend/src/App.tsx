@@ -19,11 +19,12 @@ function App() {
   const renderPage = () => {
     switch (page) {
       case 'upload':
-        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage}/>; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
+        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage} updateMetadataString={updateMetadataString} />; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
       case 'viewOptions':
         return <ViewOptions jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} updateMetadataString={updateMetadataString}/>; // NEED TO PASS SETPAGE ELEMENT
       default:
-        return null;
+        console.warn("uncaught page render:", page);
+        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage} updateMetadataString={updateMetadataString} />; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
     }
   };
 

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 type UploadDataProps = {
   jsPsychMetadata: JsPsychMetadata;
+  updateMetadataString: () => void;
 };
 
 type FileData = {
@@ -12,8 +13,9 @@ type FileData = {
   filePath: string;
 };
 
-export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
-  const [fileList, setFileList] = useState<File[]>([]);
+const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadataString }) => {
+  const [ fileList, setFileList ] = useState<File[]>([]);
+  const [ filesRead, setFilesRead ] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,24 +59,37 @@ export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
   
       // Process each file data asynchronously
       for (const { name, content, fileType, filePath } of fileDataArray) {
-        console.log(`File: ${name}, Type: ${fileType}, Path: ${filePath}, Content: ${content}`);
-        
+        console.log(`File: ${name}, Type: ${fileType}, Path: ${filePath}`); //, Content: ${content}
+        let screenName = "n/a"; // used to print but give useful information
+
         try {
-          if (name === "dataset_description.json") continue;
+          if (name === "dataset_description.json"){ 
+            screenName = name + " [skipped, please upload below]";
+            setFilesRead(prevFilesRead => [...prevFilesRead, screenName]);
+            continue;
+          }
           else if (fileType === "json") {
             await jsPsychMetadata.generate(content); // Use the text content with jsPsychMetadata.
+            screenName = name + " [success]";
           } else if (fileType === 'csv') {
             await jsPsychMetadata.generate(content, {}, "csv");
+            screenName = name + " [success]";
           } else {
+            screenName = name + "[skipped, unsupported fileType]";
             console.warn("Unsupported file type:", fileType, "for filePath", filePath);
           }
         } catch (generateError) {
+          screenName = name + "[failed with error: " + generateError, "]";
           console.error(`Error processing file ${name}:`, generateError);
         }
+
+        setFilesRead(prevFilesRead => [...prevFilesRead, screenName]);
       }
     } catch (error) {
       console.error("Error reading files:", error);
     }
+
+    updateMetadataString();
   };
   
   useEffect(() => {
@@ -92,8 +107,15 @@ export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
   // };
 
   return (
-    <div className="App">
+    <div className="uploadDataPage">
       <h2>Data file upload</h2>
+      <p>
+        You should upload the data folder, rather than the files individually and click 
+        upload when you are for them to be processed. 
+      </p>
+      <p>
+        If you are uploading a large number of files this may take longer. 
+      </p>
       <form onSubmit={loadFiles}>
         <input
           type="file"
@@ -103,7 +125,14 @@ export default function UploadData({ jsPsychMetadata }: UploadDataProps) {
         />
         <button type="submit">Upload</button>
       </form>
+      <ul className="uploadDataFiles">
+        {filesRead.map((file, index) => (
+          <li className="uploadDataFileItem" key={index}>{file}</li>
+        ))}
+      </ul>
       {/* <button onClick={generate}>file info for debugging</button> */}
     </div>
   );
 }
+
+export default UploadData;

@@ -94,4 +94,24 @@ html, body {
   flex-direction: column;
   width: 100%;
   height: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.uploadMetadataPage {  
+  margin-top: 60px;
+}
+
+.uploadDataFiles {
+  max-height: 200px; /* Adjust this value to fit your design */
+  overflow-y: auto;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  /* border: 1px solid #ccc; Optional: Add a border */
+}
+
+.uploadDataFileItem {
+  /* padding: px; */
+  /* border-bottom: 1px solid #eee; Optional: Add a border between items */
 }
