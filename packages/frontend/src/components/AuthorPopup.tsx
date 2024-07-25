@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 type AuthorPopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unnecessary
   onClose: () => void;
-  onSave: (formData: AuthorFormData, type: string) => void;
+  onSave: (formData: AuthorFormData, type: string, oldName?: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
@@ -19,6 +19,8 @@ export type AuthorFormData = {
 };
 
 const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, setPopupType, popupData }) => {
+  const [oldName] = useState(popupData["name"]) || "";
+
   const [formData, setFormData] = useState<AuthorFormData>({
     "@type": popupData["@type"] || "",
     name: popupData["name"] || "",
@@ -39,16 +41,20 @@ const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, set
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let valid = true;
-    if (!formData.name) {
+    let valid = true; // variable and logic to handle if doesn't enter right information
+    if (!formData.name) { 
       setNameError('Name is required');
       valid = false;
     } else {
       setNameError(null);
     }
 
+    // variable and logic to handle which save to call
     if (valid) {
-      onSave(formData, 'author');
+      // case where need to delete reference to old name
+      if (oldName !== "" && oldName !== formData["name"]) onSave(formData, 'author', oldName);
+      else onSave(formData, 'author');
+
       onClose();
     }
   };

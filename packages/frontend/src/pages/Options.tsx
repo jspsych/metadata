@@ -36,35 +36,42 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
     }, {} as Record<string, any>);
   }
 
-  // want to include the other ones here as well
-  const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData, type: string) => {
-    console.log('Form Data:', formData, "type:", type);
+  // THE AUTHOR single reference is not working as intended -> data not loaded correclty
+  // if there is an oldName, willl want to delete it and rewrite new
+  const handleSave = (formData: FieldFormData | AuthorFormData | VariableFormData, type: string, oldName?: string) => {
     switch (type){
       case 'field':
         const fieldData = formData as FieldFormData; // typecasting
         
-        if ("fieldName" in fieldData && "fieldDescription" in fieldData) jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
+        if ("fieldName" in fieldData && "fieldDescription" in fieldData && oldName && oldName !== ""){
+          jsPsychMetadata.deleteMetadataField(oldName);
+        } 
+
+        jsPsychMetadata.setMetadataField(fieldData["fieldName"], fieldData["fieldDescription"]);
         break;
       case 'author':
         const author = formData as AuthorFormData; // typecasting
         const filteredAuthor = filterEmptyFields(author) as AuthorFields;
 
-        if ("name" in filteredAuthor) jsPsychMetadata.setAuthor(filteredAuthor); // else case error? -> this else shouldn't be reachable so not sure how to handle
+        // neeed to delete old reference  
+        if ("name" in filteredAuthor && oldName && oldName !== "")jsPsychMetadata.deleteAuthor(oldName);
+        
+        jsPsychMetadata.setAuthor(filteredAuthor); // else case error? -> this else shouldn't be reachable so not sure how to handle
         break;
       case 'variable':
         const variable = formData as VariableFormData;
         const filteredVariable = filterEmptyFields(variable) as VariableFields;
 
-        if ("name" in filteredVariable) jsPsychMetadata.setVariable(filteredVariable); // else case error? -> this else shouldn't be reachable so not sure how to handle
+        if ("name" in filteredVariable && oldName && oldName !== "") jsPsychMetadata.deleteVariable(oldName);
+          
+        jsPsychMetadata.setVariable(filteredVariable); // else case error? -> this else shouldn't be reachable so not sure how to handle
         break;
       default: 
         console.warn("Submitting form returning with undefined type:", type);
         return;
     }
 
-    console.log("Before updateMetadataString:", jsPsychMetadata.getMetadata());
     updateMetadataString(); // calls update to the UI string and is broken
-    console.log("After updateMetadataString:", jsPsychMetadata.getMetadata());
   }
 
   const renderPopup = () => {

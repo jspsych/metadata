@@ -4,7 +4,7 @@ import JsPsychMetadata from 'metadata';
 type VariablePopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unnecesssary
   onClose: () => void;
-  onSave: (formData: VariableFormData, type: string) => void;
+  onSave: (formData: VariableFormData, type: string, oldName?: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
@@ -27,6 +27,8 @@ export type VariableFormData = {
 }
 
 const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup, setPopupType, popupData }) => {
+  const [oldName] = useState(popupData["name"]) || "";
+
   const [formData, setFormData] = useState<VariableFormData>({
     "@type": popupData["@type"] || "",
     name: popupData["name"] || "", // required
@@ -71,7 +73,9 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
     }
 
     if (valid) {
-      onSave(formData, 'variable');
+      if (oldName !== "" && oldName !== formData["name"]) onSave(formData, 'variable', oldName);
+      else onSave(formData, 'variable');
+      
       onClose();
     }
   };

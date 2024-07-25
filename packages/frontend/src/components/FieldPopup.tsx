@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 type FieldPopup = {
   jsPsychMetadata: JsPsychMetadata; // maybe unnecessary
   onClose: () => void;
-  onSave: (formData: FieldFormData, type: string) => void;
+  onSave: (formData: FieldFormData, type: string, oldName?: string) => void;
   currentPopup: string;
   setPopupType: (type: string) => void;
   popupData: any;
@@ -16,6 +16,8 @@ export type FieldFormData = {
 };
 
 const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPopupType, popupData }) => {
+  const [oldName] = useState(popupData["fieldName"]) || "";
+
   const [formData, setFormData] = useState<FieldFormData>({
     fieldName: popupData["fieldName"] || "",
     fieldDescription: popupData["fieldDescription"] || "",
@@ -38,17 +40,17 @@ const FieldPopup: React.FC<FieldPopup> = ({ onClose, onSave, currentPopup, setPo
     if (!formData.fieldName) {
       setNameError('Field name is required');
       valid = false;
-    } else {
-      setNameError(null);
-    }
+    } else setNameError(null);
+
     if (!formData.fieldDescription) {
       setDescriptionError('Field description is required');
       valid = false;
-    } else {
-      setDescriptionError(null);
-    }
+    } else setDescriptionError(null);
+
     if (valid) {
-      onSave(formData, 'field');
+      // case where need to delete old reference
+      if (oldName !== "" && oldName !== formData["fieldName"]) onSave(formData, 'field', oldName);
+      else onSave(formData, 'field');
       onClose();
     }
   };
