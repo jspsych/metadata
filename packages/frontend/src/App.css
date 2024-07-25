@@ -127,3 +127,8 @@ html, body {
   /* padding: px; */
   /* border-bottom: 1px solid #eee; Optional: Add a border between items */
 }
+
+/* Metadata options */
+.optionsButton {
+  margin: 10px;
+}

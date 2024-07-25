@@ -91,14 +91,16 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
 
   return (
     <>
-      <h1>Metadata Options</h1>
-      <p>It is highly advised you enter author information and edit the title </p>
-      <button onClick={() => openPopup('list')}>Edit existing field</button>
-      <button onClick={() => openPopup('field')}>Add metadata field</button>
-      <button onClick={() => jsPsychMetadata.localSave()}>save button</button>
+      <div className="optionsPage">
+        <h1>Metadata Options</h1>
+        <p>It is highly advised you enter author information and edit the title </p>
+        <button className="optionsButton" onClick={() => openPopup('list')}>Edit existing field</button>
+        <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button>
+        <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Save metadata locally</button>
 
-      {isPopupOpen && renderPopup()}
+        {isPopupOpen && renderPopup()}
       {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button> */}
+      </div>
     </>
   );
 };
