@@ -17,24 +17,28 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
   async function loadMetadata(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); 
     if (metadataHolder) { 
-      const reader = new FileReader();
+      if (metadataHolder.name === "dataset_description.json") {
+        const reader = new FileReader();
 
-      const promise = new Promise<string>( (resolve) => {
-        reader.onload = () => {
-          resolve(reader.result as string); // Metadata is asserted to be a string.
-        };
+        const promise = new Promise<string>( (resolve) => {
+          reader.onload = () => {
+            resolve(reader.result as string); // Metadata is asserted to be a string.
+          };
 
-        reader.readAsText(metadataHolder);
-      });
+          reader.readAsText(metadataHolder);
+        });
 
-      promise.then(metadata => {
-        jsPsychMetadata.loadMetadata(metadata);
-        updateMetadataString();
-        setMetadataStatus("Success")
-      }).catch(error => {
-        setMetadataStatus("Error reading metadata file:" + error);
-        console.error("Error reading metadata file:", error);
-      });
+        promise.then(metadata => {
+          jsPsychMetadata.loadMetadata(metadata);
+          updateMetadataString();
+          setMetadataStatus("Success")
+        }).catch(error => {
+          setMetadataStatus("Error reading metadata file:" + error);
+          console.error("Error reading metadata file:", error);
+        })
+      } else {
+        setMetadataStatus("Error: Incorrect file name. Please upload dataset_description.json.");
+      }
     }
   }
 
@@ -43,7 +47,7 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
     <div className="uploadMetadataPage">
       <h2>Metadata file upload</h2>
       <p>
-        If you have previously created and saved dataset_description.json files
+        If you have previously created and saved a dataset_description.json file
         please upload here. 
       </p>
       <form onSubmit={loadMetadata}>
