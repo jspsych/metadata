@@ -83,6 +83,14 @@ export default class JsPsychMetadata {
     return this.metadata[key];
   }
 
+  deleteMetadataField(key: string): void{
+    if (key in this.metadata) {
+      delete this.metadata[key];
+    } else {
+      console.error(`Metadata "${key}" does not exist.`);
+    }
+  }
+
   /**
    * Returns the final Metadata in a single javascript object. Bundles together the author and variables
    * together in a list rather than object compliant with Psych-DS standards.
@@ -123,6 +131,10 @@ export default class JsPsychMetadata {
    */
   getAuthor(name: string): AuthorFields | string | {} {
     return this.authors.getAuthor(name);
+  }
+
+  deleteAuthor(name: string) {
+    this.authors.deleteAuthor(name);
   }
 
   /**

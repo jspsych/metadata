@@ -1,11 +1,12 @@
 import JsPsychMetadata from 'metadata';
-import React from 'react';
+import React, { useState } from 'react';
 
 type ListPopup = {
   jsPsychMetadata: JsPsychMetadata;
   onClose: () => void;
   setPopupType: (type: string) => void; // Update setPopupType to accept optional data
   setPopupData: (data: any) => void;
+  updateMetadataString: () => void;
 }
 
 type Author = {
@@ -48,7 +49,7 @@ type Metadata = {
   [key: string]: any;
 }
 
-const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType, setPopupData }) => { 
+const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType, setPopupData, updateMetadataString }) => { 
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
@@ -68,7 +69,7 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
                 <span >{variable["name"]}</span>              
               </button>
               <button 
-                onClick={() => console.log("deleted", variable)}
+                onClick={() => handleDelete(variable["name"], 'variable')}
                 className="delete-button"
               >
                 Delete
@@ -89,6 +90,12 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
                 <span style={{ color: 'gray' }}>[Author] </span> 
                 <span>{author["name"]}</span>                  
               </button>
+              <button 
+                onClick={() => handleDelete(author["name"], 'author')}
+                className="delete-button"
+              >
+                Delete
+              </button>
             </div>
           );
         }
@@ -102,6 +109,12 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
               <span style={{ color: 'gray' }}>[{key}] </span> 
               <span>{value}</span>    
             </button>
+            <button 
+                onClick={() => handleDelete(key, 'field')}
+                className="delete-button"
+              >
+                Delete
+              </button>
           </div>
         );
       }
@@ -110,8 +123,26 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
     return res;
   } 
 
-  const metadata = jsPsychMetadata.getMetadata() as Metadata; // typecasting
-  const buttons = generateButtons(metadata);
+  const [buttons, setbuttons] = useState(generateButtons(jsPsychMetadata.getMetadata() as Metadata));
+
+  const handleDelete = (name: string, type: string) => {
+    switch (type) {
+      case 'variable':
+        jsPsychMetadata.deleteVariable(name);
+        break;
+      case 'author':
+        jsPsychMetadata.deleteAuthor(name);
+        break
+      case 'field':
+        jsPsychMetadata.deleteMetadataField(name);
+        break
+    }
+
+    // updates the UI -> need update String
+    setbuttons(generateButtons(jsPsychMetadata.getMetadata() as Metadata)); 
+    updateMetadataString();
+  }
+
 
   return (
     <div className="popup-overlay">

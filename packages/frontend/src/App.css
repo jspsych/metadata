@@ -71,7 +71,7 @@ html, body {
   gap: 8px; /* Space between buttons */
 }
 
-.variable-item {
+.variable-item, .field-item, .author-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;

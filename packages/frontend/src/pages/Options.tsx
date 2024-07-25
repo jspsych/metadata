@@ -70,7 +70,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
   const renderPopup = () => {
     switch (popupType) {
       case 'list':
-        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} />;
+        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} updateMetadataString={updateMetadataString} />;
       case 'field':
         return <FieldPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
       case 'author':

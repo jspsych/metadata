@@ -112,4 +112,12 @@ export class AuthorsMap {
       return {};
     }
   }
+
+  deleteAuthor(author_name: string): void {
+    if (author_name in this.authors) {
+      delete this.authors[author_name];
+    } else {
+      console.error(`Author "${author_name}" does not exist.`);
+    }
+  }
 }
