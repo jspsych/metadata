@@ -99,7 +99,8 @@ async function metadataOptionsPrompt(metadata){
 
 }
 
-const generateProjectStructure = async (metadata) => {
+// -------------------------------------> new code 
+const generateProjectStructure = async () => {
   const answer = await select({
     message: 'Would you like to generate a new project directory or update an existing project directory?',
     choices: [
@@ -135,8 +136,11 @@ const generateProjectStructure = async (metadata) => {
         project_path = await input({
           message: 'Enter the path to the project directory:', // 
           validate: async (input) => {
-            if (await validateDirectory(input)){  // will neeed to see where you want to create a path
-              return true;
+            if (await validateDirectory(input)){  // and will need to check that contains dataset_description.json
+              return true; 
+              // read through the entire directory checking dataset_json (will assume it has already been made) -> only thing that is reallly important 
+              // maybe call the validator function but will instead just write to this 
+              // -> will not actually read, will assume there is a directory
             }
             return "Please enter a valid path to the project directory";
           }
@@ -161,10 +165,14 @@ const promptName = async () => {
 const main = async () => {
   const metadata = new JsPsychMetadata();
 
-  const project_path = await generateProjectStructure(metadata);
+  const project_path = await generateProjectStructure();
   const project_name = await promptName();
 
+  // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
 
+  // allows for a metadata options file that will let you overwite the data by letting you write
+
+  // eventually saves it -> with the logic of writing with the normal file and with all of it
 
   console.log("project_path:", project_path, "project_name:", project_name);
 };
