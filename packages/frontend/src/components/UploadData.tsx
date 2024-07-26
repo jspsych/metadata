@@ -59,9 +59,10 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
   
       // Process each file data asynchronously
       for (const { name, content, fileType, filePath } of fileDataArray) {
-        console.log(`File: ${name}, Type: ${fileType}, Path: ${filePath}`); //, Content: ${content}
-        let screenName = "n/a"; // used to print but give useful information
+        const tempMessage = name + "...loading";
+        setFilesReadStatus(prevFilesRead => [...prevFilesRead, tempMessage]);
 
+        let screenName = "n/a";
         try {
           if (name === "dataset_description.json"){ 
             screenName = name + " [skipped, please upload below]";
@@ -81,7 +82,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
           console.error(`Error processing file ${name}:`, generateError);
         }
 
-        setFilesReadStatus(prevFilesRead => [...prevFilesRead, screenName]);
+        setFilesReadStatus(prevFilesRead => [...prevFilesRead.slice(0, -1), screenName]);
       }
     } catch (error) {
       console.error("Error reading files:", error);
