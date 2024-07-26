@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import os from 'os';
 
 // creating path
 export const generatePath = (inputPath) => {
@@ -135,13 +136,26 @@ export const loadMetadata = async (metadata, filePath) => {
   return false;
 }
 
+// Function to expand ~ to the user's home directory
+const expandHomeDir = (filePath: string): string => {
+  if (filePath.startsWith('~')) {
+    return path.join(os.homedir(), filePath.slice(1));
+  }
+  return filePath;
+};
+
 // Validating if input is a directory
-export const validateDirectory = async (filePath) => {
+export const validateDirectory = async (filePath: string): Promise<boolean> => {
   try {
-    const stats = await fs.promises.stat(filePath);
+    // Expand ~ to the user's home directory
+    const expandedPath = expandHomeDir(filePath);
+
+    // Resolve the full path to ensure it's an absolute path
+    const resolvedPath = path.resolve(expandedPath);
+    const stats = await fs.promises.stat(resolvedPath);
 
     if (!stats.isDirectory()) {
-      console.error(`Error: ${filePath} is not a directory`);
+      console.error(`Error: ${resolvedPath} is not a directory`);
       return false;
     }
 
@@ -150,19 +164,25 @@ export const validateDirectory = async (filePath) => {
     console.error(`Error: ${error.message}`);
     return false;
   }
-};
+}
 
 // Validating if input is a json file 
-export const validateJson = (filePath, fileName?) => {
+export const validateJson = (filePath: string, fileName?: string): boolean => {
   try {
-    if (fileName && path.basename(filePath).toLowerCase() !== fileName){
+    // Expand ~ to the user's home directory
+    const expandedPath = expandHomeDir(filePath);
+
+    // Resolve the full path to ensure it's an absolute path
+    const resolvedPath = path.resolve(expandedPath);
+
+    if (fileName && path.basename(resolvedPath).toLowerCase() !== fileName.toLowerCase()) {
       console.error("File name does not match:", fileName);
       return false;
     }
 
     // Check if the file has a .json extension
-    if (path.extname(filePath).toLowerCase() !== '.json') {
-      console.error(`Error: ${filePath} is not a JSON file`);
+    if (path.extname(resolvedPath).toLowerCase() !== '.json') {
+      console.error(`Error: ${resolvedPath} is not a JSON file`);
       return false;
     }
 

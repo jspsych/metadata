@@ -1,15 +1,66 @@
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
 import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath, validateDirectory, validateJson } from "./data.js";
+import { } from './validateFunctions.js';
 
 // Figure out what to do with processDirectory method
 // -> do we leave it the same for the CLI no prompting ot work with overwriting and updating
 // -> what to do with the path in the ClI prompting -- write to data directory or overwrite the other fiel
     // -> do we want to load data directory as well
 
+const generateProjectStructure = async (metadata) => {
+  const answer = await select({
+    message: 'Would you like to generate a new project directory or update an existing project directory?',
+    choices: [
+      {
+        name: 'Generate new project',
+        value: 'generate',
+        description: 'Select if you have not generated a Psych-DS compliant project folder.',
+      },
+      {
+        name: 'Update existing project',
+        value: 'update',
+        description: 'Selected if you want to update Psych-DS compliant project folder',
+      },
+    ],
+  });
+
+  let project_path: string = "";
+
+  try {
+    switch(answer){
+      case "generate": // this doesn't have to be a directory 
+        project_path = await input({
+          message: 'Enter the where you want to generate the data:',
+          validate: async (input) => {  
+            if (true){  // not sure how to check this
+              return true;
+            }
+            return "Please enter a valid path to a valid directory";
+          }
+        });
+        break;
+      case "update": // when this hapepns we will want to read the directory through the file system and need to figure out how to handle this case
+        project_path = await input({
+          message: 'Enter the path to the project directory:', // 
+          validate: async (input) => {
+            if (await validateDirectory(input)){ 
+              return true;
+            }
+            return "Please enter a valid path to the project directory";
+          }
+        });
+        break;
+    }
+  } catch (err){ } // should be no errors
+
+  return project_path;
+}
+
+
 async function existingMetadata(metadata){
   const answer = await select({
-    message: 'How would you like to use the JSPsych metadata CLI?',
+    message: 'Do you have an existing dataset_description.json file?',
     choices: [
       {
         name: 'Generate new',
@@ -43,9 +94,7 @@ async function existingMetadata(metadata){
       default: 
         console.error("Existing metadata answer is not added/configured:", answer);
     }
-  } catch (err){
-
-  }
+  } catch (err){ } // should be no errors
 
   return dataset_description_path;
 }
@@ -100,7 +149,15 @@ async function metadataOptionsPrompt(metadata){
 
 }
 
-const main = async() => {
+const main = async () => {
+  const metadata = new JsPsychMetadata();
+
+  const existingProject = generateProjectStructure(metadata);
+};
+
+await main();
+
+const archive_main = async() => {
   const metadata = new JsPsychMetadata();
 
   const dataset_description_path = await existingMetadata(metadata); // will want to write to this path when writing final json
@@ -118,5 +175,3 @@ const main = async() => {
     saveTextToPath(metadataString, dataset_description_path);
   }
 }
-
-await main();
