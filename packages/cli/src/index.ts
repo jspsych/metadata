@@ -8,56 +8,6 @@ import { } from './validateFunctions.js';
 // -> what to do with the path in the ClI prompting -- write to data directory or overwrite the other fiel
     // -> do we want to load data directory as well
 
-const generateProjectStructure = async (metadata) => {
-  const answer = await select({
-    message: 'Would you like to generate a new project directory or update an existing project directory?',
-    choices: [
-      {
-        name: 'Generate new project',
-        value: 'generate',
-        description: 'Select if you have not generated a Psych-DS compliant project folder.',
-      },
-      {
-        name: 'Update existing project',
-        value: 'update',
-        description: 'Selected if you want to update Psych-DS compliant project folder',
-      },
-    ],
-  });
-
-  let project_path: string = "";
-
-  try {
-    switch(answer){
-      case "generate": // this doesn't have to be a directory 
-        project_path = await input({
-          message: 'Enter the where you want to generate the data:',
-          validate: async (input) => {  
-            if (true){  // not sure how to check this
-              return true;
-            }
-            return "Please enter a valid path to a valid directory";
-          }
-        });
-        break;
-      case "update": // when this hapepns we will want to read the directory through the file system and need to figure out how to handle this case
-        project_path = await input({
-          message: 'Enter the path to the project directory:', // 
-          validate: async (input) => {
-            if (await validateDirectory(input)){ 
-              return true;
-            }
-            return "Please enter a valid path to the project directory";
-          }
-        });
-        break;
-    }
-  } catch (err){ } // should be no errors
-
-  return project_path;
-}
-
-
 async function existingMetadata(metadata){
   const answer = await select({
     message: 'Do you have an existing dataset_description.json file?',
@@ -149,10 +99,74 @@ async function metadataOptionsPrompt(metadata){
 
 }
 
+const generateProjectStructure = async (metadata) => {
+  const answer = await select({
+    message: 'Would you like to generate a new project directory or update an existing project directory?',
+    choices: [
+      {
+        name: 'Generate new project',
+        value: 'generate',
+        description: 'Select if you have not generated a Psych-DS compliant project folder.',
+      },
+      {
+        name: 'Update existing project',
+        value: 'update',
+        description: 'Selected if you want to update Psych-DS compliant project folder',
+      },
+    ],
+  });
+
+  let project_path: string = "";
+
+  try {
+    switch(answer){
+      case "generate": // this doesn't have to be a directory 
+        project_path = await input({
+          message: 'Enter the folder you want to generate the data:',
+          validate: async (input) => {  
+            if (await validateDirectory(input)){  // not sure how to check this
+              return true;
+            }
+            return "Please enter a valid path to a valid directory";
+          }
+        });
+        break;
+      case "update": // when this hapepns we will want to read the directory through the file system and need to figure out how to handle this case
+        project_path = await input({
+          message: 'Enter the path to the project directory:', // 
+          validate: async (input) => {
+            if (await validateDirectory(input)){  // will neeed to see where you want to create a path
+              return true;
+            }
+            return "Please enter a valid path to the project directory";
+          }
+        });
+        break;
+    }
+  } catch (err){ } // should be no errors
+
+  return project_path;
+}
+
+const promptName = async () => {
+  const project_name = await input({
+    message: 'What would you like to name the project?',
+  });
+
+  return project_name;
+}
+
+
+
 const main = async () => {
   const metadata = new JsPsychMetadata();
 
-  const existingProject = generateProjectStructure(metadata);
+  const project_path = await generateProjectStructure(metadata);
+  const project_name = await promptName();
+
+
+
+  console.log("project_path:", project_path, "project_name:", project_name);
 };
 
 await main();
