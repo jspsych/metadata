@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
 import { processDirectory, processOptions, saveTextToPath } from "./data.js";
