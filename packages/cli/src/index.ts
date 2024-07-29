@@ -162,7 +162,7 @@ const promptName = async () => {
   return project_name;
 }
 
-const promptData = async (metadata) => {
+const promptData = async (metadata, targetDirectoryPath) => {
   // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
   var data_path;
   
@@ -176,26 +176,26 @@ const promptData = async (metadata) => {
     }
   });
 
-  await processDirectory(metadata, data_path);
+  await processDirectory(metadata, data_path, targetDirectoryPath);
 }
 
 
 const main = async () => {
   const metadata = new JsPsychMetadata();
   const [project_path, new_project] = await promptProjectStructure(); // -> if reading from existing will want to look for if dataset_description file exists
+  var combinedPath;
 
   if (new_project) {
     const project_name = await promptName();
-    const combinedPath = `${project_path}/${project_name}`;
+    combinedPath = `${project_path}/${project_name}`;
 
     createDirectoryWithStructure(combinedPath);
   }
 
-  await promptData(metadata);
-
+  await promptData(metadata, (combinedPath) ? `${combinedPath}/data` : `${project_path}/data`);
   
 
-  console.log(metadata.getMetadata());
+  // console.log(metadata.getMetadata());
   // allows for a metadata options file that will let you overwite the data by letting you write
 
   // eventually saves it -> with the logic of writing with the normal file and with all of it

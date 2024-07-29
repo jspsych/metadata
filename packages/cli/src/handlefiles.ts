@@ -1,19 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
-// import { expandHomeDir } from './utils';
+import { expandHomeDir } from './utils.js';
 
-export function expandHomeDir(directoryPath: string): string {
-  if (directoryPath.startsWith('~')) {
-    const homeDir = os.homedir();
-    return path.join(homeDir, directoryPath.slice(1));
-  }
-  return directoryPath;
-}
 
+// creates directory structure for the Psych-Ds format allowing future functions to write data to here
 export function createDirectoryWithStructure(directoryPath: string): void {
-  // Expand '~' to the full home directory path
-  const expandedPath = expandHomeDir(directoryPath);
+  const expandedPath = expandHomeDir(directoryPath); // accounting for ~ home directory
 
   const structure = {
     'data': {
