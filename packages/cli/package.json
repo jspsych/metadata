@@ -11,7 +11,9 @@
     "build": "esbuild src/cli.ts --bundle --format=esm --platform=node --outfile=dist/cli.js",
     "build:data": "esbuild src/data.ts --packages=external --format=esm --platform=node --outfile=dist/data.js",
     "build:validate": "esbuild src/validateFunctions.ts --packages=external --format=esm --platform=node --outfile=dist/validateFunctions.js",
-    "build:cli": "npm run build:validate && npm run build:data && esbuild src/index.ts --packages=external --format=esm --platform=node --outfile=dist/index.js",
+    "build:files": "esbuild src/handleFiles.ts --packages=external --format=esm --platform=node --outfile=dist/handleFiles.js",
+    "build:utils": "esbuild src/utils.ts --packages=external --format=esm --platform=node --outfile=dist/utils.js",
+    "build:cli": "npm run build:utils && npm run build:files && npm run build:validate && npm run build:data && esbuild src/index.ts --packages=external --format=esm --platform=node --outfile=dist/index.js",
     "cli": "node dist/index.js"
   },
   "dependencies": {

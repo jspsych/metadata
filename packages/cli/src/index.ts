@@ -1,7 +1,8 @@
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
-import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath, validateDirectory, validateJson } from "./data.js";
-import { } from './validateFunctions.js';
+import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath } from "./data.js";
+import { validateDirectory, validateJson } from './validateFunctions.js';
+import { createDirectoryWithStructure } from './handleFiles.js';
 
 // Figure out what to do with processDirectory method
 // -> do we leave it the same for the CLI no prompting ot work with overwriting and updating
@@ -100,7 +101,7 @@ async function metadataOptionsPrompt(metadata){
 }
 
 // -------------------------------------> new code 
-const generateProjectStructure = async () => {
+const promptProjectStructure = async () => {
   const answer = await select({
     message: 'Would you like to generate a new project directory or update an existing project directory?',
     choices: [
@@ -131,12 +132,12 @@ const generateProjectStructure = async () => {
             return "Please enter a valid path to a valid directory";
           }
         });
-        break;
+        return [project_path, true];
       case "update": // when this hapepns we will want to read the directory through the file system and need to figure out how to handle this case
         project_path = await input({
           message: 'Enter the path to the project directory:', // 
           validate: async (input) => {
-            if (await validateDirectory(input)){  // and will need to check that contains dataset_description.json
+            if (await validateDirectory(input)){  // and will need to check that contains dataset_description.json -> validate that this is existing psych-DS dataset
               return true; 
               // read through the entire directory checking dataset_json (will assume it has already been made) -> only thing that is reallly important 
               // maybe call the validator function but will instead just write to this 
@@ -145,13 +146,14 @@ const generateProjectStructure = async () => {
             return "Please enter a valid path to the project directory";
           }
         });
-        break;
+        return [project_path, false];
     }
   } catch (err){ } // should be no errors
 
   return project_path;
 }
 
+// should only do if generating 
 const promptName = async () => {
   const project_name = await input({
     message: 'What would you like to name the project?',
@@ -160,21 +162,43 @@ const promptName = async () => {
   return project_name;
 }
 
+const promptData = async (metadata) => {
+  // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
+  var data_path;
+  
+  data_path = await input({
+    message: 'Please pass a path to the data directory?',
+    validate: async (input) => {  
+      if (await validateDirectory(input)){  // not sure how to check this
+        return true;
+      }
+      return "Please enter a valid path to a valid directory";
+    }
+  });
+
+  await processDirectory(metadata, data_path);
+}
 
 
 const main = async () => {
   const metadata = new JsPsychMetadata();
+  const [project_path, new_project] = await promptProjectStructure(); // -> if reading from existing will want to look for if dataset_description file exists
 
-  const project_path = await generateProjectStructure();
-  const project_name = await promptName();
+  if (new_project) {
+    const project_name = await promptName();
+    const combinedPath = `${project_path}/${project_name}`;
 
-  // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
+    createDirectoryWithStructure(combinedPath);
+  }
 
+  await promptData(metadata);
+
+  
+
+  console.log(metadata.getMetadata());
   // allows for a metadata options file that will let you overwite the data by letting you write
 
   // eventually saves it -> with the logic of writing with the normal file and with all of it
-
-  console.log("project_path:", project_path, "project_name:", project_name);
 };
 
 await main();
