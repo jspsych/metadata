@@ -139,4 +139,4 @@ const main = async () => {
   saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 };
 
-await main();
+main();
