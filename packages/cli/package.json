@@ -2,7 +2,7 @@
   "name": "@jspsych/metadata-cli",
   "version": "1.0.0",
   "description": "This directory contains tools for interacting and generating CLI through the terminal.",
-  "main": "index.js",
+  "main": "dist/cjs/index.cjs",
   "author": "Victor Zhang",
   "keywords": [
     "JsPsych",
@@ -13,14 +13,20 @@
     "url": "https://github.com/jspsych/metadata"
   },
   "bin": {
-    "metadata-cli": "./dist/index.js"
+    "metadata-cli": "./dist/cjs/index.cjs"
   },
-  "type": "module",
+  "type": "commonjs",
+  "exports": {
+    "import": "./dist/esm/index.js",
+    "require": "./dist/cjs/index.cjs"
+  },
   "scripts": {
     "data": "node dist/esm/cli.js ../../dev/data",
     "data:abs": "node dist/esm/cli.js ~/Documents/work/ursi2024/metadata/dev/data ~/Documents/work/ursi2024/metadata/dev/options/metadata-options.json",
     "data:rec": "node dist/esm/cli.js ../../dev/data-rec",
     "options": "node dist/esm/cli.js ../../dev/data ../../dev/options/metadata-options.json",
+
+    "build": "npm run build:esm && npm run build:cjs",
 
     "build:esm": "npm run build:no-prompt:esm && npm run build:data:esm && npm run build:validate:esm && npm run build:files:esm && npm run build:utils:esm",
     "build:no-prompt:esm": "esbuild src/cli.ts --bundle --format=esm --platform=node --outfile=dist/esm/cli.js",
@@ -37,7 +43,7 @@
     "build:validate:cjs": "esbuild src/validateFunctions.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/validateFunctions.js",
     "build:files:cjs": "esbuild src/handleFiles.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/handleFiles.js",
     "build:utils:cjs": "esbuild src/utils.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/utils.js",
-    "build:cli:cjs": "npm run build:utils:cjs && npm run build:files:cjs && npm run build:validate:cjs && npm run build:data:cjs && esbuild src/index.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/index.js"
+    "build:cli:cjs": "npm run build:utils:cjs && npm run build:files:cjs && npm run build:validate:cjs && npm run build:data:cjs && esbuild src/index.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/index.cjs"
   },
   "dependencies": {
     "@inquirer/prompts": "^5.1.2",
