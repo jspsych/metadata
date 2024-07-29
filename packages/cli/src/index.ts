@@ -1,69 +1,8 @@
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
-import { processDirectory, processOptions, saveTextToFile, loadMetadata, saveTextToPath } from "./data.js";
+import { processDirectory, processOptions, saveTextToPath } from "./data.js";
 import { validateDirectory, validateJson } from './validateFunctions.js';
 import { createDirectoryWithStructure } from './handleFiles.js';
-
-// Figure out what to do with processDirectory method
-// -> do we leave it the same for the CLI no prompting ot work with overwriting and updating
-// -> what to do with the path in the ClI prompting -- write to data directory or overwrite the other fiel
-    // -> do we want to load data directory as well
-
-async function existingMetadata(metadata){
-  const answer = await select({
-    message: 'Do you have an existing dataset_description.json file?',
-    choices: [
-      {
-        name: 'Generate new',
-        value: 'generate',
-        description: 'Given data files, can automatically download generate metadata file.',
-      },
-      {
-        name: 'Edit existing',
-        value: 'edit',
-        description: 'Can edit existing metadata file and update using new data or specified options.',
-      },
-    ],
-  });
-  
-  let dataset_description_path: string = "";
-
-  try {
-    switch(answer){
-      case "generate":
-        break;
-      case "edit":
-        dataset_description_path = await input({
-          message: 'Enter the path to the existing dataset_description.json file:',
-          validate: async (input) => {
-            if (validateJson(input, "dataset_description.json")) return true;
-            return "Please enter a valid path to a json file";
-          }
-        });     
-        await loadMetadata(metadata, dataset_description_path);
-        break;
-      default: 
-        console.error("Existing metadata answer is not added/configured:", answer);
-    }
-  } catch (err){ } // should be no errors
-
-  return dataset_description_path;
-}
-
-async function dataPathPrompt(metadata){
-  const dataPath = await input({
-    message: 'Enter the path to the data directory:',
-    validate: async (input) => {
-      if (await validateDirectory(input)){ 
-        return true;
-      }
-      return "Please enter a valid path to a valid directory";
-    }
-  });
-
-  await processDirectory(metadata, dataPath);
-  return dataPath;
-}
 
 async function metadataOptionsPrompt(metadata){
   const answer = await select({
@@ -176,49 +115,26 @@ const promptData = async (metadata, targetDirectoryPath) => {
     }
   });
 
-  await processDirectory(metadata, data_path, targetDirectoryPath);
+  await processDirectory(metadata, data_path, targetDirectoryPath); // will check if already existing metadata and won't need to prompt
 }
-
 
 const main = async () => {
   const metadata = new JsPsychMetadata();
-  const [project_path, new_project] = await promptProjectStructure(); // -> if reading from existing will want to look for if dataset_description file exists
-  var combinedPath;
+  var [project_path, new_project] = await promptProjectStructure(); // -> if reading from existing will want to look for if dataset_description file exists
 
   if (new_project) {
     const project_name = await promptName();
-    combinedPath = `${project_path}/${project_name}`;
-
-    createDirectoryWithStructure(combinedPath);
+    project_path = `${project_path}/${project_name}`;
+    createDirectoryWithStructure(project_path);
   }
 
-  await promptData(metadata, (combinedPath) ? `${combinedPath}/data` : `${project_path}/data`);
+  await promptData(metadata, `${project_path}/data`); 
   
-  // console.log(metadata.getMetadata());
-  // allows for a metadata options file that will let you overwite the data by letting you write
+  await metadataOptionsPrompt(metadata); // passing in options file to overwite existing file
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   console.log(metadataString); // Pretty print with 2 spaces for indentation
-  saveTextToPath(metadataString, combinedPath ? `${combinedPath}/dataset_description.json` : `${project_path}/dataset_description.json`);
+  saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 };
 
 await main();
-
-const archive_main = async() => {
-  const metadata = new JsPsychMetadata();
-
-  const dataset_description_path = await existingMetadata(metadata); // will want to write to this path when writing final json
-  const dataPath = await dataPathPrompt(metadata);
-  const optionsPath = await metadataOptionsPrompt(metadata);
-
-  const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
-  console.log(metadataString); // Pretty print with 2 spaces for indentation
-
-  // saving to old Data file if provided, otherwise new data file
-  if (dataset_description_path === "" || dataset_description_path === undefined || dataset_description_path === null){
-    saveTextToFile(metadataString, "dataset_description.json", dataPath);
-  }
-  else{
-    saveTextToPath(metadataString, dataset_description_path);
-  }
-}
