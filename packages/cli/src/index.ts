@@ -169,7 +169,7 @@ const promptData = async (metadata, targetDirectoryPath) => {
   data_path = await input({
     message: 'Please pass a path to the data directory?',
     validate: async (input) => {  
-      if (await validateDirectory(input)){  // not sure how to check this
+      if (await validateDirectory(input)){ 
         return true;
       }
       return "Please enter a valid path to a valid directory";
@@ -194,11 +194,12 @@ const main = async () => {
 
   await promptData(metadata, (combinedPath) ? `${combinedPath}/data` : `${project_path}/data`);
   
-
   // console.log(metadata.getMetadata());
   // allows for a metadata options file that will let you overwite the data by letting you write
 
-  // eventually saves it -> with the logic of writing with the normal file and with all of it
+  const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
+  console.log(metadataString); // Pretty print with 2 spaces for indentation
+  saveTextToPath(metadataString, combinedPath ? `${combinedPath}/dataset_description.json` : `${project_path}/dataset_description.json`);
 };
 
 await main();

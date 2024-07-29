@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { expandHomeDir } from "./utils.js";
+import { expand } from "@inquirer/prompts";
 
 // creating path -> handles the absolute vs non-absolute paths
 export const generatePath = (inputPath) => {
@@ -131,6 +132,8 @@ export function saveTextToFile(textstr, filename, directory = '.') {
 
 // in case path goes to file already
 export function saveTextToPath(textstr, filePath = './file.txt') {
+  filePath = expandHomeDir(filePath);
+  
   fs.writeFile(filePath, textstr, 'utf8', (err) => {
     if (err) {
       console.error(`Error writing to file ${filePath}:`, err);
