@@ -1,5 +1,6 @@
 import JsPsychMetadata from 'metadata';
 import React, { useState } from 'react';
+import Trash from '../assets/trash.svg'
 
 type ListPopup = {
   jsPsychMetadata: JsPsychMetadata;
@@ -72,7 +73,7 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
                 onClick={() => handleDelete(variable["name"], 'variable')}
                 className="delete-button"
               >
-                Delete
+                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' } } />
               </button>
             </div>
           );
@@ -94,7 +95,7 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
                 onClick={() => handleDelete(author["name"], 'author')}
                 className="delete-button"
               >
-                Delete
+                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' } } />
               </button>
             </div>
           );
@@ -113,7 +114,7 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, setPopupType
                 onClick={() => handleDelete(key, 'field')}
                 className="delete-button"
               >
-                Delete
+                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' } } />
               </button>
           </div>
         );

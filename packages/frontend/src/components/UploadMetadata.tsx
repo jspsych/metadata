@@ -48,7 +48,7 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
       <h2>Metadata file upload</h2>
       <p>
         If you have previously created and saved a dataset_description.json file
-        please upload here. 
+        please upload here. Please upload before uploading datafiles otherwise there may be unwanted errors.
       </p>
       <form onSubmit={loadMetadata}>
         <input type='file' onChange={handleMetadataUpload}/>

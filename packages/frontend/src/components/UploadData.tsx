@@ -30,10 +30,10 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
       const fileType = file.name.split('.').pop()?.toLowerCase() || '';
       const filePath = (file as any).webkitRelativePath || file.name;
 
-      if (fileType !== 'csv' && fileType !== 'json') {
-        reject(new Error(`Unsupported file type: ${fileType}`));
-        return;
-      }
+      // if (fileType !== 'csv' && fileType !== 'json') {
+      //   reject(new Error(`Unsupported file type: ${fileType}`));
+      //   return;
+      // }
 
       reader.onload = () => {
         const textContent = reader.result as string; // Get the text content.
@@ -65,6 +65,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
         let screenName = "n/a";
         try {
           if (name === "dataset_description.json"){ 
+            // await jsPsychMetadata.generate(content); // load above
             screenName = name + " [skipped, please upload below]";
           }
           else if (fileType === "json") {
@@ -74,7 +75,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
             await jsPsychMetadata.generate(content, {}, "csv");
             screenName = name + " [success]";
           } else {
-            screenName = name + "[skipped, unsupported fileType]";
+            screenName = name + "[skipped, unsupported filetype for jsPsych data]";
             console.warn("Unsupported file type:", fileType, "for filePath", filePath);
           }
         } catch (generateError) {

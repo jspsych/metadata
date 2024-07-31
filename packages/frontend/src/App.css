@@ -48,6 +48,14 @@ html, body {
   overflow-y: auto; /* Adds vertical scroll if content exceeds max-height */
 }
 
+.delete-button {
+  display: inline-flex; /* Makes the button only as wide as its content */
+  align-items: center;  /* Centers the content vertically within the button */
+  justify-content: center; /* Centers the content horizontally within the button */
+  padding: 6px; /* Removes any default padding */
+  cursor: pointer; /* Changes the cursor to a pointer on hover */
+} 
+
 .close-button {
   position: absolute;
   top: 10px;
