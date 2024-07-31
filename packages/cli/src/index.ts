@@ -2,7 +2,7 @@
 
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
-import { processDirectory, processOptions, saveTextToPath } from "./data.js";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
 import { validateDirectory, validateJson } from './validateFunctions.js';
 import { createDirectoryWithStructure } from './handleFiles.js';
 
@@ -42,7 +42,7 @@ async function metadataOptionsPrompt(metadata){
 }
 
 // -------------------------------------> new code 
-const promptProjectStructure = async () => {
+const promptProjectStructure = async (metadata) => {
   const answer = await select({
     message: 'Would you like to generate a new project directory or update an existing project directory?',
     choices: [
@@ -78,15 +78,23 @@ const promptProjectStructure = async () => {
         project_path = await input({
           message: 'Enter the path to the project directory:', // 
           validate: async (input) => {
-            if (await validateDirectory(input)){  // and will need to check that contains dataset_description.json -> validate that this is existing psych-DS dataset
-              return true; 
-              // read through the entire directory checking dataset_json (will assume it has already been made) -> only thing that is reallly important 
-              // maybe call the validator function but will instead just write to this 
-              // -> will not actually read, will assume there is a directory
+            try {
+              if (await validateDirectory(input) && await validateJson(input + "/dataset_description.json", "dataset_description.json")){  // and will need to check that contains dataset_description.json -> validate that this is existing psych-DS dataset, validateJson with inpput
+                return true; 
+                // read through the entire directory checking dataset_json (will assume it has already been made) -> only thing that is reallly important 
+                // maybe call the validator function but will instead just write to this 
+                // -> will not actually read, will assume there is a directory
+              }
+              return "Please enter a valid path to the project directory. Be sure it includes a dataset_description.json file in the root otherwise it will not work.";
+            } catch (err) {
+              console.error(err);
+              return "Please enter a valid path to the project directory. Be sure it includes a dataset_description.json file in the root otherwise it will not work.";
             }
-            return "Please enter a valid path to the project directory";
           }
         });
+
+        await loadMetadata(metadata, project_path + "/dataset_description.json");
+
         return [project_path, false];
     }
   } catch (err){ } // should be no errors
@@ -108,12 +116,12 @@ const promptData = async (metadata, targetDirectoryPath) => {
   var data_path;
   
   data_path = await input({
-    message: 'Please pass a path to the data directory?',
+    message: 'Please pass a path a data directory that has not been added to the metadata already. This should not already be in the project folder, and will be copied over when created.',
     validate: async (input) => {  
       if (await validateDirectory(input)){ 
         return true;
       }
-      return "Please enter a valid path to a valid directory";
+      return "Please enter a valid path to a valid directory.";
     }
   });
 
@@ -122,14 +130,13 @@ const promptData = async (metadata, targetDirectoryPath) => {
 
 const main = async () => {
   const metadata = new JsPsychMetadata();
-  var [project_path, new_project] = await promptProjectStructure(); // -> if reading from existing will want to look for if dataset_description file exists
+  var [project_path, new_project] = await promptProjectStructure(metadata); // -> if reading from existing will want to look for if dataset_description file exists
 
   if (new_project) {
     const project_name = await promptName();
     project_path = `${project_path}/${project_name}`;
-    createDirectoryWithStructure(project_path);
+    createDirectoryWithStructure(project_path); // change the message
   }
-
   await promptData(metadata, `${project_path}/data`); 
   
   await metadataOptionsPrompt(metadata); // passing in options file to overwite existing file

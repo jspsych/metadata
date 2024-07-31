@@ -32,6 +32,12 @@ export const validateJson = (filePath: string, fileName?: string): boolean => {
     // Resolve the full path to ensure it's an absolute path
     const resolvedPath = path.resolve(expandedPath);
 
+    // Check if the file exists
+    if (!fs.existsSync(resolvedPath)) {
+      console.error(`Error: File does not exist at path ${resolvedPath}`);
+      return false;
+    }
+
     if (fileName && path.basename(resolvedPath).toLowerCase() !== fileName.toLowerCase()) {
       console.error("File name does not match:", fileName);
       return false;
