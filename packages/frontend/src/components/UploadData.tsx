@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 type UploadDataProps = {
   jsPsychMetadata: JsPsychMetadata;
   updateMetadataString: () => void;
+  handleScreenChange: (newPage?: string, newButtonText?: string) => void;
 };
 
 type FileData = {
@@ -13,7 +14,7 @@ type FileData = {
   filePath: string;
 };
 
-const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadataString }) => {
+const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadataString, handleScreenChange }) => {
   const [ fileList, setFileList ] = useState<File[]>([]);
   const [ filesReadStatus, setFilesReadStatus ] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +90,8 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
       console.error("Error reading files:", error);
     }
 
-    updateMetadataString();
+    handleScreenChange(undefined, "View metadata");
+    updateMetadataString(); 
   };
   
   useEffect(() => {
@@ -98,13 +100,6 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
     }
   }, []);
 
-  // const generate = () => {
-  //   for (const file of fileList) {
-  //     console.log(file);
-  //   }
-
-  //   console.log(jsPsychMetadata.getMetadata());
-  // };
 
   return (
     <div className="uploadDataPage">

@@ -4,9 +4,11 @@ import { useState } from 'react'
 type UploadMetadataProps = {
   jsPsychMetadata: JsPsychMetadata;
   updateMetadataString: () => void; 
+  setPrevMetadata: (b: boolean) => void;
+  handleScreenChange: (newPage?: string, newButtonText?: string) => void;
 };
 
-const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, updateMetadataString } ) => {
+const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, updateMetadataString, setPrevMetadata, handleScreenChange } ) => {
   const [ metadataHolder, setMetadataHolder ] = useState<File>();
   const [ metadataStatus, setMetadataStatus ] = useState(""); 
   
@@ -31,7 +33,9 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
         promise.then(metadata => {
           jsPsychMetadata.loadMetadata(metadata);
           updateMetadataString();
-          setMetadataStatus("Success")
+          setMetadataStatus("Success");
+          setPrevMetadata(true);
+          handleScreenChange(undefined, "Continue");
         }).catch(error => {
           setMetadataStatus("Error reading metadata file:" + error);
           console.error("Error reading metadata file:", error);
@@ -49,6 +53,7 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
       <p>
         If you have previously created and saved a dataset_description.json file
         please upload here. Please upload before uploading datafiles otherwise there may be unwanted errors.
+        Doing so will allow you to skip manually inputting a project name and description.
       </p>
       <form onSubmit={loadMetadata}>
         <input type='file' onChange={handleMetadataUpload}/>
