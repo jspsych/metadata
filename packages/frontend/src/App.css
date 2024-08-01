@@ -117,9 +117,9 @@ html, body {
   align-items: center;
 }
 
-.uploadMetadataPage {  
-  /* margin-top: 60px; */
-}
+/* .uploadMetadataPage {  
+  margin-top: 60px;
+} */
 
 .uploadDataFiles {
   max-height: 200px; /* Adjust this value to fit your design */
@@ -131,12 +131,44 @@ html, body {
   /* border: 1px solid #ccc; Optional: Add a border */
 }
 
-.uploadDataFileItem {
-  /* padding: px; */
-  /* border-bottom: 1px solid #eee; Optional: Add a border between items */
-}
+/* .uploadDataFileItem {
+  padding: px; */
+  /* border-bottom: 1px solid #eee; Optional: Add a border between items
+} */
 
 /* Metadata options */
 .optionsButton {
   margin: 10px;
+}
+
+/* DataFormPage */
+.promptFormSurvey {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; 
+  margin: 0 auto; /* Optional: Center the form */
+  align-items: center;
+}
+
+.promptFormSurvey div {
+  display: flex;
+  flex-direction: row;
+}
+
+/* .promptFormSurvey label {
+} */
+
+.promptFormSurvey input {
+  margin-left: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.promptFormSubmit {
+  width: fit-content;
+
+}
+
+.pageDescription {
+  margin-bottom: 32px;
 }

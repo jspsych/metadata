@@ -33,10 +33,8 @@ const PromptForm: React.FC<PromptFormProps> = ({ handleScreenChange }) => {
   return (
     <>
       <h2>Project Information</h2>
-      <p>You can enter optional data about your project which will then be used to update the metadat file.</p>
-      <p>When you click save it will automatically processed and you will be sent to the next screen.</p>
-      <p>You may also click save and skip this screen.</p>
-      <form onSubmit={handleSubmit}>
+      <p className="pageDescription">You can enter optional data about your project which will then be used to update the metadata file.</p>
+      <form onSubmit={handleSubmit} className="promptFormSurvey">
         <div>
           <label htmlFor="project_name">Project name</label>
           <input
@@ -65,7 +63,7 @@ const PromptForm: React.FC<PromptFormProps> = ({ handleScreenChange }) => {
             onChange={handleChange}
           />
         </div>
-        <button type="submit">Save</button>
+        <button className="promptFormSubmit" type="submit">Save</button>
       </form>
     </>
   );
