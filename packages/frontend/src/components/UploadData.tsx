@@ -109,7 +109,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
         upload when you are for them to be processed. 
       </p>
       <p>
-        If you are uploading a large number of files this may take longer. 
+        You may upload as many files as you want.
       </p>
       <form onSubmit={loadFiles}>
         <input

@@ -73,7 +73,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
   return (
     <>
       <div className="uploadPage">
-        <h1>{pageNumber}/3</h1>
+        <h2>{pageNumber}/3</h2>
         {renderPage()}
         {renderButton()}
       </div>
