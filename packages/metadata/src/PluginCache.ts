@@ -67,7 +67,8 @@ export class PluginCache {
 
   private async fetchScript(pluginType: string, version: string, extension?: boolean) {
     const unpkgUrl = this.generateUnpkg(pluginType, version, extension);
-    console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl);
+
+    // console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl); should figure out verbose mode to display
 
     try {
       const response = await fetch(unpkgUrl);

@@ -81,9 +81,6 @@ const promptProjectStructure = async (metadata) => {
             try {
               if (await validateDirectory(input) && await validateJson(input + "/dataset_description.json", "dataset_description.json")){  // and will need to check that contains dataset_description.json -> validate that this is existing psych-DS dataset, validateJson with inpput
                 return true; 
-                // read through the entire directory checking dataset_json (will assume it has already been made) -> only thing that is reallly important 
-                // maybe call the validator function but will instead just write to this 
-                // -> will not actually read, will assume there is a directory
               }
               return "Please enter a valid path to the project directory. Be sure it includes a dataset_description.json file in the root otherwise it will not work.";
             } catch (err) {
@@ -142,7 +139,6 @@ const main = async () => {
   await metadataOptionsPrompt(metadata); // passing in options file to overwite existing file
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
-  console.log(metadataString); // Pretty print with 2 spaces for indentation
   saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 };
 
