@@ -2,6 +2,7 @@ import UploadMetadata from '../components/UploadMetadata.tsx';
 import UploadData from '../components/UploadData.tsx';
 import JsPsychMetadata from 'metadata';
 import { useState } from 'react';
+import PromptForm from '../components/PromptForm.tsx';
 
 interface UploadProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -39,7 +40,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       case 'metadata':
         return <UploadMetadata jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} setPrevMetadata={setPrevMetadata} handleScreenChange={handleScreenChange}/>
       case 'form':
-        return <p>this is the form</p>;
+        return <PromptForm handleScreenChange={handleScreenChange}/>;
       case 'data':
         return <UploadData jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange} />
     } 
@@ -57,7 +58,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
                   {buttonText}
                </button>; 
       case 'form':
-        return <button className="upload-continue" onClick={() => handleScreenChange('data')}>{buttonText}</button>; 
+        return; // this will be handled internally to tie behavior with the form
       case 'data':
         return <button 
                   className="upload-continue" 

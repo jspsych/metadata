@@ -100,7 +100,6 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
     }
   }, []);
 
-
   return (
     <div className="uploadDataPage">
       <h2>Data file upload</h2>
@@ -125,7 +124,6 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
           <li className="uploadDataFileItem" key={index}>{file}</li>
         ))}
       </ul>
-      {/* <button onClick={generate}>file info for debugging</button> */}
     </div>
   );
 }

@@ -1,0 +1,74 @@
+import { useState } from 'react';
+
+interface PromptFormProps {
+  handleScreenChange: (newPage?: string, newButtonText?: string) => void;
+}
+
+export type PromptFormData = {
+  project_name: string;
+  project_description: string;
+  author_name: string,
+};
+
+const PromptForm: React.FC<PromptFormProps> = ({ handleScreenChange }) => {
+  const [formData, setFormData] = useState<PromptFormData>({
+    project_name: "",
+    project_description: "",
+    author_name: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleScreenChange('data', 'skip');
+  };
+
+  return (
+    <>
+      <h2>Project Information</h2>
+      <p>You can enter optional data about your project which will then be used to update the metadat file.</p>
+      <p>When you click save it will automatically processed and you will be sent to the next screen.</p>
+      <p>You may also click save and skip this screen.</p>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="project_name">Project name</label>
+          <input
+            type="text"
+            id="project_name"
+            name="project_name"
+            value={formData.project_name}
+            onChange={handleChange}
+          />
+        </div>
+        <div>
+          <label htmlFor="project_description">Project description</label>
+          <input
+            id="project_description"
+            name="project_description"
+            value={formData.project_description}
+            onChange={handleChange}
+          />
+        </div>
+        <div>
+          <label htmlFor="author_name">Author name</label>
+          <input
+            id="author_name"
+            name="author_name"
+            value={formData.author_name}
+            onChange={handleChange}
+          />
+        </div>
+        <button type="submit">Save</button>
+      </form>
+    </>
+  );
+}
+
+export default PromptForm;
