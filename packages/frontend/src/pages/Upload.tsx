@@ -13,7 +13,7 @@ interface UploadProps {
 const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetadataString }) => {
   const [ dataScreen, setDataScreen] = useState('metadata');
   const [ buttonText, setButtonText ] = useState('Skip');
-  const [ prevMetadata, setPrevMetadata ] = useState<boolean>(false);
+  const [ prevMetadata, setPrevMetadata ] = useState<boolean>(false); // can likely delete
   const [ pageNumber, setPageNumber ] = useState<number>(1);
 
   const handleScreenChange = (newPage?: string, newButtonText?: string) => {
@@ -24,8 +24,9 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
           setPageNumber(1);
           break;
         case 'form':
-          if (prevMetadata) handleScreenChange('data', newButtonText);
-          else setPageNumber(2);
+          // if (prevMetadata) handleScreenChange('data', newButtonText);
+          // else setPageNumber(2);
+          setPageNumber(2);
           break;
         case 'data':
           setPageNumber(3);
@@ -40,7 +41,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       case 'metadata':
         return <UploadMetadata jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} setPrevMetadata={setPrevMetadata} handleScreenChange={handleScreenChange}/>
       case 'form':
-        return <PromptForm handleScreenChange={handleScreenChange}/>;
+        return <PromptForm jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange}/>;
       case 'data':
         return <UploadData jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange} />
     } 

@@ -31,6 +31,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
       const fileType = file.name.split('.').pop()?.toLowerCase() || '';
       const filePath = (file as any).webkitRelativePath || file.name;
 
+      // choosing to throw errors later to work with flow of error checking
       // if (fileType !== 'csv' && fileType !== 'json') {
       //   reject(new Error(`Unsupported file type: ${fileType}`));
       //   return;

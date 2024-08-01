@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import JsPsychMetadata from 'metadata';
 
 interface PromptFormProps {
+  jsPsychMetadata: JsPsychMetadata;
+  updateMetadataString: () => void;
   handleScreenChange: (newPage?: string, newButtonText?: string) => void;
 }
 
@@ -10,11 +13,20 @@ export type PromptFormData = {
   author_name: string,
 };
 
-const PromptForm: React.FC<PromptFormProps> = ({ handleScreenChange }) => {
+const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadataString, handleScreenChange }) => {
+  // Archived code to save authors -> not good because of overwriting 
+  // const authors = jsPsychMetadata.getAuthorList();
+  // var authorName;
+
+  // if (authors.length !== 0){
+  //   if (typeof authors[0] === 'string') authorName = authors[0];
+  //   else authorName = authors[0]["name"];
+  // } else authorName = "";
+
   const [formData, setFormData] = useState<PromptFormData>({
-    project_name: "",
-    project_description: "",
-    author_name: "",
+    project_name: jsPsychMetadata.containsMetadataField("name") ? jsPsychMetadata.getMetadataField("name") : "", // try to load name
+    project_description: jsPsychMetadata.containsMetadataField("description") ? jsPsychMetadata.getMetadataField("description") : "", // try to load description
+    author_name: ""// authorName, // try to load one author // archived code to run authors, messes with saving
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -27,6 +39,12 @@ const PromptForm: React.FC<PromptFormProps> = ({ handleScreenChange }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (formData.project_name !== "") jsPsychMetadata.setMetadataField("name", formData.project_name);
+    if (formData.project_description !== "") jsPsychMetadata.setMetadataField("description", formData.project_description);
+    if (formData.author_name !== "") jsPsychMetadata.setAuthor({ "name": formData.author_name});
+
+    updateMetadataString();
     handleScreenChange('data', 'skip');
   };
 

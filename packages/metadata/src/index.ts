@@ -86,6 +86,10 @@ export default class JsPsychMetadata {
     return this.metadata[key];
   }
 
+  containsMetadataField(key: string) : any {
+    return key in this.metadata;
+  }
+
   deleteMetadataField(key: string): void{
     if (key in this.metadata) {
       delete this.metadata[key];
@@ -134,6 +138,10 @@ export default class JsPsychMetadata {
    */
   getAuthor(name: string): AuthorFields | string | {} {
     return this.authors.getAuthor(name);
+  }
+
+  getAuthorList(): (string | AuthorFields)[] {
+    return this.authors.getList();
   }
 
   deleteAuthor(name: string) {
