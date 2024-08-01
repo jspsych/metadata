@@ -4,11 +4,10 @@ import { useState } from 'react'
 type UploadMetadataProps = {
   jsPsychMetadata: JsPsychMetadata;
   updateMetadataString: () => void; 
-  setPrevMetadata: (b: boolean) => void;
   handleScreenChange: (newPage?: string, newButtonText?: string) => void;
 };
 
-const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, updateMetadataString, setPrevMetadata, handleScreenChange } ) => {
+const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, updateMetadataString, handleScreenChange } ) => {
   const [ metadataHolder, setMetadataHolder ] = useState<File>();
   const [ metadataStatus, setMetadataStatus ] = useState(""); 
   

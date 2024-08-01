@@ -14,19 +14,10 @@ export type PromptFormData = {
 };
 
 const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadataString, handleScreenChange }) => {
-  // Archived code to save authors -> not good because of overwriting 
-  // const authors = jsPsychMetadata.getAuthorList();
-  // var authorName;
-
-  // if (authors.length !== 0){
-  //   if (typeof authors[0] === 'string') authorName = authors[0];
-  //   else authorName = authors[0]["name"];
-  // } else authorName = "";
-
   const [formData, setFormData] = useState<PromptFormData>({
     project_name: jsPsychMetadata.containsMetadataField("name") ? jsPsychMetadata.getMetadataField("name") : "", // try to load name
     project_description: jsPsychMetadata.containsMetadataField("description") ? jsPsychMetadata.getMetadataField("description") : "", // try to load description
-    author_name: ""// authorName, // try to load one author // archived code to run authors, messes with saving
+    author_name: "" // archived code to run authors, messes with saving, not best way to include
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
