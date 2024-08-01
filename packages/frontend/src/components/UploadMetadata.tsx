@@ -33,7 +33,6 @@ const UploadMetadata: React.FC<UploadMetadataProps> = ( {jsPsychMetadata, update
           jsPsychMetadata.loadMetadata(metadata);
           updateMetadataString();
           setMetadataStatus("Success");
-          setPrevMetadata(true);
           handleScreenChange(undefined, "Continue");
         }).catch(error => {
           setMetadataStatus("Error reading metadata file:" + error);

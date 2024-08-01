@@ -1,5 +1,6 @@
 import * as esbuild from 'esbuild';
 
+
 // Browser build configuration
 await esbuild.build({
   entryPoints: ['src/index.ts'],
@@ -44,11 +45,23 @@ await esbuild.build({
   external: ['csv-parse'],
 });
 
-
+// cjs build
 esbuild.build({
   entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
   format: 'cjs',
   outfile: 'dist/index.cjs',
+}).catch(() => process.exit(1));
+
+// IIFE build configuration with global name
+await esbuild.build({
+  entryPoints: ['src/index.ts'],
+  bundle: true,
+  outfile: 'dist/index.iife.js',
+  format: 'iife',
+  globalName: 'JsPsychMetadata',  // Replace with your desired global name
+  alias: {
+    'csv-parse': 'csv-parse/browser/esm',
+  },
 }).catch(() => process.exit(1));

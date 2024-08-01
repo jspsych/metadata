@@ -21,7 +21,11 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Custom type definitions */
+    "typeRoots": ["./node_modules/@types", "./dist"],
+    "types": []
   },
   "include": ["src", "**/*.tsx"] // Make sure it includes your components directory
 }
