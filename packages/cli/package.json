@@ -9,7 +9,7 @@
     "metadata",
     "cli"
   ],
-  "repository": { 
+  "repository": {
     "url": "https://github.com/jspsych/metadata"
   },
   "bin": {
@@ -25,9 +25,7 @@
     "data:abs": "node dist/esm/cli.js ~/Documents/work/ursi2024/metadata/dev/data ~/Documents/work/ursi2024/metadata/dev/options/metadata-options.json",
     "data:rec": "node dist/esm/cli.js ../../dev/data-rec",
     "options": "node dist/esm/cli.js ../../dev/data ../../dev/options/metadata-options.json",
-
     "build": "npm run build:esm && npm run build:cjs",
-
     "build:esm": "npm run build:no-prompt:esm && npm run build:data:esm && npm run build:validate:esm && npm run build:files:esm && npm run build:utils:esm && npm run build:cli:esm",
     "build:no-prompt:esm": "esbuild src/cli.ts --bundle --format=esm --platform=node --outfile=dist/esm/cli.js",
     "build:data:esm": "esbuild src/data.ts --packages=external --format=esm --platform=node --outfile=dist/esm/data.js",
@@ -36,7 +34,6 @@
     "build:utils:esm": "esbuild src/utils.ts --packages=external --format=esm --platform=node --outfile=dist/esm/utils.js",
     "build:cli:esm": "esbuild src/index.ts --packages=external --format=esm --platform=node --outfile=dist/esm/index.js",
     "cli": "node dist/esm/index.js",
-
     "build:cjs": "npm run build:no-prompt:cjs && npm run build:data:cjs && npm run build:validate:cjs && npm run build:files:cjs && npm run build:utils:cjs && npm run build:cli:cjs",
     "build:no-prompt:cjs": "esbuild src/cli.ts --bundle --format=cjs --platform=node --outfile=dist/cjs/cli.js",
     "build:data:cjs": "esbuild src/data.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/data.js",
@@ -50,6 +47,7 @@
     "fuzzy": "^0.1.3",
     "inquirer": "^10.0.1",
     "inquirer-autocomplete-prompt": "^3.0.1",
-    "metadata": "file:../metadata/"
+    "metadata": "file:../metadata/",
+    "yargs": "^17.7.2"
   }
 }

@@ -43,6 +43,8 @@ export default class JsPsychMetadata {
     "extension_version",
   ]);
 
+  private verbose: boolean = false;
+
   /**
    * Creates an instance of JsPsychMetadata while passing in JsPsych object to have access to context
    *  allowing it to access the screen printing information.
@@ -50,7 +52,7 @@ export default class JsPsychMetadata {
    * @constructor
    * @param {JsPsych} JsPsych
    */
-  constructor() {
+  constructor(verbose?: boolean) {
     this.metadata = {};
     // generates default metadata
     this.setMetadataField("name", "title");
@@ -61,6 +63,7 @@ export default class JsPsychMetadata {
     this.authors = new AuthorsMap();
     this.variables = new VariablesMap();
     this.pluginCache = new PluginCache();
+    this.verbose = verbose;
   }
 
   /**
@@ -482,7 +485,7 @@ export default class JsPsychMetadata {
    * @throws Will throw an error if the fetch operation fails.
    */
   private async getPluginInfo(pluginType: string, variableName: string, version, extension?) {
-    return this.pluginCache.getPluginInfo(pluginType, variableName, version, extension);
+    return this.pluginCache.getPluginInfo(pluginType, variableName, version, this.verbose, extension);
   }
 }
 

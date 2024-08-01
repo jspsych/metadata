@@ -1,12 +1,23 @@
 #!/usr/bin/env node
 
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
 import { validateDirectory, validateJson } from './validateFunctions.js';
 import { createDirectoryWithStructure } from './handleFiles.js';
 
-async function metadataOptionsPrompt(metadata){
+// Define a type for the parsed arguments
+interface Args {
+  verbose?: boolean;
+  [x: string]: unknown;
+}
+
+// Parse the arguments and cast them to the defined type
+const argv = yargs(hideBin(process.argv)).argv as Args;
+
+async function metadataOptionsPrompt(metadata, verbose){
   const answer = await select({
     message: 'Would you like to customize the metadata by providing a .json specifying changes?',
     choices: [
@@ -34,7 +45,7 @@ async function metadataOptionsPrompt(metadata){
       }
     });
 
-    await processOptions(metadata, optionsPath);
+    await processOptions(metadata, optionsPath, verbose);
   }
 
   return optionsPath;
@@ -108,7 +119,7 @@ const promptName = async () => {
   return project_name;
 }
 
-const promptData = async (metadata, targetDirectoryPath) => {
+const promptData = async (metadata, verbose, targetDirectoryPath) => {
   // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
   var data_path;
   
@@ -122,23 +133,27 @@ const promptData = async (metadata, targetDirectoryPath) => {
     }
   });
 
-  await processDirectory(metadata, data_path, targetDirectoryPath); // will check if already existing metadata and won't need to prompt
+  await processDirectory(metadata, data_path, verbose, targetDirectoryPath); // will check if already existing metadata and won't need to prompt
 }
 
 const main = async () => {
-  const metadata = new JsPsychMetadata();
-  var [project_path, new_project] = await promptProjectStructure(metadata); // -> if reading from existing will want to look for if dataset_description file exists
+  const verbose = argv.verbose ? argv.verbose : false;
+  
+  const metadata = new JsPsychMetadata(verbose);
+  var [ project_path, new_project ] = await promptProjectStructure(metadata); // -> if reading from existing will want to look for if dataset_description file exists
 
   if (new_project) {
     const project_name = await promptName();
     project_path = `${project_path}/${project_name}`;
     createDirectoryWithStructure(project_path); // change the message
   }
-  await promptData(metadata, `${project_path}/data`); 
+  await promptData(metadata, verbose, `${project_path}/data`); 
   
-  await metadataOptionsPrompt(metadata); // passing in options file to overwite existing file
+  await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
+
+  if (argv.verbose) console.log("Final metadata string:\n\n", metadataString);
   saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 };
 

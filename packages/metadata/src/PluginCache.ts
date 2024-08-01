@@ -15,10 +15,10 @@ export class PluginCache {
    * @returns {Promise<string|null>} The description of the plugin variable if found, otherwise null.
    * @throws Will throw an error if the fetch operation fails.
    */
-  async getPluginInfo(pluginType: string, variableName: string, version, extension?) {
+  async getPluginInfo(pluginType: string, variableName: string, version, verbose, extension?) {
     // fetches if it doesn't exist
     if (!(pluginType in this.pluginFields)) {
-      const fields = await this.generatePluginFields(pluginType, version, extension);
+      const fields = await this.generatePluginFields(pluginType, version, verbose, extension);
       this.pluginFields[pluginType] = fields;
     }
 
@@ -31,8 +31,8 @@ export class PluginCache {
       };
   }
 
-  private async generatePluginFields(pluginType: string, version, extension?) {
-    const script = await this.fetchScript(pluginType, version, extension);
+  private async generatePluginFields(pluginType: string, version, verbose, extension?) {
+    const script = await this.fetchScript(pluginType, version, verbose, extension);
 
     // parses if they exist
     if (script !== undefined && script !== null && script !== ""){
@@ -65,10 +65,10 @@ export class PluginCache {
     else return `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`; // most common case - plugin with no version
   }
 
-  private async fetchScript(pluginType: string, version: string, extension?: boolean) {
+  private async fetchScript(pluginType: string, version: string, verbose, extension?: boolean) {
     const unpkgUrl = this.generateUnpkg(pluginType, version, extension);
 
-    // console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl); should figure out verbose mode to display
+    if (verbose) console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl);
 
     try {
       const response = await fetch(unpkgUrl);

@@ -126,6 +126,85 @@
       "levels": [
         "y"
       ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "slider_start",
+      "description": "The starting value of the slider.",
+      "value": "number",
+      "minValue": 50,
+      "maxValue": 50
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "correct",
+      "description": "`true` if the participant got the correct answer, `false` otherwise.",
+      "value": "boolean",
+      "levels": [
+        false
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "device_id",
+      "description": "The [device ID](https://developer.mozilla.org/en-US/docs/Web/API/MediaDeviceInfo/deviceId) of the selected camera.",
+      "value": "string",
+      "levels": [
+        "224904af1fc7ec895c764b361a04a167504d8af498a36c576e...",
+        "ed812fc33d145bfb870d47b64ec9702b3456f6640af448d78b..."
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "extension_type",
+      "description": "The name(s) of the extension(s) used in the trial.",
+      "value": "string"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "extension_version",
+      "description": "The version(s) of the extension(s) used in the trial.",
+      "value": "numeric"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "record_video_data",
+      "description": "[Base 64 encoded](https://developer.mozilla.org/en-US/docs/Glossary/Base64) representation of the video data.",
+      "value": "string",
+      "levels": [
+        "GkXfo6NChoEBQveBAULygQRC84EIQoKIbWF0cm9za2FCh4EEQo...",
+        "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGF..."
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "task",
+      "description": "unknown",
+      "value": "string",
+      "levels": [
+        "draw",
+        "replay"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "mouse_tracking_data",
+      "description": "* An array of objects containing mouse movement data for the trial. Each object has an `x`, a `y`, a `t`, and an * `event` property. The `x` and `y` properties specify the mouse coordinates in pixels relative to the top left * corner of the viewport and `t` specifies the time in milliseconds since the start of the trial. The `event` * will be either 'mousemove', 'mousedown', or 'mouseup' depending on which event was generated.",
+      "value": "object"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "mouse_tracking_targets",
+      "description": "* An object contain the pixel coordinates of elements on the screen specified by the `.targets` parameter. Each key * in this object will be a `selector` property, containing the CSS selector string used to find the element. The object * corresponding to each key will contain `x` and `y` properties specifying the top-left corner of the object, `width` * and `height` values, plus `top`, `bottom`, `left`, and `right` parameters which specify the * [bounding rectangle](https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect) of the element.",
+      "value": "object"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "index",
+      "description": "The index of the current trial across the whole experiment.",
+      "value": "numeric",
+      "minValue": 0,
+      "maxValue": 16
     }
   ]
 }
