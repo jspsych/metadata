@@ -5,7 +5,7 @@ import { hideBin } from 'yargs/helpers';
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
-import { validateDirectory, validateJson } from './validateFunctions.js';
+import { validateDirectory, validateJson } from './validatefunctions.js';
 import { createDirectoryWithStructure } from './handleFiles.js';
 
 // Define a type for the parsed arguments
