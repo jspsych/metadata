@@ -12,6 +12,7 @@
   </head>
   <body></body>
   <script>
+    console.log(JsPsychMetadata);
 
     const metadata_options = {
       randomField: "this is a field",
@@ -44,8 +45,8 @@
       default_iti: 250
     });
 
-    var metadata = new JsPsychMetadata(); // could declare with jsPsych to show the after
-
+    var metadata = new JsPsychMetadata.default(); // could declare with jsPsych to show the after
+    
 
     // manually preload the image files, since they are passed to the image-keyboard-response stimulus parameter
     // through timeline variables, and therefore cannot be automatically preloaded
