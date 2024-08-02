@@ -44,7 +44,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       case 'form':
         return <PromptForm jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange}/>;
       case 'author': 
-        return <AuthorForm jsPsychMetadata={jsPsychMetadata} />
+        return <AuthorForm jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange}/>
       case 'data':
         return <UploadData jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange} />
     } 
@@ -64,14 +64,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       case 'form':
         return; // this will be handled internally to tie behavior with the form
       case 'author':
-        return <button 
-                className="upload-continue" 
-                onClick={() => {
-                  handleScreenChange('data');
-                  setButtonText('Skip')
-                }}>
-                  {buttonText}
-               </button>; 
+        return; // this will be handled internally to tie behavior with form
       case 'data':
         return <button 
                   className="upload-continue" 

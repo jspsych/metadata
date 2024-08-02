@@ -4,11 +4,12 @@ import JsPsychMetadata from 'metadata';
 
 interface AuthorFormProps {
   jsPsychMetadata: JsPsychMetadata;
+  updateMetadataString: () => void;
+  handleScreenChange: (newPage?: string, newButtonText?: string) => void;
 }
 
-/// need to rework the testing button to make it add another name and identifier field
 // need to rework the save button to be built natively similar to the prompt form so that can handleSave with the state data
-const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata }) => {
+const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadataString, handleScreenChange }) => {
   const [authors, setAuthors] = useState<(AuthorFields)[]>(
     jsPsychMetadata.getAuthorList().map((author: AuthorFields | string) => {
       if (typeof author === 'string') {
@@ -18,6 +19,8 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata }) => {
       }
     })
   );
+
+  if (authors.length === 0) setAuthors([{ name: "", identifier: "" }]); // begins with empty field
 
   const handleNameChange = (index: number, value: string) => {
     const newAuthors = [...authors];
