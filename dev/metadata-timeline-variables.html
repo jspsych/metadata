@@ -34,10 +34,11 @@
 
     var jsPsych = initJsPsych({
       on_finish: async function() {      
-        // await metadata.generate(jsPsych.data.get().csv(), metadata_options, true);
-        console.log(metadata.getMetadata());
+        // await metadata.generate(jsPsych.data.get().json());c
+        const data = jsPsych.data.get().csv();
+        await metadata.generate(jsPsych.data.get().csv(), metadata_options, 'csv');
         jsPsych.data.displayData();  
-        // metadata.displayMetadata(jsPsych.getDisplayElement());
+        metadata.displayMetadata(jsPsych.getDisplayElement());
 
         // jsPsych.data.get().localSave('json','timeline-variables.json');
       },
@@ -45,8 +46,6 @@
     });
 
     var metadata = new JsPsychMetadata(); // could declare with jsPsych to show the after
-    // var metadata = new JsPsychMetadata.default(); // could declare with jsPsych to show the after
-
 
     // manually preload the image files, since they are passed to the image-keyboard-response stimulus parameter
     // through timeline variables, and therefore cannot be automatically preloaded
