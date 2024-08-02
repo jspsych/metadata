@@ -30,7 +30,6 @@
     "jest": "^29.7.0"
   },
   "dependencies": {
-    "jsdoc-parse": "^6.2.1",
-    "jspsych-metadata-cli": "^1.0.2"
+    "jsdoc-parse": "^6.2.1"
   }
 }

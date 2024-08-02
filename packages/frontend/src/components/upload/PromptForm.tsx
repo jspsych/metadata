@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata from '@jspsych/metadata';
 
 interface PromptFormProps {
   jsPsychMetadata: JsPsychMetadata;

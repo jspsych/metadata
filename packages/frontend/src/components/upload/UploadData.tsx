@@ -1,4 +1,4 @@
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata from '@jspsych/metadata';
 import React, { useState, useRef, useEffect } from 'react';
 
 type UploadDataProps = {

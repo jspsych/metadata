@@ -63,7 +63,7 @@ const processFile = async (metadata, directoryPath, file, verbose, targetDirecto
 }
 
 // Processing directory recursively up to one level
-export const processDirectory = async (metadata, directoryPath, verbose, targetDirectoryPath?) => {
+export const processDirectory = async (metadata, directoryPath, verbose=false, targetDirectoryPath?) => {
   let total = 0;
   let failed = 0;
 
@@ -105,7 +105,7 @@ export const processDirectory = async (metadata, directoryPath, verbose, targetD
 };
 
 // Processing metadata options json
-export const processOptions = async (metadata, filePath, verbose) => {
+export const processOptions = async (metadata, filePath, verbose=false) => {
   try {
     const metadata_options_path = generatePath(filePath);
     const data = fs.readFileSync(metadata_options_path, "utf8"); // synchronous read

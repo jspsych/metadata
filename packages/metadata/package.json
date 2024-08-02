@@ -25,7 +25,7 @@
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "npm test -- --watch",
-    "build": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs && npx tsc",
     "build:watch": "npm run build -- --watch",
     "build:types": "tsc --emitDeclarationOnly --declaration --project tsconfig.build.json"
   },
@@ -40,29 +40,13 @@
     "url": "https://github.com/jspsych/jsPsych/issues"
   },
   "homepage": "https://www.jspsych.org/latest/metadata",
-  "peerDependencies": {
-    "jspsych": ">=7.1.0"
-  },
   "devDependencies": {
-    "@jspsych/config": "^2.0.0",
-    "@jspsych/test-utils": "^1.1.2",
-    "@rollup/plugin-commonjs": "^26.0.1",
-    "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-typescript": "^11.1.6",
-    "@types/csv-parse": "^1.2.2",
     "@types/jest": "^29.5.12",
     "husky": "^9.0.11",
-    "rollup": "^2.79.1",
-    "rollup-plugin-node-polyfills": "^0.2.1",
-    "rollup-plugin-terser": "^7.0.2",
-    "ts-jest": "^29.1.4"
+    "ts-jest": "^29.1.4",
+    "typescript": "^5.5.3"
   },
   "dependencies": {
-    "@chakra-ui/react": "^2.8.2",
-    "csv": "^6.3.9",
-    "csv-parse": "^5.5.6",
-    "react-icons": "^5.2.1",
-    "tsc": "^2.0.4",
-    "typescript": "^5.5.3"
+    "csv-parse": "^5.5.6"
   }
 }

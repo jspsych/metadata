@@ -1,5 +1,5 @@
 import Upload from "./pages/Upload.tsx";
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata from '@jspsych/metadata';
 import ViewOptions from "./pages/ViewOptions.tsx";
 import { useState } from 'react';
 import './App.css'
