@@ -113,7 +113,7 @@ const promptProjectStructure = async (metadata) => {
 // should only do if generating 
 const promptName = async () => {
   const project_name = await input({
-    message: 'What would you like to name the project?',
+    message: 'What would you like to name the project? This will be used for the metadata and to name the directory.',
   });
 
   return project_name;
@@ -145,7 +145,8 @@ const main = async () => {
   if (new_project) {
     const project_name = await promptName();
     project_path = `${project_path}/${project_name}`;
-    createDirectoryWithStructure(project_path); // change the message
+    createDirectoryWithStructure(project_path); // May want to include this with project_name therefore will prevent errors
+    metadata.setMetadataField("name", project_name); // same as above
   }
   await promptData(metadata, verbose, `${project_path}/data`); 
   
