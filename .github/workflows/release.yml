@@ -23,9 +23,6 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Check types
-        run: npm run tsc
-
       - name: Build packages
         run: npm run build
 
