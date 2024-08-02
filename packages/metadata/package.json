@@ -25,7 +25,7 @@
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "npm test -- --watch",
-    "build": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs && npx tsc",
     "build:watch": "npm run build -- --watch",
     "build:types": "tsc --emitDeclarationOnly --declaration --project tsconfig.build.json"
   },
