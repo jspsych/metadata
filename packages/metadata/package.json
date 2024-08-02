@@ -1,6 +1,6 @@
 {
   "name": "@jspsych/metadata",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "jsPsych package for creating and customizing metadata according to Psych-DS standards.",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
         "default": "./dist/index.esm.js"
       },
       "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts" 
+      "types": "./dist/index.d.ts"
     }
   },
   "typings": "dist/index.d.ts",
