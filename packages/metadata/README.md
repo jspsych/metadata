@@ -19,7 +19,7 @@ await metadata.generate(properties);
 ----------|------|------------
 | data      | object, string | The data file that was generated from running a JsPsych experiment. This can be passed in as string Json, string CSV or as an object. Depending on the type of data will need to change the CSV flag. |
 | metadata  | object | Optional metadata that can be passed in to adjust the output of the generate method. Each key-value pair will map to a parameter field, and will either overwite existing data or create new fields. All normal fields can be adjusted as entries within the object, but for authors and variables the entries need to be nested within an "author" or "variables" key mapping. Similarily, updating the descriptions of variables needs to be a nested map. |
-| csv       | boolean|  Optional flag that should be marked true if data is in a string csv format. If passing in as an object or Json should left false. |
+| format       | boolean|  Optional flag that should be marked 'csv' if data is in a string csv format. If passing in as an object can specify as 'json' or leave blank. |
 
 ### Return value
 
@@ -155,4 +155,43 @@ const metadata_options = {
 }
 
 await metadata.updateMetadata(metadata_options);
+```
+
+---
+
+## metadata.displayMetadata
+
+```javascript
+var metadata = new jsPsychMetadata();
+metadata.displayMetadata(properties);
+```
+### Parameters
+
+| Parameter | Type | Description
+----------|------|------------
+| display_element  | HTMLElement | This is the element of the screen that should always be passed in from JsPsych.getDisplayElement(). This lets you display the metadata in addition to the data that is generated after an experiment. |
+
+### Return value
+
+Returns nothing.
+
+### Description
+
+This method allows you to display the metadata by appending it to the end of the screen.
+
+### Examples
+
+#### Calling displayMetadata after running an experiment and adding fields
+
+```javascript
+var metadata = new jsPsychMetadata();
+
+var jsPsych = initJsPsych({
+  on_finish: async function() {      
+    await metadata.generate(jsPsych.data.get().json());
+    jsPsych.data.displayData();  
+    metadata.displayMetadata(jsPsych.getDisplayElement());
+  },
+  default_iti: 250
+});
 ```
