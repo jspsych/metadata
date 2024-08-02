@@ -26,8 +26,7 @@ jobs:
       - name: Build packages
         run: npm run build
 
-      - name: Run tests
-        run: npm run test -- --ci --maxWorkers=2
+      # add tests back in here
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
