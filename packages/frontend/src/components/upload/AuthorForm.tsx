@@ -12,9 +12,9 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata }) => {
   const [authors, setAuthors] = useState<(AuthorFields)[]>(
     jsPsychMetadata.getAuthorList().map((author: AuthorFields | string) => {
       if (typeof author === 'string') {
-        return { name: author, identifier: '' };
+        return { name: author, identifier: '', oldName: author }; // need to check oldName with saving
       } else {
-        return author;
+        return { ...author, oldName: author["name"] }; // need to check oldName when saving
       }
     })
   );
@@ -29,6 +29,10 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata }) => {
     const newAuthors = [...authors];
     newAuthors[index].identifier = value;
     setAuthors(newAuthors);
+  };
+
+  const addEmptyAuthor = () => {
+    setAuthors([...authors, { name: '', identifier: '' }]);
   };
 
   return (
@@ -54,7 +58,10 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata }) => {
           </label>
         </div>
       ))}
-      <button onClick={() => console.log(authors)}>testing</button>
+      <button onClick={() => {
+        console.log(authors);
+        addEmptyAuthor();
+      }}>testing</button>
     </div>
   );
 };
