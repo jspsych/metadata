@@ -4,7 +4,8 @@ import { saveTextToFile, parseCSV } from "./utils.js";
 import { VariableFields, VariablesMap } from "./VariablesMap.js";
 
 /**
- * Class that handles the storage, update and retrieval of Metadata.
+ * Class that handles the storage, update and retrieval of metadata according to Psych-DS
+ * standards.
  *
  * @export
  * @class JsPsychMetadata
@@ -25,7 +26,7 @@ export default class JsPsychMetadata {
    * @type {AuthorsMap}
    */
   private authors: AuthorsMap;
-  /**;
+  /**
    * Custom class that stores and handles the storage, update and retrieval of variable metadata.
    *
    * @private
@@ -33,8 +34,23 @@ export default class JsPsychMetadata {
    */
   private variables: VariablesMap;
 
+  /**
+   * Custom class that handles the fetching and retrieval of the metadata information from the 
+   * default descriptions defined in the javadoc of the plugins and extensions. Caches the data
+   * to save time and fetching. 
+   *
+   * @private
+   * @type {PluginCache}
+   */
   private pluginCache: PluginCache;
 
+  /**
+   * Initializes a set that contains the fields that are to be ignored, so can help with later 
+   * logic when generating data.
+   *
+   * @private
+   * @type {*}
+   */
   private ignored_fields = new Set([
     "trial_type",
     "trial_index",
@@ -42,7 +58,14 @@ export default class JsPsychMetadata {
     "extenstion_type",
     "extension_version",
   ]);
-
+  
+  /**
+   * Verbose mode that is used in by the tools that call this to print fetching messages and 
+   * reading messages.
+   *
+   * @private
+   * @type {boolean}
+   */
   private verbose: boolean = false;
 
   /**
@@ -86,10 +109,21 @@ export default class JsPsychMetadata {
     return this.metadata[key];
   }
 
+  /**
+   * Checks if the metadata field exists in the metadata.
+   *
+   * @param {string} key - Key of metadata being checked.
+   * @returns {*} - Boolean
+   */
   containsMetadataField(key: string) : any {
     return key in this.metadata;
   }
 
+  /**
+   * Deletes a metadata from the metadata if it exists. 
+   *
+   * @param {string} key - Name of field to be deleted
+   */
   deleteMetadataField(key: string): void{
     if (key in this.metadata) {
       delete this.metadata[key];
@@ -140,10 +174,20 @@ export default class JsPsychMetadata {
     return this.authors.getAuthor(name);
   }
 
+  /**
+   * Returns a list of the authors defined in the metadata.
+   *
+   * @returns {(string | AuthorFields)[]} - Authors
+   */
   getAuthorList(): (string | AuthorFields)[] {
     return this.authors.getList();
   }
 
+  /**
+   * Deletes an author from the authorsField.
+   *
+   * @param {string} name - Name of author to be deleted.
+   */
   deleteAuthor(name: string) {
     this.authors.deleteAuthor(name);
   }
@@ -183,6 +227,12 @@ export default class JsPsychMetadata {
     return this.variables.getVariable(name);
   }
 
+  /**
+   * Allows you to check if the name of the variable exists in variablesMap.
+   *
+   * @param {string} name - Name of variable
+   * @returns {boolean} - Does variable exist in variables
+   */
   containsVariable(name: string): boolean {
     return this.variables.containsVariable(name);
   }
@@ -271,7 +321,8 @@ export default class JsPsychMetadata {
   }
 
   /**
-   * Generates observations based on the input data and processes optional metadata.
+   * Generates observations based on the input data and processes optional metadata. This is the
+   * outer wrapper function that should called and handles the logic of reading individual observations.
    *
    * This method accepts data, which can be an array of observation objects, a JSON string,
    * or a CSV string. If the data is in CSV format, set the `csv` parameter to `true` to
@@ -290,7 +341,6 @@ export default class JsPsychMetadata {
 
     if (ext === 'csv') {
       parsed_data = await parseCSV(data);
-      // console.log("POST PARSECSV:", parsed_data);
     }
 
     if (ext === 'json') {
@@ -317,9 +367,24 @@ export default class JsPsychMetadata {
       await this.generateObservation(observation);
     }
     
-    await this.updateMetadata(metadata); // can refactor later
+    await this.updateMetadata(metadata); 
   }
 
+  /**
+   * This function iterates through the entire row of data stepping through one column at a time.
+   * It is designed to only be accessed through calling generate on an entire data file. 
+   * Searching for plugin, plugin version, extension, extension it then calls the 
+   * helper methods that process the individual row of data. There is limited error chcking and 
+   * type conversion from csv due to the way that csv data is represented as strings.
+   * This method also handles extensions, declaring them if necessary and iterate through each.
+   * This method also skips generating descriptions the variables that should the same for 
+   * all variables and instead updates their fields. 
+   *
+   * @private
+   * @async
+   * @param {*} observation Dictionary that represent one row of data
+   * @returns {*}
+   */
   private async generateObservation(observation) {
     // variables can be thought of mapping of one column in a row
     const version = observation["plugin_version"] ? observation["plugin_version"] : null; // changed
@@ -365,7 +430,21 @@ export default class JsPsychMetadata {
     }
   }
 
-  // need to update the type with the different types that are possible?
+
+  /**
+   * Iterates through one single datapoint which can be thought of as one row-column pair. 
+   * This method keeps in mind the versionType or pluginType and uses this to generate the 
+   * metadata. 
+   *
+   * @private
+   * @async
+   * @param {*} variable - The column name
+   * @param {*} value - The value at the row-column mapping that is being used to update fields
+   * @param {*} pluginType - The type of the plugin that is used for the fetching (can also be extension if extension?=true)
+   * @param {*} version - The version of the plugin that is not necessary but is used post v8 to ensure accurate fetching
+   * @param {?*} [extension] - This boolean determines whether is a extension to change fetching
+   * @returns {*}
+   */
   private async generateMetadata(variable, value, pluginType, version, extension?) {
     if (!pluginType) { 
       return;
@@ -394,6 +473,15 @@ export default class JsPsychMetadata {
     this.updateFields(variable, value, type);
   }
 
+  /**
+   * This calls an update to the individual fields of the metadata, updating levels and 
+   * minValue and maxValue depeneding on the variable type.
+   *
+   * @private
+   * @param {*} variable - The column of the data and name of variable
+   * @param {*} value - The datapoint 
+   * @param {*} type - The type of the datapoint
+   */
   private updateFields(variable, value, type) {
     // calls updates where updateVariable handles logic
     if (type === "number") {
