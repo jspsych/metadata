@@ -577,6 +577,8 @@ export default class JsPsychMetadata {
    *
    * @param {string} pluginType - The type of the plugin for which information is to be fetched.
    * @param {string} variableName - The name of the variable for which information is to be fetched.
+   * @param {string} version - The version of the plugin or extension
+   * @param {string} extension - Boolean indicating if pluginType refers to extension
    * @returns {Promise<string|null>} The description of the plugin variable if found, otherwise null.
    * @throws Will throw an error if the fetch operation fails.
    */

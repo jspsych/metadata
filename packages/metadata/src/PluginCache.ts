@@ -1,3 +1,12 @@
+/**
+ * This class handles the fetching and extraction of description field data about variables
+ * using plugin and extension type. It caches and parses it efficiently to speed up the metadata generation
+ * process.
+ *
+ * @export
+ * @class PluginCache
+ * @typedef {PluginCache}
+ */
 export class PluginCache {
   private pluginFields: { [key: string]: {} };
 
@@ -12,10 +21,13 @@ export class PluginCache {
    *
    * @param {string} pluginType - The type of the plugin for which information is to be fetched.
    * @param {string} variableName - The name of the variable for which information is to be fetched.
+   * @param {string} version - The name of the variable for which information is to be fetched. 
+   * @param {boolean} verbose - Indicates whether should run with verbose mode
+   * @param {boolean} [extension] - An optional flag to indicate if an extension should be used.
    * @returns {Promise<string|null>} The description of the plugin variable if found, otherwise null.
    * @throws Will throw an error if the fetch operation fails.
    */
-  async getPluginInfo(pluginType: string, variableName: string, version, verbose, extension?) {
+  async getPluginInfo(pluginType: string, variableName: string, version: string, verbose: boolean, extension?: boolean) {
     // fetches if it doesn't exist
     if (!(pluginType in this.pluginFields)) {
       const fields = await this.generatePluginFields(pluginType, version, verbose, extension);
@@ -31,7 +43,19 @@ export class PluginCache {
       };
   }
 
-  private async generatePluginFields(pluginType: string, version, verbose, extension?) {
+  /**
+   * Method that handles the generation of the fields and calls helpers methods that 
+   * fetch and parse the plugin data.
+   *
+   * @private
+   * @async
+   * @param {string} pluginType - Name of plugin or extension to fetch.
+   * @param {string} version - String version to fetch
+   * @param {boolean} verbose - Boolean indicating verbose mode
+   * @param {?boolean} [extension] - Optional flag if pluginType is extension
+   * @returns {unknown}
+   */
+  private async generatePluginFields(pluginType: string, version: string, verbose: boolean, extension?: boolean) {
     const script = await this.fetchScript(pluginType, version, verbose, extension);
 
     // parses if they exist
@@ -49,7 +73,17 @@ export class PluginCache {
     }
   }
 
-  private generateUnpkg(pluginType, version, extension?){
+  /**
+   * The method that generates the unpkg links based on whether extension vs plugin and the 
+   * specific type.
+   *
+   * @private
+   * @param {string} pluginType - Name of plugin or extension to fetch
+   * @param {string} version - String version used
+   * @param {?boolean} [extension] - Optional flag if pluginType is extension
+   * @returns {string}
+   */
+  private generateUnpkg(pluginType: string, version: string, extension?: boolean){
     // webgazer is the broken one
     if (extension){
       if (version){
@@ -65,7 +99,19 @@ export class PluginCache {
     else return `https://unpkg.com/@jspsych/plugin-${pluginType}/src/index.ts`; // most common case - plugin with no version
   }
 
-  private async fetchScript(pluginType: string, version: string, verbose, extension?: boolean) {
+  /**
+   * Fetches the actual script text content from unpkg. Calls the method to generate the link 
+   * and then handles error checking and fetching.
+   *
+   * @private
+   * @async
+   * @param {string} pluginType - The plugin or extension name to be fetched
+   * @param {string} version - The string version of the plugin
+   * @param {boolean} verbose - Boolean indicating verbose mode
+   * @param {?boolean} [extension] - Whether pluginType is extension
+   * @returns {unknown}
+   */
+  private async fetchScript(pluginType: string, version: string, verbose: boolean, extension?: boolean) {
     const unpkgUrl = this.generateUnpkg(pluginType, version, extension);
 
     if (verbose) console.log("-> fetching information for [", pluginType, "] from ->", unpkgUrl);
@@ -86,7 +132,14 @@ export class PluginCache {
     }
   }
 
-  // written with the help of chatgpt, try to parse javadoc and 
+  /**
+   * Function that parses javadoc and creates the object containing all the parsed descriptions 
+   * with their corresponding names.
+   *
+   * @private
+   * @param {string} script - The script text content of the fetching.
+   * @returns {{}}
+   */
   private parseJavadocString(script: string) {
     const dataString = script.match(/data:\s*{([\s\S]*?)};\s*/).join();
     const result = {};

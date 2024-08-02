@@ -113,6 +113,11 @@ export class AuthorsMap {
     }
   }
 
+  /**
+   * Deletes the author if it exists, printing out warning if doesn't exist. 
+   *
+   * @param {string} author_name - Name of author to be deleted
+   */
   deleteAuthor(author_name: string): void {
     if (author_name in this.authors) {
       delete this.authors[author_name];
