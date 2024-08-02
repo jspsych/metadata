@@ -15,7 +15,7 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
       if (typeof author === 'string') {
         return { name: author, identifier: '', oldName: author }; // need to check oldName with saving
       } else {
-        return { ...author, oldName: author["name"] }; // need to check oldName when saving
+        return { ...author, identifier: '', oldName: author["name"] }; // need to check oldName when saving
       }
     })
   );
@@ -39,10 +39,34 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
   };
 
   const handleSubmit = () => {
+    for (const author of authors) {
+      console.log("handling author:", author);
+
+      const name = author['name'];
+      const identifier = author['identifier'];
+      const oldName = ("oldName" in author) ? author["oldName"] : "";
+      const existed = ("oldName" in author);
+
+      if (name === "") continue; // skip if no name
+
+      if (!existed) { // no old name means can just add the two new fields
+        if (identifier === "") jsPsychMetadata.setAuthor({ "name": name}); 
+        else jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier});
+      }
+      else { // 1. need to check if name changed to delete 2. need to hanlde oldfields
+        const addAuthor = "this is where need to process fields and iterate through them checking if empty or not";
+
+        if (oldName === name){ // case where need handle old Fields
+          // add author
+        } else { // case where delete
+          jsPsychMetadata.deleteAuthor(author["oldName"] as string); // weird type casting where just for this need to break
+          // add author
+        }
+      }
+
+    }
     // iterate thrugh authors figuring out whether have to delete or not based on old name and setting them to equal whatever 
     // setting is okay because will overwrite the old script
-    console.log("clicked submit");
-
     handleScreenChange('data', 'skip');
     updateMetadataString();
   }
