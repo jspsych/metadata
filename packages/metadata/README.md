@@ -5,7 +5,7 @@ The metadata module contains functions for interacting metadata according to [Ps
 You can import the metadata module by including this line at the top of your html.
 
 ```html
-<script>update</script>
+<script src="https://unpkg.com/@jspsych/metadata/dist/index.iife.js"></script>
 ```
 
 ---

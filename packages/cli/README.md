@@ -6,9 +6,11 @@ The metadata-cli module contains commands for interacting with the metadata-modu
 
 ## CLI with prompting (recommended)
 
-To run the CLI with prompting you can call ```npx jspsych-metadata-cli```. You can also run it through the repository by following the steps 1-3 below and then calling ```npm run build``` followed by ```npx .```. 
+To run the CLI with prompting you can call ```npm i @jspsych/metadata-cli```. This is the recommended way of running the package.
 
 This will then prompt you through the various CLI options, this includes generating from scratch or using an existing file. There are descriptions of how the files and directories should be structured below. 
+
+You can also run it through the repository by following the steps 1-3 below and then calling ```npm run build``` followed by ```npx .```. 
 
 ## CLI without prompting 
 
