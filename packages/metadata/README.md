@@ -2,9 +2,13 @@
 
 The metadata module contains functions for interacting metadata according to [Psych-DS standards](https://psych-ds.github.io/). To interact with the metadata, we strongly recommend you call the generate method on the experiment data then adjust fields accordingly. The generate method uses documentation for plugins and extensions created in the main JsPsych repo to create default descriptions. This works best for experiments run in v8+, but will also work for old experimental data.
 
----
+You can import the metadata module by including this line at the top of your html.
 
-TODO: Figure out where to include asynchronous descriptions of functions.
+```html
+<script>update</script>
+```
+
+---
 
 ## metadata.generate 
 
