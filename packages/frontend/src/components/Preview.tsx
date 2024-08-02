@@ -5,7 +5,7 @@ interface PreviewProps {
   metadataString: string;
 } 
 
-const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, metadataString } ) => {
+const Preview: React.FC<PreviewProps> = ( { metadataString } ) => {
   return (
     <div className="App">
       <h2>Metadata preview</h2>
