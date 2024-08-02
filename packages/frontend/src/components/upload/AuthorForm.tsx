@@ -54,7 +54,7 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
         else jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier});
       }
       else { // 1. need to check if name changed to delete 2. need to hanlde oldfields
-        const addAuthor = "this is where need to process fields and iterate through them checking if empty or not";
+        // const addAuthor = "this is where need to process fields and iterate through them checking if empty or not";
 
         if (oldName === name){ // case where need handle old Fields
           // add author
