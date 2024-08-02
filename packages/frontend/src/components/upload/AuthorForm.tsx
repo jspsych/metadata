@@ -38,6 +38,15 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
     setAuthors([...authors, { name: '', identifier: '' }]);
   };
 
+  const handleSubmit = () => {
+    // iterate thrugh authors figuring out whether have to delete or not based on old name and setting them to equal whatever 
+    // setting is okay because will overwrite the old script
+    console.log("clicked submit");
+
+    handleScreenChange('data', 'skip');
+    updateMetadataString();
+  }
+
   return (
     <div>
       <h2>Authors</h2>
@@ -64,7 +73,8 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
       <button onClick={() => {
         console.log(authors);
         addEmptyAuthor();
-      }}>testing</button>
+      }}>Add Author</button>
+      <button onClick={handleSubmit}>Submit</button>
     </div>
   );
 };
