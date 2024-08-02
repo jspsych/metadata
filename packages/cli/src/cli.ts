@@ -1,4 +1,4 @@
-import JsPsychMetadata from "metadata";
+import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToFile, generatePath } from "./data.js";
 
 const metadata = new JsPsychMetadata();

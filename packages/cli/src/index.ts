@@ -3,7 +3,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { input, select } from '@inquirer/prompts';
-import JsPsychMetadata from "metadata";
+import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
 import { validateDirectory, validateJson } from './validateFunctions.js';
 import { createDirectoryWithStructure } from './handleFiles.js';
