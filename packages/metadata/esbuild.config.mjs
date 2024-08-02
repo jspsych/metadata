@@ -60,8 +60,11 @@ await esbuild.build({
   bundle: true,
   outfile: 'dist/index.iife.js',
   format: 'iife',
-  globalName: 'JsPsychMetadata',  // Replace with your desired global name
+  globalName: 'JsPsychMetadata',  // Ensure this matches the export name in your entry file
   alias: {
     'csv-parse': 'csv-parse/browser/esm',
+  },
+  footer: {
+    js: 'this.JsPsychMetadata = this.JsPsychMetadata.default || this.JsPsychMetadata;',
   },
 }).catch(() => process.exit(1));
