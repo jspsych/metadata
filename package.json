@@ -6,7 +6,9 @@
   ],
   "scripts": {
     "test": "jest",
-    "build": "npm run build --workspaces --platform=node"
+    "build": "npm run build --workspaces --platform=node",
+    "changeset:version": "changeset version",
+    "changeset:publish": "npm run build && changeset publish"
   },
   "repository": {
     "type": "git",
