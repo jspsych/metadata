@@ -1,6 +1,6 @@
 import JsPsychMetadata from 'metadata';
 import React, { useState } from 'react';
-import Trash from '../assets/trash.svg'
+import Trash from '../../assets/trash.svg'
 
 type ListPopup = {
   jsPsychMetadata: JsPsychMetadata;

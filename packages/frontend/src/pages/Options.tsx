@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import FieldPopup, { FieldFormData } from '../components/FieldPopup';
-import AuthorPopup, { AuthorFormData } from '../components/AuthorPopup';
-import VariablePopup, { VariableFormData } from '../components/VariablePopup';
-import ListPopup from '../components/ListPopup';
+import FieldPopup, { FieldFormData } from '../components/popups/FieldPopup';
+import AuthorPopup, { AuthorFormData } from '../components/popups/AuthorPopup';
+import VariablePopup, { VariableFormData } from '../components/popups/VariablePopup';
+import ListPopup from '../components/popups/ListPopup';
 import JsPsychMetadata, { AuthorFields, VariableFields } from 'metadata';
 
 interface OptionsProps {

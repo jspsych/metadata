@@ -36,7 +36,7 @@ const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadata
     if (formData.author_name !== "") jsPsychMetadata.setAuthor({ "name": formData.author_name});
 
     updateMetadataString();
-    handleScreenChange('data', 'skip');
+    handleScreenChange('author', 'Save');
   };
 
   return (

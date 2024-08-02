@@ -1,8 +1,9 @@
-import UploadMetadata from '../components/UploadMetadata.tsx';
-import UploadData from '../components/UploadData.tsx';
+import UploadMetadata from '../components/upload/UploadMetadata.tsx';
+import UploadData from '../components/upload/UploadData.tsx';
 import JsPsychMetadata from 'metadata';
+import AuthorForm from '../components/upload/AuthorForm.tsx';
 import { useState } from 'react';
-import PromptForm from '../components/PromptForm.tsx';
+import PromptForm from '../components/upload/PromptForm.tsx';
 
 interface UploadProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -25,8 +26,11 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
         case 'form':
           setPageNumber(2);
           break;
-        case 'data':
+        case 'author':
           setPageNumber(3);
+          break;
+        case 'data':
+          setPageNumber(4);
       }
     }
 
@@ -39,6 +43,8 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
         return <UploadMetadata jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange}/>
       case 'form':
         return <PromptForm jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange}/>;
+      case 'author': 
+        return <AuthorForm jsPsychMetadata={jsPsychMetadata} />
       case 'data':
         return <UploadData jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} handleScreenChange={handleScreenChange} />
     } 
@@ -57,6 +63,15 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
                </button>; 
       case 'form':
         return; // this will be handled internally to tie behavior with the form
+      case 'author':
+        return <button 
+                className="upload-continue" 
+                onClick={() => {
+                  handleScreenChange('data');
+                  setButtonText('Skip')
+                }}>
+                  {buttonText}
+               </button>; 
       case 'data':
         return <button 
                   className="upload-continue" 
@@ -72,7 +87,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
   return (
     <>
       <div className="uploadPage">
-        <h2>{pageNumber}/3</h2>
+        <h2>{pageNumber}/4</h2>
         {renderPage()}
         {renderButton()}
       </div>
