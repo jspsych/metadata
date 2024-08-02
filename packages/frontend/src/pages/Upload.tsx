@@ -1,6 +1,6 @@
 import UploadMetadata from '../components/upload/UploadMetadata.tsx';
 import UploadData from '../components/upload/UploadData.tsx';
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata from '@jspsych/metadata';
 import AuthorForm from '../components/upload/AuthorForm.tsx';
 import { useState } from 'react';
 import PromptForm from '../components/upload/PromptForm.tsx';

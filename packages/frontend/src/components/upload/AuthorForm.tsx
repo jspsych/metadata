@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AuthorFields } from '../../../../metadata/dist/AuthorsMap';
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata from '@jspsych/metadata';
 
 interface AuthorFormProps {
   jsPsychMetadata: JsPsychMetadata;

@@ -1,4 +1,4 @@
-import JsPsychMetadata from "metadata"; 
+import JsPsychMetadata from "@jspsych/metadata"; 
 import Preview from "../components/Preview";
 import Options from "./Options";
 

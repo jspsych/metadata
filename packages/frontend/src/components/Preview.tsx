@@ -1,4 +1,4 @@
-import JsPsychMetadata from 'metadata';
+import JsPsychMetadata from '@jspsych/metadata';
 
 interface PreviewProps {
   jsPsychMetadata: JsPsychMetadata;
