@@ -45,7 +45,7 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
 
         const name = author['name'];
         const identifier = author['identifier'];
-        const oldName = ("oldName" in author) ? author["oldName"] : "";
+        const oldName: string = ("oldName" in author) ? author["oldName"] as string: "";
         const existed = ("oldName" in author);
 
         if (name === "") continue; // skip if no name
@@ -57,24 +57,22 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
                 jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier });
             }
         } else { 
-            // 1. need to check if name changed to delete 2. need to handle old fields
+            // cleaning up old fields
             const authorWithIndex = author as AuthorFields & Record<string, unknown>; // typecasting
             for (const key in authorWithIndex) { 
-              if (authorWithIndex[key] === "") {
-                  delete authorWithIndex[key];
+              if (authorWithIndex[key] === "" || key === "oldName") {
+                delete authorWithIndex[key];
               }
             }
 
-            if (oldName === name) { // case where need to handle old fields
-                // add author
-            } else { // case where delete
-                jsPsychMetadata.deleteAuthor(author["oldName"] as string); // weird type casting where just for this need to break
-                // add author
+            if (oldName !== name) {
+              jsPsychMetadata.deleteAuthor(oldName); // weird type casting where just for this need to break
             }
+
             jsPsychMetadata.setAuthor(authorWithIndex);
         }
     }
-    
+
     handleScreenChange('data', 'skip');
     updateMetadataString();
   }
@@ -82,10 +80,11 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
   return (
     <div>
       <h2>Authors</h2>
+      <p>The name field is required and any author missing the name field will not be added. This can be edited and authors can be added later.</p>
       {authors.map((author, index) => (
         <div key={index}>
           <label>
-            Name:
+            Name: <span style={{ color: 'red' }}>*</span>
             <input
               type="text"
               value={author.name}
