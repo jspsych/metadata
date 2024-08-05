@@ -38,35 +38,43 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
     setAuthors([...authors, { name: '', identifier: '' }]);
   };
 
+
   const handleSubmit = () => {
     for (const author of authors) {
-      console.log("handling author:", author);
+        console.log("handling author:", author);
 
-      const name = author['name'];
-      const identifier = author['identifier'];
-      const oldName = ("oldName" in author) ? author["oldName"] : "";
-      const existed = ("oldName" in author);
+        const name = author['name'];
+        const identifier = author['identifier'];
+        const oldName = ("oldName" in author) ? author["oldName"] : "";
+        const existed = ("oldName" in author);
 
-      if (name === "") continue; // skip if no name
+        if (name === "") continue; // skip if no name
 
-      if (!existed) { // no old name means can just add the two new fields
-        if (identifier === "") jsPsychMetadata.setAuthor({ "name": name}); 
-        else jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier});
-      }
-      else { // 1. need to check if name changed to delete 2. need to hanlde oldfields
-        // const addAuthor = "this is where need to process fields and iterate through them checking if empty or not";
+        if (!existed) { // no old name means can just add the two new fields
+            if (identifier === "") {
+                jsPsychMetadata.setAuthor({ "name": name });
+            } else {
+                jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier });
+            }
+        } else { 
+            // 1. need to check if name changed to delete 2. need to handle old fields
+            const authorWithIndex = author as AuthorFields & Record<string, unknown>; // typecasting
+            for (const key in authorWithIndex) { 
+              if (authorWithIndex[key] === "") {
+                  delete authorWithIndex[key];
+              }
+            }
 
-        if (oldName === name){ // case where need handle old Fields
-          // add author
-        } else { // case where delete
-          jsPsychMetadata.deleteAuthor(author["oldName"] as string); // weird type casting where just for this need to break
-          // add author
+            if (oldName === name) { // case where need to handle old fields
+                // add author
+            } else { // case where delete
+                jsPsychMetadata.deleteAuthor(author["oldName"] as string); // weird type casting where just for this need to break
+                // add author
+            }
+            jsPsychMetadata.setAuthor(authorWithIndex);
         }
-      }
-
     }
-    // iterate thrugh authors figuring out whether have to delete or not based on old name and setting them to equal whatever 
-    // setting is okay because will overwrite the old script
+    
     handleScreenChange('data', 'skip');
     updateMetadataString();
   }
