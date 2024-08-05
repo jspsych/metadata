@@ -158,17 +158,26 @@ html, body {
 /* .promptFormSurvey label {
 } */
 
-.promptFormSurvey input {
+.promptFormSurvey input, .authorInput {
   margin-left: 10px;
+  padding: 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
 .promptFormSubmit {
   width: fit-content;
+}
 
+.authorFormAddAuthors, .authorFormSubmit {
+  margin: 15px;
+}
+
+.authorLabel {
+  margin-left: 10px;
 }
 
 .pageDescription {
   margin-bottom: 32px;
 }
+

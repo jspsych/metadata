@@ -41,36 +41,36 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
 
   const handleSubmit = () => {
     for (const author of authors) {
-        console.log("handling author:", author);
+      console.log("handling author:", author);
 
-        const name = author['name'];
-        const identifier = author['identifier'];
-        const oldName: string = ("oldName" in author) ? author["oldName"] as string: "";
-        const existed = ("oldName" in author);
+      const name = author['name'];
+      const identifier = author['identifier'];
+      const oldName: string = ("oldName" in author) ? author["oldName"] as string: "";
+      const existed = ("oldName" in author);
 
-        if (name === "") continue; // skip if no name
+      if (name === "") continue; // skip if no name
 
-        if (!existed) { // no old name means can just add the two new fields
-            if (identifier === "") {
-                jsPsychMetadata.setAuthor({ "name": name });
-            } else {
-                jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier });
-            }
-        } else { 
-            // cleaning up old fields
-            const authorWithIndex = author as AuthorFields & Record<string, unknown>; // typecasting
-            for (const key in authorWithIndex) { 
-              if (authorWithIndex[key] === "" || key === "oldName") {
-                delete authorWithIndex[key];
-              }
-            }
-
-            if (oldName !== name) {
-              jsPsychMetadata.deleteAuthor(oldName); // weird type casting where just for this need to break
-            }
-
-            jsPsychMetadata.setAuthor(authorWithIndex);
+      if (!existed) { // no old name means can just add the two new fields
+        if (identifier === "") {
+            jsPsychMetadata.setAuthor({ "name": name });
+        } else {
+            jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier });
         }
+      } else { 
+        // cleaning up old fields
+        const authorWithIndex = author as AuthorFields & Record<string, unknown>; // typecasting
+        for (const key in authorWithIndex) { 
+          if (authorWithIndex[key] === "" || key === "oldName") {
+            delete authorWithIndex[key];
+          }
+        }
+
+        if (oldName !== name) {
+          jsPsychMetadata.deleteAuthor(oldName); // weird type casting where just for this need to break
+        }
+
+        jsPsychMetadata.setAuthor(authorWithIndex);
+      }
     }
 
     handleScreenChange('data', 'skip');
@@ -83,29 +83,31 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
       <p>The name field is required and any author missing the name field will not be added. This can be edited and authors can be added later.</p>
       {authors.map((author, index) => (
         <div key={index}>
-          <label>
+          <label className="authorLabel">
             Name: <span style={{ color: 'red' }}>*</span>
             <input
               type="text"
+              className="authorInput"
               value={author.name}
               onChange={(e) => handleNameChange(index, e.target.value)}
             />
           </label>
-          <label>
+          <label className="authorLabel">
             Identifier:
             <input
               type="text"
+              className="authorInput"
               value={author.identifier}
               onChange={(e) => handleIdentifierChange(index, e.target.value)}
             />
           </label>
         </div>
       ))}
-      <button onClick={() => {
+      <button className="authorFormAddAuthors" onClick={() => {
         console.log(authors);
         addEmptyAuthor();
       }}>Add Author</button>
-      <button onClick={handleSubmit}>Submit</button>
+      <button className="authorFormSubmit" onClick={handleSubmit}>Submit</button>
     </div>
   );
 };
