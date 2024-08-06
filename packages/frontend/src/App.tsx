@@ -8,7 +8,7 @@ import './App.css'
 function App() {
   const [jsPsychMetadata] = useState(new JsPsychMetadata()); // metadata objct
   const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata(), null, 2)); // this is the metadata string that willl keep track of metadata
-  const [ page, setPage ] = useState('upload'); // page logic
+  const [ page, setPage ] = useState('viewOptions'); // page logic, change back to upload when done working with preview page
   // const [ fileList, setFileList ] = useState<File[]>([]); -> this allows to download and save
 
   // whenever updates will just call pretty version 
