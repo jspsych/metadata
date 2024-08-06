@@ -27,6 +27,28 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, metadataString } ) 
     return res;
   }
 
+  const authors = () => {
+    var res = ""; 
+
+    for (const key in authorsList){
+      res += authorsList[key] + "\n";
+    }
+
+    return res;
+  }
+
+  // need to build out logic for how to increment thorugh these
+  const variables = () => {
+    var res = ""; 
+
+    // likely go through the fields and pick some that we want, and others that don't want
+    for (const key in variablesList){
+      res += variablesList[key] + "\n";
+    }
+
+    return res;
+  }
+
   return (
     <div className="App">
       <h2>Metadata preview</h2>
@@ -34,9 +56,12 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, metadataString } ) 
         <pre>
           {fields()}
         </pre>
-        {/* <pre>
-          {metadataString}
-        </pre> */}
+        <pre>
+          {authors()}
+        </pre>
+        <pre>
+          {variables()}
+        </pre>
       </div>    
     </div>
   )
