@@ -75,6 +75,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
     updateMetadataString(); // calls update to the UI string and is broken
   }
 
+    // can clean up setPopupType and setPopupData
   const renderPopup = () => {
     switch (popupType) {
       case 'list':
@@ -98,7 +99,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
         <button className="optionsButton" onClick={() => openPopup('list')}>Edit existing field</button>
         <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button>
         <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Download</button>
-        <button className="optionsButton" onClick={() => setPage('upload-data')}>Upload data</button>
+        <button className="optionsButton" onClick={() => setPage('upload-data')}>Upload additional data</button>
 
         {isPopupOpen && renderPopup()}
       {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button> */}

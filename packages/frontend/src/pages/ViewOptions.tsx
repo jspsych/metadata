@@ -15,7 +15,7 @@ const ViewOptions: React.FC<ViewOptionsProps> = ( {jsPsychMetadata, metadataStri
     <>
       <div className="viewPage">
         <div className="viewPageLeft">
-          <Preview jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} />
+          <Preview jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} updateMetadataString={updateMetadataString} />
         </div>
         <div className="viewPageRight">
           <Options jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} setPage={setPage}/>
