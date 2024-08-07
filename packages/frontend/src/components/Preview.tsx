@@ -13,9 +13,9 @@ interface PreviewProps {
 } 
 
 const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataString } ) => {
-  const [ metadataObject, setMetadataObject ] = useState<{ [key: string]: any }>(jsPsychMetadata.getUserMetadataFields()); // fields
-  const [ authorsList, setAuthorsList ] = useState(jsPsychMetadata.getAuthorList()); // authors
-  const [ variablesList, setVariablesList ] = useState(jsPsychMetadata.getVariableList()); // variables
+  const [ metadataFields, setMetadataFields ] = useState<{ [key: string]: any }>(jsPsychMetadata.getUserMetadataFields()); // fields
+  const [ authorsList, setAuthorsList ] = useState({author: jsPsychMetadata.getAuthorList()}); // authors
+  const [ variablesList, setVariablesList ] = useState({ variableMeasured: jsPsychMetadata.getVariableList()}); // variables
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState('');
@@ -77,7 +77,7 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
         return;
     }
 
-    // updateMetadataString(); // calls update to the UI string and is broken
+    updateState();
   }
 
   const renderPopup = () => {
@@ -96,41 +96,24 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
   };
 
   const updateState = () => {
-    setMetadataObject(jsPsychMetadata.getUserMetadataFields());
-    setAuthorsList(jsPsychMetadata.getAuthorList());
-    setVariablesList(jsPsychMetadata.getVariableList());
-  }
+    const newMetadataFields = jsPsychMetadata.getUserMetadataFields();
+    const newAuthorsList = { author: jsPsychMetadata.getAuthorList() };
+    const newVariablesList = { variableMeasured: jsPsychMetadata.getVariableList() };
 
-  const fields = () => {
-    var res = "";
-
-    for (const key in metadataObject){
-      res += key + ": " + metadataObject[key] + "\n";
+    if (JSON.stringify(metadataFields) !== JSON.stringify(newMetadataFields)) {
+      console.log("stringify metadatadatafields");
+      setMetadataFields(newMetadataFields);
     }
+    if (JSON.stringify(authorsList) !== JSON.stringify(newAuthorsList)) {
+      console.log("stringify author");
 
-    return res;
-  }
-
-  const authors = () => {
-    var res = ""; 
-
-    for (const key in authorsList){
-      res += authorsList[key] + "\n";
+      setAuthorsList(newAuthorsList);
     }
+    if (JSON.stringify(variablesList) !== JSON.stringify(newVariablesList)) {
+      console.log("stringify var");
 
-    return res;
-  }
-
-  // need to build out logic for how to increment thorugh these
-  const variables = () => {
-    var res = ""; 
-
-    // likely go through the fields and pick some that we want, and others that don't want
-    for (const key in variablesList){
-      res += JSON.stringify(variablesList[key]) + "\n";
+      setVariablesList(newVariablesList);
     }
-
-    return res;
   }
 
   return (
@@ -139,17 +122,16 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
       <div>
         <h3>Fields</h3>
         <pre>
-          {fields()}
+          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={metadataFields}/>
         </pre>
         <h3>Authors</h3>
         <pre>
-          {authors()}
+          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ authorsList }/>
         </pre>
         <h3>Variables</h3>
         <pre>
-          {variables()}
+          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ variablesList }/>
         </pre>
-        <ListItems jsPsychMetadata={jsPsychMetadata} setPopupData={setPopupData} setPopupType={setPopupType} updateMetadataString={updateMetadataString} openPopup={openPopup} closePopup={closePopup}/>
         {isPopupOpen && renderPopup()}
       </div>    
     </div>
