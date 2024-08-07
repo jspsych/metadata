@@ -98,7 +98,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
         <button className="optionsButton" onClick={() => openPopup('list')}>Edit existing field</button>
         <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button>
         <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Download</button>
-        <button className="optionsButton" onClick={() => setPage('upload')}>Upload data</button>
+        <button className="optionsButton" onClick={() => setPage('upload-data')}>Upload data</button>
 
         {isPopupOpen && renderPopup()}
       {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button> */}

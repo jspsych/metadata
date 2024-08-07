@@ -9,13 +9,14 @@ interface UploadProps {
   jsPsychMetadata: JsPsychMetadata;
   setPage: (s: string) => void;
   updateMetadataString: () => void;
+  startScreen?: string; // optional parameter to determien which of upload screens begins at
 } 
 
-const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetadataString }) => {
-  const [ dataScreen, setDataScreen] = useState('metadata');
+const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetadataString, startScreen }) => {
+  const [ dataScreen, setDataScreen] = useState(startScreen ? startScreen: 'metadata');
   const [ buttonText, setButtonText ] = useState('Skip');
-  const [ pageNumber, setPageNumber ] = useState<number>(1);
-
+  const [ pageNumber, setPageNumber ] = useState<number>(startScreen ? 4 : 1); // bad way to write, but fixes immediate logic of displayData
+ 
   const handleScreenChange = (newPage?: string, newButtonText?: string) => {
     if (newPage !== undefined){ 
       setDataScreen(newPage);

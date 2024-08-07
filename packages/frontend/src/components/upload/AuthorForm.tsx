@@ -66,7 +66,7 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
         }
 
         if (oldName !== name) {
-          jsPsychMetadata.deleteAuthor(oldName); // weird type casting where just for this need to break
+          jsPsychMetadata.deleteAuthor(oldName); 
         }
 
         jsPsychMetadata.setAuthor(authorWithIndex);
