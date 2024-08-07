@@ -5,6 +5,7 @@ import AuthorPopup, { AuthorFormData } from './popups/AuthorPopup';
 import VariablePopup, { VariableFormData } from './popups/VariablePopup';
 import ListPopup from '../components/popups/ListPopup';
 import ListItems from './ListItems';
+import Plus from '../assets/plus.svg';
 
 interface PreviewProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -120,7 +121,12 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
     <div className="App">
       <h2>Metadata preview</h2>
       <div>
-        <h3>Fields</h3>
+        <div className='preview-header'>
+          <h3>Fields</h3>
+          <button className="optionsButton" onClick={() => openPopup('field')}>
+            <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
+          </button>
+        </div>
         <pre>
           <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={metadataFields}/>
         </pre>
