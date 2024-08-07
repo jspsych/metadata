@@ -8,9 +8,10 @@ import JsPsychMetadata, { AuthorFields, VariableFields } from '@jspsych/metadata
 interface OptionsProps {
   jsPsychMetadata: JsPsychMetadata;
   updateMetadataString: () => void;
+  setPage: (s: string) => void;
 }
 
-const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataString } ) => {
+const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataString, setPage } ) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState('');
   const [popupData, setPopupData] = useState<any>({}); // State to hold popup-specific data
@@ -96,7 +97,8 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
         <p>It is highly advised you enter author information and edit the title </p>
         <button className="optionsButton" onClick={() => openPopup('list')}>Edit existing field</button>
         <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button>
-        <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Save metadata locally</button>
+        <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Download</button>
+        <button className="optionsButton" onClick={() => setPage('upload')}>Upload data</button>
 
         {isPopupOpen && renderPopup()}
       {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button> */}

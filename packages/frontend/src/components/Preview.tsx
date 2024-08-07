@@ -43,7 +43,7 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, metadataString } ) 
 
     // likely go through the fields and pick some that we want, and others that don't want
     for (const key in variablesList){
-      res += variablesList[key] + "\n";
+      res += JSON.stringify(variablesList[key]) + "\n";
     }
 
     return res;
@@ -53,12 +53,15 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, metadataString } ) 
     <div className="App">
       <h2>Metadata preview</h2>
       <div>
+        <h3>Fields</h3>
         <pre>
           {fields()}
         </pre>
+        <h3>Authors</h3>
         <pre>
           {authors()}
         </pre>
+        <h3>Variables</h3>
         <pre>
           {variables()}
         </pre>

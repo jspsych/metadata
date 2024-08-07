@@ -6,9 +6,10 @@ interface ViewOptionsProps {
   jsPsychMetadata: JsPsychMetadata;
   metadataString: string;
   updateMetadataString: () => void;
+  setPage: (s: string) => void;
 }
 
-const ViewOptions: React.FC<ViewOptionsProps> = ( {jsPsychMetadata, metadataString, updateMetadataString } ) => {
+const ViewOptions: React.FC<ViewOptionsProps> = ( {jsPsychMetadata, metadataString, updateMetadataString, setPage } ) => {
 
   return ( 
     <>
@@ -17,7 +18,7 @@ const ViewOptions: React.FC<ViewOptionsProps> = ( {jsPsychMetadata, metadataStri
           <Preview jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} />
         </div>
         <div className="viewPageRight">
-          <Options jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString}/>
+          <Options jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} setPage={setPage}/>
         </div>
       </div>
     </>
