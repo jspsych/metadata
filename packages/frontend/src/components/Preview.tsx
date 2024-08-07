@@ -123,19 +123,28 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
       <div>
         <div className='preview-header'>
           <h3>Fields</h3>
-          <button className="optionsButton" onClick={() => openPopup('field')}>
+          <button className="previewButton" onClick={() => openPopup('field')}>
             <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
           </button>
         </div>
         <pre>
           <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={metadataFields}/>
         </pre>
-        <h3>Authors</h3>
+        <div className='preview-header'>
+          <h3>Authors</h3>
+          <button className="previewButton" onClick={() => openPopup('author')}>
+            <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
+          </button>
+        </div>
         <pre>
           <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ authorsList }/>
         </pre>
-        <h3>Variables</h3>
-        <pre>
+        <div className='preview-header'>
+          <h3>Variables</h3>
+          <button className="previewButton" onClick={() => openPopup('variables')}>
+            <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
+          </button>
+        </div>        <pre>
           <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ variablesList }/>
         </pre>
         {isPopupOpen && renderPopup()}
