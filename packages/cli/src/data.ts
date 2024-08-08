@@ -158,7 +158,6 @@ export const loadMetadata = async (metadata, filePath) => {
 
     if (fileName === "dataset_description.json"){
       metadata.loadMetadata(content); 
-      console.log("\nContents of dataset_description.json:\n", content)
       return true;
     }
     else console.error("dataset_description.json is not found at path:", filePath);
