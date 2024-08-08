@@ -22,6 +22,7 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
   const [popupType, setPopupType] = useState('');
   const [popupData, setPopupData] = useState<any>({}); // State to hold popup-specific data
 
+  // can use this to replace setPopupType and setPopupData
   const openPopup = (type: string, data?: any) => {
     setPopupType(type);
     setIsPopupOpen(true);
@@ -112,7 +113,6 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
     }
     if (JSON.stringify(variablesList) !== JSON.stringify(newVariablesList)) {
       console.log("stringify var");
-
       setVariablesList(newVariablesList);
     }
   }
@@ -128,7 +128,7 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
           </button>
         </div>
         <pre>
-          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={metadataFields}/>
+          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={metadataFields} updateState={updateState}/>
         </pre>
         <div className='preview-header'>
           <h3>Authors</h3>
@@ -137,7 +137,7 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
           </button>
         </div>
         <pre>
-          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ authorsList }/>
+          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ authorsList } updateState={updateState}/>
         </pre>
         <div className='preview-header'>
           <h3>Variables</h3>
@@ -145,7 +145,7 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
             <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
           </button>
         </div>        <pre>
-          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ variablesList }/>
+          <ListItems jsPsychMetadata={jsPsychMetadata} updateMetadataString={updateMetadataString} openPopup={openPopup} data={ variablesList } updateState={updateState}/>
         </pre>
         {isPopupOpen && renderPopup()}
       </div>    

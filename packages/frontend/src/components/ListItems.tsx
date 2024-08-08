@@ -7,6 +7,7 @@ type ListItemsProps = {
   updateMetadataString: () => void;
   openPopup: (type: string, data?: any) => void;
   data: Record<string, any>;
+  updateState: () => void;
 }
 
 type Author = {
@@ -44,7 +45,7 @@ type Metadata = {
   [key: string]: any;
 }
 
-const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataString, openPopup, data }) => {
+const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataString, openPopup, data, updateState }) => {
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
@@ -125,6 +126,8 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
         console.warn('Unhandled type for deletion:', type);
     }
 
+
+    updateState();
     updateMetadataString();
   }
 
