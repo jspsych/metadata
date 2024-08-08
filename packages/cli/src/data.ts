@@ -64,6 +64,7 @@ const processFile = async (metadata, directoryPath, file, verbose, targetDirecto
 
 // Processing directory recursively up to one level
 export const processDirectory = async (metadata, directoryPath, verbose=false, targetDirectoryPath?) => {
+  directoryPath = expandHomeDir(directoryPath);
   let total = 0;
   let failed = 0;
 
@@ -107,7 +108,7 @@ export const processDirectory = async (metadata, directoryPath, verbose=false, t
 // Processing metadata options json
 export const processOptions = async (metadata, filePath, verbose=false) => {
   try {
-    const metadata_options_path = generatePath(filePath);
+    const metadata_options_path = expandHomeDir(generatePath(filePath));
     const data = fs.readFileSync(metadata_options_path, "utf8"); // synchronous read
 
     if (verbose) console.log("\nmetadata options:", data, "\n"); // log the raw data
@@ -149,6 +150,7 @@ export function saveTextToPath(textstr, filePath = './file.txt') {
 
 // function for loading metadata
 export const loadMetadata = async (metadata, filePath) => {
+  filePath = expandHomeDir(filePath);
   const fileName = path.basename(filePath).toLowerCase(); // Extract the file name from the filePath
 
   try {

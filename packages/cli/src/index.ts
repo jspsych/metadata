@@ -9,13 +9,39 @@ import { validateDirectory, validateJson } from './validatefunctions.js';
 import { createDirectoryWithStructure } from './handleFiles.js';
 
 // Define a type for the parsed arguments
-interface Args {
+interface Argv {
   verbose?: boolean;
-  [x: string]: unknown;
+  'psych-ds-dir'?: string;
+  'data-dir'?: string;
+  'metadata-options'?: string;
+  _: (string | number)[];
+  $0: string;
 }
 
-// Parse the arguments and cast them to the defined type
-const argv = yargs(hideBin(process.argv)).argv as Args;
+// Parse command-line arguments using yargs
+const argv = yargs(hideBin(process.argv))
+  .option('verbose', {
+    alias: 'v',
+    type: 'boolean',
+    description: 'Run with verbose logging',
+  })
+  .option('psych-ds-dir', {
+    alias: 'em',
+    type: 'string',
+    description: 'Path to an existing Psych-DS directory.',
+  })
+  .option('data-dir', {
+    alias: 'd',
+    type: 'string',
+    description: 'Path to a data-dir.',
+  })
+  .option('metadata-options', {
+    alias: 'm',
+    type: 'string',
+    description: 'Path to a metadata-options.json file.',
+  })
+  .help()
+  .argv as Argv;
 
 async function metadataOptionsPrompt(metadata, verbose){
   const answer = await select({
@@ -52,7 +78,6 @@ async function metadataOptionsPrompt(metadata, verbose){
 
 }
 
-// -------------------------------------> new code 
 const promptProjectStructure = async (metadata) => {
   const answer = await select({
     message: 'Would you like to generate a new project directory or update an existing project directory?',
@@ -136,11 +161,23 @@ const promptData = async (metadata, verbose, targetDirectoryPath) => {
   await processDirectory(metadata, data_path, verbose, targetDirectoryPath); // will check if already existing metadata and won't need to prompt
 }
 
+// can seperate the process argv's out into seperate function
 const main = async () => {
   const verbose = argv.verbose ? argv.verbose : false;
-  
   const metadata = new JsPsychMetadata(verbose);
-  var [ project_path, new_project ] = await promptProjectStructure(metadata); // -> if reading from existing will want to look for if dataset_description file exists
+
+  var project_path, new_project;
+
+  if (argv['psych-ds-dir'] 
+    && await validateDirectory(argv['psych-ds-dir']) 
+    && await validateJson(argv['psych-ds-dir'] + "/dataset_description.json", "dataset_description.json")){  
+      project_path = argv['psych-ds-dir'];
+      new_project = false;
+      await loadMetadata(metadata, project_path + "/dataset_description.json");
+  }
+  else {
+    [ project_path, new_project ] = await promptProjectStructure(metadata);
+  }
 
   if (new_project) {
     const project_name = await promptName();
@@ -148,12 +185,18 @@ const main = async () => {
     createDirectoryWithStructure(project_path); // May want to include this with project_name therefore will prevent errors
     metadata.setMetadataField("name", project_name); // same as above
   }
-  await promptData(metadata, verbose, `${project_path}/data`); 
+
+  // check if it's a valid data directory and run it if it is possible
+  if (argv['data-dir'] && await validateDirectory(argv['data-dir']))
+    await processDirectory(metadata, argv['data-dir'] , verbose, `${project_path}/data`); // will check if already existing metadata and won't need to prompt
+  else await promptData(metadata, verbose, `${project_path}/data`); 
   
-  await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
-
+  // check if it's a valid path and then prompt the options
+  if (argv['metadata-options'] && validateJson(argv['metadata-options']))
+    await processOptions(metadata, argv['metadata-options'], verbose);
+  else await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
+  
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
-
   if (argv.verbose) console.log("Final metadata string:\n\n", metadataString);
   saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 };
