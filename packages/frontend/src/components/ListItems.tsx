@@ -2,6 +2,8 @@ import JsPsychMetadata from '@jspsych/metadata';
 import React from 'react';
 import Trash from '../assets/trash.svg';
 
+// hover and adding more automatic options
+
 type ListItemsProps = {
   jsPsychMetadata: JsPsychMetadata;
   updateMetadataString: () => void;

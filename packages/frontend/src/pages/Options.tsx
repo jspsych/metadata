@@ -75,11 +75,16 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
     updateMetadataString(); // calls update to the UI string and is broken
   }
 
+  const default_vars = {
+    "default": "one way to use this is blabhlah"
+  }
+
+
     // can clean up setPopupType and setPopupData
   const renderPopup = () => {
     switch (popupType) {
       case 'list':
-        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} updateMetadataString={updateMetadataString} />;
+        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} updateMetadataString={updateMetadataString} data={default_vars} />;
       case 'field':
         return <FieldPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
       case 'author':
@@ -96,7 +101,7 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
       <div className="optionsPage">
         <h1>Metadata Options</h1>
         <p>It is highly advised you enter author information and edit the title </p>
-        {/* <button className="optionsButton" onClick={() => openPopup('list')}>Edit existing field</button> might not need */} 
+        <button className="optionsButton" onClick={() => openPopup('list')}>Browse fields</button>
         {/* <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button> */}
         <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Download</button>
         <button className="optionsButton" onClick={() => setPage('upload-data')}>Upload additional data</button>
