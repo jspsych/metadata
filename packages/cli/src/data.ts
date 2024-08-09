@@ -49,7 +49,7 @@ const processFile = async (metadata, directoryPath, file, verbose, targetDirecto
         await metadata.generate(content, {}, 'csv');
         break;
       default:
-        console.error(file, "is not .csv or .json format.");
+        console.error(`"${file}" is not .csv or .json format.`);
         return false;
     }
 
@@ -101,7 +101,11 @@ export const processDirectory = async (metadata, directoryPath, verbose=false, t
   };
 
   await processDirectoryRecursive(directoryPath, 0);
-  console.log("Files read with rate:", `${(total - failed)}/${total}`);
+
+  if (failed === 0) console.log(`✔ Reading data files was successful with ${total} files read.`);
+  else if (failed !== total) console.log(`? Data files was partially successful with ${(total - failed)}/${total} files read.`);
+  else if (failed === total) console.log(`x Data files was unsuccessful with 0 files read. Please try again with valid JsPsych generated data.`);
+
   return { total, failed };
 };
 
@@ -115,6 +119,7 @@ export const processOptions = async (metadata, filePath, verbose=false) => {
     var metadata_options = JSON.parse(data); // parse the JSON data
     
     metadata.updateMetadata(metadata_options);
+    console.log(`\n✔ Successfully read and updated metadata according to options file.`);
     return true;
   } catch (error) {
     console.error("Error reading or parsing metadata options:", error);
@@ -143,7 +148,7 @@ export function saveTextToPath(textstr, filePath = './file.txt') {
     if (err) {
       console.error(`\nError writing to file ${filePath}:`, err);
     } else {
-      console.log(`\nFile ${filePath} has been saved.`);
+      console.log(`\n✔ File ${filePath} has been saved.`);
     }
   });
 }
@@ -157,7 +162,8 @@ export const loadMetadata = async (metadata, filePath) => {
     const content = await fs.promises.readFile(filePath, "utf8");
 
     if (fileName === "dataset_description.json"){
-      metadata.loadMetadata(content); 
+      metadata.loadMetadata(content);
+      console.log(`\n✔ Successfully loaded previous metadata.\n`);
       return true;
     }
     else console.error("dataset_description.json is not found at path:", filePath);
