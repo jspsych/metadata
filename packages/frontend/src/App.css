@@ -199,3 +199,11 @@ html, body {
   border-radius: 5px;
   background: none;
 }
+
+/* Button Container */
+
+.backSubmitButtonContainer {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+}

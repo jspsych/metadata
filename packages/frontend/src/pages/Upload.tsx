@@ -23,15 +23,19 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       switch (newPage) {
         case 'metadata':
           setPageNumber(1);
+          setButtonText("Skip");
           break;
         case 'form':
           setPageNumber(2);
+          // setButtonText("Save"); - handled within components & static
           break;
         case 'author':
           setPageNumber(3);
+          // setButtonText("Submit"); - handled within components & static
           break;
         case 'data':
           setPageNumber(4);
+          setButtonText("Skip");
       }
     }
 
@@ -57,8 +61,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
         return <button 
                 className="upload-continue" 
                 onClick={() => {
-                  handleScreenChange('form');
-                  setButtonText('Skip')
+                  handleScreenChange('form', 'Skip'); // not sure if perfectly replaces -> setButtonText('Skip')
                 }}>
                   {buttonText}
                </button>; 
@@ -67,14 +70,23 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       case 'author':
         return; // this will be handled internally to tie behavior with form
       case 'data':
-        return <button 
+        return <div className="backSubmitButtonContainer">
+                <button 
+                  className="upload-back" 
+                  onClick={() => {
+                    handleScreenChange("author", "Save");
+                  }}>
+                    Back
+                </button>
+                <button 
                   className="upload-continue" 
                   onClick={() => {
-                    setPage('viewOptions')
+                    setPage('viewOptions') // can't use handle screenChange because setPage not included, could update to handle 'viewOptions
                     setButtonText('Skip')
                   }}>
                     {buttonText}
-                </button>;
+                </button>
+               </div>;
     }
   }
   

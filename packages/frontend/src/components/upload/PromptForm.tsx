@@ -36,6 +36,11 @@ const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadata
     handleScreenChange('author', 'Save');
   };
 
+  const handleBack = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleScreenChange('metadata', 'Skip');
+  }
+
   return (
     <>
       <h2>Project Information</h2>
@@ -60,7 +65,10 @@ const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadata
             onChange={handleChange}
           />
         </div>
-        <button className="promptFormSubmit" type="submit">Save</button>
+        <div className="backSubmitButtonContainer">
+          <button className="promptFormBack" type="button" onClick={handleBack}>Back</button>
+          <button className="promptFormSubmit" type="submit">Save</button>
+        </div>
       </form>
     </>
   );

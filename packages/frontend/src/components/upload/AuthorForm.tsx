@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthorFields } from '../../../../metadata/dist/AuthorsMap';
 import JsPsychMetadata from '@jspsych/metadata';
+import Plus from '../../assets/plus.svg';
 
 interface AuthorFormProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -73,13 +74,23 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
       }
     }
 
-    handleScreenChange('data', 'skip');
+    handleScreenChange('data', 'Skip');
     updateMetadataString();
+  }
+
+  const handleBack = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleScreenChange('form', 'Save');
   }
 
   return (
     <div>
-      <h2>Authors</h2>
+      <div className='preview-header'>
+        <h2>Authors</h2>
+        <button className="previewButton" onClick={addEmptyAuthor}>
+          <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
+        </button>
+      </div>
       <p>The name field is required and any author missing the name field will not be added. This can be edited and authors can be added later.</p>
       {authors.map((author, index) => (
         <div key={index}>
@@ -103,10 +114,7 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
           </label>
         </div>
       ))}
-      <button className="authorFormAddAuthors" onClick={() => {
-        console.log(authors);
-        addEmptyAuthor();
-      }}>Add Author</button>
+      <button className="authorFormBack" type="button" onClick={handleBack}>Back</button>
       <button className="authorFormSubmit" onClick={handleSubmit}>Submit</button>
     </div>
   );
