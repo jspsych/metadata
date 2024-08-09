@@ -49,7 +49,7 @@ const processFile = async (metadata, directoryPath, file, verbose, targetDirecto
         await metadata.generate(content, {}, 'csv');
         break;
       default:
-        console.error(file, "is not .csv or .json format.");
+        console.error(`"${file}" is not .csv or .json format.`);
         return false;
     }
 
@@ -64,6 +64,7 @@ const processFile = async (metadata, directoryPath, file, verbose, targetDirecto
 
 // Processing directory recursively up to one level
 export const processDirectory = async (metadata, directoryPath, verbose=false, targetDirectoryPath?) => {
+  directoryPath = expandHomeDir(directoryPath);
   let total = 0;
   let failed = 0;
 
@@ -100,20 +101,25 @@ export const processDirectory = async (metadata, directoryPath, verbose=false, t
   };
 
   await processDirectoryRecursive(directoryPath, 0);
-  console.log("Files read with rate:", `${(total - failed)}/${total}`);
+
+  if (failed === 0) console.log(`✔ Reading data files was successful with ${total} files read.`);
+  else if (failed !== total) console.log(`? Data files was partially successful with ${(total - failed)}/${total} files read.`);
+  else if (failed === total) console.log(`x Data files was unsuccessful with 0 files read. Please try again with valid JsPsych generated data.`);
+
   return { total, failed };
 };
 
 // Processing metadata options json
 export const processOptions = async (metadata, filePath, verbose=false) => {
   try {
-    const metadata_options_path = generatePath(filePath);
+    const metadata_options_path = expandHomeDir(generatePath(filePath));
     const data = fs.readFileSync(metadata_options_path, "utf8"); // synchronous read
 
     if (verbose) console.log("\nmetadata options:", data, "\n"); // log the raw data
     var metadata_options = JSON.parse(data); // parse the JSON data
     
     metadata.updateMetadata(metadata_options);
+    console.log(`\n✔ Successfully read and updated metadata according to options file.`);
     return true;
   } catch (error) {
     console.error("Error reading or parsing metadata options:", error);
@@ -140,23 +146,24 @@ export function saveTextToPath(textstr, filePath = './file.txt') {
 
   fs.writeFile(filePath, textstr, 'utf8', (err) => {
     if (err) {
-      console.error(`Error writing to file ${filePath}:`, err);
+      console.error(`\nError writing to file ${filePath}:`, err);
     } else {
-      console.log(`File ${filePath} has been saved.`);
+      console.log(`\n✔ File ${filePath} has been saved.`);
     }
   });
 }
 
 // function for loading metadata
 export const loadMetadata = async (metadata, filePath) => {
+  filePath = expandHomeDir(filePath);
   const fileName = path.basename(filePath).toLowerCase(); // Extract the file name from the filePath
 
   try {
     const content = await fs.promises.readFile(filePath, "utf8");
 
     if (fileName === "dataset_description.json"){
-      metadata.loadMetadata(content); 
-      console.log("\nContents of dataset_description.json:\n", content)
+      metadata.loadMetadata(content);
+      console.log(`\n✔ Successfully loaded previous metadata.\n`);
       return true;
     }
     else console.error("dataset_description.json is not found at path:", filePath);
