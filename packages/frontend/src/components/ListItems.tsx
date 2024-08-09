@@ -1,5 +1,5 @@
 import JsPsychMetadata from '@jspsych/metadata';
-import React from 'react';
+import React, { useState} from 'react';
 import Trash from '../assets/trash.svg';
 
 // hover and adding more automatic options
@@ -46,8 +46,9 @@ type Metadata = {
   variableMeasured: VariableMeasured[];
   [key: string]: any;
 }
-
 const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataString, openPopup, data, updateState }) => {
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
@@ -58,11 +59,22 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
           const variable = value[variable_key];
 
           res.push(
-            <div key={"variable" + variable_key} className="variable-item">
+            <div 
+              key={"variable" + variable_key} 
+              className="variable-item"
+              onMouseEnter={() => setHoveredItem("variable" + variable_key)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
               <button onClick={() => openPopup("variables", variable)}>            
                 <span style={{ color: 'gray' }}>[Variable] </span> 
                 <span>{variable.name}</span>              
               </button>
+              {hoveredItem === "variable" + variable_key && (
+                <div className="hover-popup">
+                  <p>{typeof variable.description === 'object' ? JSON.stringify(variable.description, null, 2) : variable.description}</p>
+                  {/* Add more information as needed */}
+                </div>
+              )}
               <button 
                 onClick={() => handleDelete(variable.name, 'variable')}
                 className="delete-button"
@@ -78,11 +90,22 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
           const author_typing = typeof author === "string" ? { name: author } : author;
 
           res.push(
-            <div key={"author" + author_key} className="author-item">
+            <div 
+              key={"author" + author_key} 
+              className="author-item"
+              onMouseEnter={() => setHoveredItem("author" + author_key)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
               <button onClick={() => openPopup("author", author_typing)}>            
                 <span style={{ color: 'gray' }}>[Author] </span> 
                 <span>{author_typing.name}</span>                  
               </button>
+              {hoveredItem === "author" + author_key && (
+                <div className="hover-popup">
+                  <p>{author_typing.givenName} {author_typing.familyName}</p>
+                  {/* Add more information as needed */}
+                </div>
+              )}
               <button 
                 onClick={() => handleDelete(author_typing.name, 'author')}
                 className="delete-button"
@@ -94,11 +117,22 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
         }
       } else {
         res.push(
-          <div key={"field" + key} className="field-item">
+          <div 
+            key={"field" + key} 
+            className="field-item"
+            onMouseEnter={() => setHoveredItem("field" + key)}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
             <button onClick={() => openPopup("field", { fieldName: key, fieldDescription: value })}>            
               <span style={{ color: 'gray' }}>[{key}] </span> 
               <span>{value}</span>    
             </button>
+            {hoveredItem === "field" + key && (
+              <div className="hover-popup">
+                <p>{value}</p>
+                {/* Add more information as needed */}
+              </div>
+            )}
             <button 
               onClick={() => handleDelete(key, 'field')}
               className="delete-button"
@@ -127,7 +161,6 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
       default:
         console.warn('Unhandled type for deletion:', type);
     }
-
 
     updateState();
     updateMetadataString();

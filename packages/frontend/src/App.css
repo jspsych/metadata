@@ -207,3 +207,9 @@ html, body {
   flex-direction: row;
   gap: 15px;
 }
+
+/* HoverPopup */
+.hover-popup {
+  white-space: normal; /* Allows text to wrap */
+  word-wrap: break-word; /* Ensures long words or URLs wrap to the next line */
+}
