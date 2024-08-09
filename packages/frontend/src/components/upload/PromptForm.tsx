@@ -10,14 +10,12 @@ interface PromptFormProps {
 export type PromptFormData = {
   project_name: string;
   project_description: string;
-  author_name: string,
 };
 
 const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadataString, handleScreenChange }) => {
   const [formData, setFormData] = useState<PromptFormData>({
     project_name: jsPsychMetadata.containsMetadataField("name") ? jsPsychMetadata.getMetadataField("name") : "", // try to load name
     project_description: jsPsychMetadata.containsMetadataField("description") ? jsPsychMetadata.getMetadataField("description") : "", // try to load description
-    author_name: "" // archived code to run authors, messes with saving, not best way to include
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -33,7 +31,6 @@ const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadata
     
     if (formData.project_name !== "") jsPsychMetadata.setMetadataField("name", formData.project_name);
     if (formData.project_description !== "") jsPsychMetadata.setMetadataField("description", formData.project_description);
-    if (formData.author_name !== "") jsPsychMetadata.setAuthor({ "name": formData.author_name});
 
     updateMetadataString();
     handleScreenChange('author', 'Save');
@@ -60,15 +57,6 @@ const PromptForm: React.FC<PromptFormProps> = ({ jsPsychMetadata, updateMetadata
             id="project_description"
             name="project_description"
             value={formData.project_description}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label htmlFor="author_name">Author name</label>
-          <input
-            id="author_name"
-            name="author_name"
-            value={formData.author_name}
             onChange={handleChange}
           />
         </div>

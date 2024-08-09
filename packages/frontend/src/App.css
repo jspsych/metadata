@@ -158,17 +158,44 @@ html, body {
 /* .promptFormSurvey label {
 } */
 
-.promptFormSurvey input {
+.promptFormSurvey input, .authorInput {
   margin-left: 10px;
+  padding: 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
 .promptFormSubmit {
   width: fit-content;
+}
 
+.authorFormAddAuthors, .authorFormSubmit {
+  margin: 15px;
+}
+
+.authorLabel {
+  margin-left: 10px;
 }
 
 .pageDescription {
   margin-bottom: 32px;
+}
+
+
+/* Preview page */
+
+.preview-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.previewButton {
+  margin: 10px;
+  padding: 0px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: none;
 }

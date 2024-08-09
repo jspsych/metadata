@@ -1,38 +1,34 @@
 import JsPsychMetadata from '@jspsych/metadata';
 import React from 'react';
+import Trash from '../assets/trash.svg';
 
-type ListPopup = {
+// hover and adding more automatic options
+
+type ListItemsProps = {
   jsPsychMetadata: JsPsychMetadata;
-  onClose: () => void;
-  setPopupType: (type: string) => void; // Update setPopupType to accept optional data
-  setPopupData: (data: any) => void;
   updateMetadataString: () => void;
   openPopup: (type: string, data?: any) => void;
-  data?: Record<string, any>;
+  data: Record<string, any>;
+  updateState: () => void;
 }
 
 type Author = {
-  /** The type of the author. */
   "@type"?: string;
-  /** The name of the author. (required) */
   name: string;
-  /** The given name of the author. */
   givenName?: string;
-  /** The family name of the author. */
   familyName?: string;
-  /** The identifier that distinguishes the author across datasets (URL). */
   identifier?: string;
 }
 
 type VariableMeasured = {
   "@type": string;
-  name: string; // required
+  name: string;
   description: string | Record<string, string>;
   value: string | boolean | number;
-  identifier?: string; // identifier that distinguishes across dataset (URL)
+  identifier?: string;
   minValue?: number;
   maxValue?: number;
-  levels?: string[]; // array of string values
+  levels?: string[];
   levelsOrdered?: boolean;
   na?: boolean;
   naValue?: string;
@@ -51,8 +47,7 @@ type Metadata = {
   [key: string]: any;
 }
 
-const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, data, openPopup }) => { 
-  
+const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataString, openPopup, data, updateState }) => {
   const generateButtons = (metadata: Metadata) => {
     const res = [];
     for (const key in metadata) {
@@ -68,6 +63,12 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, data, openPo
                 <span style={{ color: 'gray' }}>[Variable] </span> 
                 <span>{variable.name}</span>              
               </button>
+              <button 
+                onClick={() => handleDelete(variable.name, 'variable')}
+                className="delete-button"
+              >
+                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
+              </button>
             </div>
           );
         }
@@ -82,6 +83,12 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, data, openPo
                 <span style={{ color: 'gray' }}>[Author] </span> 
                 <span>{author_typing.name}</span>                  
               </button>
+              <button 
+                onClick={() => handleDelete(author_typing.name, 'author')}
+                className="delete-button"
+              >
+                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
+              </button>
             </div>
           );
         }
@@ -92,26 +99,49 @@ const ListPopup: React.FC<ListPopup> = ({ jsPsychMetadata, onClose, data, openPo
               <span style={{ color: 'gray' }}>[{key}] </span> 
               <span>{value}</span>    
             </button>
+            <button 
+              onClick={() => handleDelete(key, 'field')}
+              className="delete-button"
+            >
+              <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
+            </button>
           </div>
         );
       }
     }
 
     return res;
-  } 
+  }
 
+  const handleDelete = (name: string, type: string) => {
+    switch (type) {
+      case 'variable':
+        jsPsychMetadata.deleteVariable(name);
+        break;
+      case 'author':
+        jsPsychMetadata.deleteAuthor(name);
+        break;
+      case 'field':
+        jsPsychMetadata.deleteMetadataField(name);
+        break;
+      default:
+        console.warn('Unhandled type for deletion:', type);
+    }
+
+
+    updateState();
+    updateMetadataString();
+  }
 
   return (
-    <div className="popup-overlay">
-      <div className="popup-content">
-        <p>These are fields commonly added to Psych-DS metadata to describe datasets. Clicking on them will allow you to fill in variable information.</p>
-        <button className="close-button" onClick={onClose}>X</button>
+    <div className="list-item-container">
+      <div className="list-items-content">
         <div className="button-container">
-          {data ? generateButtons(data as Metadata) : generateButtons(jsPsychMetadata.getMetadata() as Metadata)} 
+          {generateButtons(data as Metadata)}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default ListPopup;
+export default ListItems;

@@ -45,13 +45,13 @@ export default class JsPsychMetadata {
   private pluginCache: PluginCache;
 
   /**
-   * Initializes a set that contains the fields that are to be ignored, so can help with later 
+   * Initializes a set that contains the variable fields that are to be ignored, so can help with later 
    * logic when generating data.
    *
    * @private
    * @type {*}
    */
-  private ignored_fields = new Set([
+  private ignored_variables = new Set([
     "trial_type",
     "trial_index",
     "time_elapsed",
@@ -134,7 +134,8 @@ export default class JsPsychMetadata {
 
   /**
    * Returns the final Metadata in a single javascript object. Bundles together the author and variables
-   * together in a list rather than object compliant with Psych-DS standards.
+   * together in a list rather than object compliant with Psych-DS standards. Seems that javascript get
+   * are implictly called.
    *
    * @returns {{}} - Final Metadata object
    */
@@ -145,6 +146,33 @@ export default class JsPsychMetadata {
 
     return res;
   }
+
+  getUserMetadataFields (): Record<string, any> {
+    const res = {};
+
+    const ignored_fields = new Set(["schemaVersion", "@type", "@context", "author", "variableMeasured"]); // getMetdata() impliclty called
+
+    for (const key in this.metadata){
+      if (!(ignored_fields.has(key))){
+        res[key] = this.metadata[key];
+      }
+    }
+
+    return res;
+  }
+
+  /**
+   * Returns the variable fields while excluding the authors and variables.`
+   *
+   * @returns {{}} - Final Metadata object
+   */
+    getMetadataFields(): {} {
+      const res = this.metadata;
+      delete res["author"];
+      delete res["variableMeasured"];
+
+      return res;
+    }
 
   /**
    * Generates the default descriptions for extension_type and extension_version in metadata. Should be called after
@@ -162,7 +190,7 @@ export default class JsPsychMetadata {
    */
   setAuthor(fields: AuthorFields): void {
     this.authors.setAuthor(fields); // Assuming `authors` is an instance of the AuthorsMap class
-  }
+  } 
 
   /**
    * Method that fetches an author object allowing user to update (in existing workflow should not be necessary).
@@ -225,6 +253,16 @@ export default class JsPsychMetadata {
    */
   getVariable(name: string): {} {
     return this.variables.getVariable(name);
+  }
+
+
+  /**
+   * Returns a list of the variables defined in the metadata.
+   *
+   * @returns {{}[]} - Authors
+   */
+  getVariableList(): ({})[] {
+    return this.variables.getList();
   }
 
   /**
@@ -414,7 +452,7 @@ export default class JsPsychMetadata {
         }
       }
 
-      if (this.ignored_fields.has(variable)) this.updateFields(variable, value, type);
+      if (this.ignored_variables.has(variable)) this.updateFields(variable, value, type);
       else {
         await this.generateMetadata(variable, value, pluginType, version);
 
