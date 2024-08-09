@@ -6,7 +6,7 @@ import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
 import { validateDirectory, validateJson } from './validatefunctions.js';
-import { createDirectoryWithStructure } from './handleFiles.js';
+import { createDirectoryWithStructure } from './handlefiles.js';
 
 // Define a type for the parsed arguments
 interface Argv {
