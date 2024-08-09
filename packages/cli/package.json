@@ -1,6 +1,6 @@
 {
   "name": "@jspsych/metadata-cli",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "This directory contains tools for interacting and generating CLI through the terminal.",
   "main": "dist/cjs/index.cjs",
   "author": "Victor Zhang",
