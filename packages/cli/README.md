@@ -6,27 +6,39 @@ The metadata-cli module contains commands for interacting with the metadata-modu
 
 ## CLI with prompting (recommended)
 
-To run the CLI with prompting you can call ```npm i @jspsych/metadata-cli```. This is the recommended way of running the package.
+To run the CLI with prompting you can call ```npx @jspsych/metadata-cli```. This is the recommended way of running the package.
 
 This will then prompt you through the various CLI options, this includes generating from scratch or using an existing file. There are descriptions of how the files and directories should be structured below. 
 
-You can also run it through the repository by following the steps 1-3 below and then calling ```npm run build``` followed by ```npx .```. 
+## CLI without prompting and optional flags
 
-## CLI without prompting 
+If you are findng the prompting steps to be more of a hinderance rather, then you can skip steps by directly passing in the arguments when calling npx. 
 
-Depending on the build step, when running it locally you may need to rename the package.json attribute ```"type": "commonjs"``` to ```"type": "module"```. To run the CLI without prompting, you would need to clone this repo and navigate to the CLI directory. To do this, you must have node installed and it is not recommended unless you have programming experience. 
+An example is:
+
+```
+npx @jspsych/metadata-cli --verbose --psych-ds-dir=/path/to/existing/metadata/dir --data-dir=/path/to/data/dir --metadata-options=/path/to/metadata-options.json
+```
+
+The ```--verbose``` flag when called will make the output more descriptive and will explain all the steps that are happening in more detail. This is only recommended when there is something going wrong and you need to get more information.
+
+The ```--psych-ds-dir --data-dir --metadata-options``` flags all correspond to the different prompting steps. Using the example above, you are able to skip all prompting steps by entering the correct information. If any of these inputs are not valid the CLI will prompt you until you enter a valid input.
+
+```--psych-ds-dir``` corresponds to an existing Psych-DS valid directory. This is to be used if want to update existing metadata.
+
+```--data-dir``` corresponds to the data folder that you want to use to update or create the metadata.
+
+```--metadata-options``` corresponds to the options.json that you want to use to overwrite the defaults and update the existing metadata.
+
+## Running the CLI locally
+
+To run the CLI locally, you will need to clone this repo and navigate to the CLI directory. To do this, you must have node installed and it is not recommended unless you have programming experience. This is best if you want to customize the CLI according to your specific use case or want to avoid using npm/npx. 
 
 1. Clone the repository.
 2. Navigate to the CLI directory.
 3. Install the necessary packages with ```npm install```.
 4. Build the cli file with ```npm run build```.
-5. Run the cli with ```node /dist/cli.js /path/to/data/dir /path/to/metadata_options.json```.
-
-Within the package.json, there are examples of running this using existing data files. You can run those commands with ```npm run data``` or ```npm run options```.
-
-If the metadata file has already been created, ensure that ```dataset_description.json``` is located in the root directory. This CLI will successfully load the old data prior to updating it with new data and will then overwrite the original data.
-
-This will likely 
+5. Run the cli with ```npx .```.
 
 ## Common errors
 
