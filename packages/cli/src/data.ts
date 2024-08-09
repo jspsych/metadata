@@ -141,9 +141,9 @@ export function saveTextToPath(textstr, filePath = './file.txt') {
 
   fs.writeFile(filePath, textstr, 'utf8', (err) => {
     if (err) {
-      console.error(`Error writing to file ${filePath}:`, err);
+      console.error(`\nError writing to file ${filePath}:`, err);
     } else {
-      console.log(`File ${filePath} has been saved.`);
+      console.log(`\nFile ${filePath} has been saved.`);
     }
   });
 }

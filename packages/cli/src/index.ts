@@ -173,7 +173,8 @@ const main = async () => {
     && await validateJson(argv['psych-ds-dir'] + "/dataset_description.json", "dataset_description.json")){  
       project_path = argv['psych-ds-dir'];
       new_project = false;
-      await loadMetadata(metadata, project_path + "/dataset_description.json");
+      await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
+      if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
     [ project_path, new_project ] = await promptProjectStructure(metadata);
@@ -187,17 +188,21 @@ const main = async () => {
   }
 
   // check if it's a valid data directory and run it if it is possible
-  if (argv['data-dir'] && await validateDirectory(argv['data-dir']))
+  if (argv['data-dir'] && await validateDirectory(argv['data-dir'])){
+    if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
     await processDirectory(metadata, argv['data-dir'] , verbose, `${project_path}/data`); // will check if already existing metadata and won't need to prompt
+  }
   else await promptData(metadata, verbose, `${project_path}/data`); 
   
   // check if it's a valid path and then prompt the options
-  if (argv['metadata-options'] && validateJson(argv['metadata-options']))
+  if (argv['metadata-options'] && validateJson(argv['metadata-options'])){
+    if (verbose) console.log("\n\n-------------------------- Reading and writing metadata-option --------------------------n\n");
     await processOptions(metadata, argv['metadata-options'], verbose);
+  }
   else await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
   
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
-  if (argv.verbose) console.log("Final metadata string:\n\n", metadataString);
+  if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 };
 
