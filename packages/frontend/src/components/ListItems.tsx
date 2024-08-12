@@ -65,30 +65,32 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
               onMouseEnter={() => setHoveredItem("variable" + variable_key)}
               onMouseLeave={() => setHoveredItem(null)}
             >
-              <button onClick={() => openPopup("variables", variable)}>            
-                <span style={{ color: 'gray' }}>[Variable] </span> 
-                <span>{variable.name}</span>              
-              </button>
-              {hoveredItem === "variable" + variable_key && (
-                <div className="hover-popup">
-                  <p>{typeof variable.description === 'object' ? JSON.stringify(variable.description, null, 2) : variable.description}</p>
-                  {Object.entries(variable).map(([key, value]) => {
-                    // Skip the description field and empty fields
-                    if (key === 'description' || value === '' || value === null || value === undefined || key === "@type" || key === "name") return null;
+              <div className='hover-popup-title-container'>
+                <button onClick={() => openPopup("variables", variable)}>            
+                  {/* <span style={{ color: 'gray' }}>[Variable] </span>  */}
+                  <span>{variable.name}</span>              
+                </button>
+                {hoveredItem === "variable" + variable_key && (
+                  <div className="hover-popup">
+                    <p>{typeof variable.description === 'object' ? JSON.stringify(variable.description, null, 2) : variable.description}</p>
+                    {Object.entries(variable).map(([key, value]) => {
+                      // Skip the description field and empty fields
+                      if (key === 'description' || value === '' || value === null || value === undefined || key === "@type" || key === "name") return null;
 
-                    // Convert non-primitive types to string using JSON.stringify
-                    const displayValue = (typeof value === 'object' || typeof value === 'function') 
-                      ? JSON.stringify(value, null, 2) 
-                      : String(value); // Ensures the value is a string or a valid ReactNode
+                      // Convert non-primitive types to string using JSON.stringify
+                      const displayValue = (typeof value === 'object' || typeof value === 'function') 
+                        ? JSON.stringify(value, null, 2) 
+                        : String(value); // Ensures the value is a string or a valid ReactNode
 
-                    return (
-                      <p key={key}>
-                        <strong>{key}:</strong> {displayValue}
-                      </p>
-                    );
-                  })}
-                </div>
-              )}
+                      return (
+                        <p key={key}>
+                          <strong>{key}:</strong> {displayValue}
+                        </p>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <button 
                 onClick={() => handleDelete(variable.name, 'variable')}
                 className="delete-button"
@@ -110,29 +112,31 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
               onMouseEnter={() => setHoveredItem("author" + author_key)}
               onMouseLeave={() => setHoveredItem(null)}
             >
-              <button onClick={() => openPopup("author", author_typing)}>            
-                <span style={{ color: 'gray' }}>[Author] </span> 
-                <span>{author_typing.name}</span>                  
-              </button>
-              {hoveredItem === "author" + author_key && (
-                <div className="hover-popup">
-                  {Object.entries(author_typing).map(([key, value]) => {
-                    // Skip the description field and empty fields
-                    if (value === '' || value === null || value === undefined || key === "name") return null;
+              <div className='hover-popup-title-container'>
+                <button onClick={() => openPopup("author", author_typing)}>            
+                  {/* <span style={{ color: 'gray' }}>[Author] </span>  */}
+                  <span>{author_typing.name}</span>                  
+                </button>
+                {hoveredItem === "author" + author_key && (
+                  <div className="hover-popup">
+                    {Object.entries(author_typing).map(([key, value]) => {
+                      // Skip the description field and empty fields
+                      if (value === '' || value === null || value === undefined || key === "name") return null;
 
-                    // Convert non-primitive types to string using JSON.stringify
-                    const displayValue = (typeof value === 'object' || typeof value === 'function') 
-                      ? JSON.stringify(value, null, 2) 
-                      : String(value); // Ensures the value is a string or a valid ReactNode
+                      // Convert non-primitive types to string using JSON.stringify
+                      const displayValue = (typeof value === 'object' || typeof value === 'function') 
+                        ? JSON.stringify(value, null, 2) 
+                        : String(value); // Ensures the value is a string or a valid ReactNode
 
-                    return (
-                      <p key={key}>
-                        <strong>{key}:</strong> {displayValue}
-                      </p>
-                    );
-                  })}
-                </div>
-              )}
+                      return (
+                        <p key={key}>
+                          <strong>{key}:</strong> {displayValue}
+                        </p>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <button 
                 onClick={() => handleDelete(author_typing.name, 'author')}
                 className="delete-button"
@@ -150,22 +154,25 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
             onMouseEnter={() => setHoveredItem("field" + key)}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <button onClick={() => openPopup("field", { fieldName: key, fieldDescription: value })}>            
-              <span style={{ color: 'gray' }}>[{key}] </span> 
-              <span>{value}</span>    
-            </button>
-            {hoveredItem === "field" + key && (
-              <div className="hover-popup">
-                <p>{value}</p>
-                {/* Add more information as needed */}
-              </div>
-            )}
+            <div className='hover-popup-title-container'>
+              <button onClick={() => openPopup("field", { fieldName: key, fieldDescription: value })}>            
+                {/* <span style={{ color: 'gray' }}>[{key}] </span>  Possibly indicate default?*/}
+                <span>{key}{/*value*/}</span>    
+              </button>
+              {hoveredItem === "field" + key && (
+                <div className="hover-popup">
+                  <p>{value}</p>
+                  {/* Add more information as needed */}
+                </div>
+              )}
+            </div>
             <button 
               onClick={() => handleDelete(key, 'field')}
               className="delete-button"
             >
               <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
             </button>
+            
           </div>
         );
       }

@@ -113,7 +113,9 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
     <>
       <div className="optionsPage">
         <h1>Metadata Options</h1>
-        <p>It is highly advised you enter author information and edit the title </p>
+        <p>You can browse fields that are commonly added to Psych-DS datasets with their corresponding descriptions, return the to the previous screen to upload additional data,
+          or download the metadata as a dataset_description.json file.
+        </p>
         <button className="optionsButton" onClick={() => openPopup('list')}>Browse fields</button>
         {/* <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button> */}
         <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Download</button>

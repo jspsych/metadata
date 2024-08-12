@@ -213,3 +213,7 @@ html, body {
   white-space: normal; /* Allows text to wrap */
   word-wrap: break-word; /* Ensures long words or URLs wrap to the next line */
 }
+
+.hover-popup-title-container {
+  padding: 5px;
+}
