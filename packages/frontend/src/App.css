@@ -216,4 +216,41 @@ html, body {
 
 .hover-popup-title-container {
   padding: 5px;
+  display: flex;
+  flex-direction: row;
 }
+
+.hover-popup-title-container button:first-of-type {
+  margin-right: 4px; /* Adjust the margin to make the gap smaller */
+}
+
+.hover-popup-title-container button:last-of-type {
+  margin-left: 4px; /* Optional: Adjust if needed for symmetry */
+}
+
+.delete-button-hover {
+  /* display: inline-flex; */
+  padding: 5px 5px;
+  align-items: center;  /* Centers the content vertically within the button */
+  justify-content: center; /* Centers the content horizontally within the button */
+} 
+
+
+.delete-button-hover img {
+  width: 20px;  /* Larger image size */
+  height: 20px; /* Larger image size */
+}
+
+.variable-item-hover-popup, .field-item-hover-popup, .author-item-hover-popup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd; /* Optional: add border for better separation */
+  border-radius: 10px; /* Optional: add rounded corners */
+  gap: 5px;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-bottom: 10px;
+}
+

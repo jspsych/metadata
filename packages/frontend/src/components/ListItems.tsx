@@ -1,8 +1,8 @@
 import JsPsychMetadata from '@jspsych/metadata';
-import React, { useState} from 'react';
+import React, { useState } from 'react';
 import Trash from '../assets/trash.svg';
-
-// hover and adding more automatic options
+import UpArrow from '../assets/uparrow.svg';
+import DownArrow from '../assets/downarrow.svg';
 
 type ListItemsProps = {
   jsPsychMetadata: JsPsychMetadata;
@@ -46,8 +46,17 @@ type Metadata = {
   variableMeasured: VariableMeasured[];
   [key: string]: any;
 }
+
 const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataString, openPopup, data, updateState }) => {
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+  const toggleExpand = (itemKey: string) => {
+    setExpandedItems((prevExpandedItems) =>
+      prevExpandedItems.includes(itemKey)
+        ? prevExpandedItems.filter((key) => key !== itemKey)
+        : [...prevExpandedItems, itemKey]
+    );
+  };
 
   const generateButtons = (metadata: Metadata) => {
     const res = [];
@@ -57,30 +66,31 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
       if (key === "variableMeasured") {
         for (const variable_key in value) {
           const variable = value[variable_key];
+          const isExpanded = expandedItems.includes("variable" + variable_key);
 
           res.push(
-            <div 
-              key={"variable" + variable_key} 
-              className="variable-item"
-              onMouseEnter={() => setHoveredItem("variable" + variable_key)}
-              onMouseLeave={() => setHoveredItem(null)}
-            >
+            <div key={"variable" + variable_key} className="variable-item-hover-popup">
               <div className='hover-popup-title-container'>
-                <button onClick={() => openPopup("variables", variable)}>            
-                  {/* <span style={{ color: 'gray' }}>[Variable] </span>  */}
-                  <span>{variable.name}</span>              
+                <button onClick={() => toggleExpand("variable" + variable_key)}>
+                  {isExpanded ? '-' : '+'}
                 </button>
-                {hoveredItem === "variable" + variable_key && (
+                <button onClick={() => openPopup("variables", variable)}>
+                  <span>{variable.name}</span>
+                </button>
+                <button onClick={() => handleDelete(variable.name, 'variable')} className="delete-button-hover">
+                  <img src={Trash} alt="Trash" />
+                </button>
+              </div>
+
+              {isExpanded && (
                   <div className="hover-popup">
                     <p>{typeof variable.description === 'object' ? JSON.stringify(variable.description, null, 2) : variable.description}</p>
                     {Object.entries(variable).map(([key, value]) => {
-                      // Skip the description field and empty fields
                       if (key === 'description' || value === '' || value === null || value === undefined || key === "@type" || key === "name") return null;
 
-                      // Convert non-primitive types to string using JSON.stringify
-                      const displayValue = (typeof value === 'object' || typeof value === 'function') 
-                        ? JSON.stringify(value, null, 2) 
-                        : String(value); // Ensures the value is a string or a valid ReactNode
+                      const displayValue = (typeof value === 'object' || typeof value === 'function')
+                        ? JSON.stringify(value, null, 2)
+                        : String(value);
 
                       return (
                         <p key={key}>
@@ -90,13 +100,6 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
                     })}
                   </div>
                 )}
-              </div>
-              <button 
-                onClick={() => handleDelete(variable.name, 'variable')}
-                className="delete-button"
-              >
-                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
-              </button>
             </div>
           );
         }
@@ -104,29 +107,29 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
         for (const author_key in value) {
           const author = value[author_key];
           const author_typing = typeof author === "string" ? { name: author } : author;
+          const isExpanded = expandedItems.includes("author" + author_key);
 
           res.push(
-            <div 
-              key={"author" + author_key} 
-              className="author-item"
-              onMouseEnter={() => setHoveredItem("author" + author_key)}
-              onMouseLeave={() => setHoveredItem(null)}
-            >
+            <div key={"author" + author_key} className="author-item-hover-popup">
               <div className='hover-popup-title-container'>
-                <button onClick={() => openPopup("author", author_typing)}>            
-                  {/* <span style={{ color: 'gray' }}>[Author] </span>  */}
-                  <span>{author_typing.name}</span>                  
+                <button onClick={() => toggleExpand("author" + author_key)}>
+                  {isExpanded ? '-' : '+'}
                 </button>
-                {hoveredItem === "author" + author_key && (
+                <button onClick={() => openPopup("author", author_typing)}>
+                  <span>{author_typing.name}</span>
+                </button>
+                <button onClick={() => handleDelete(author_typing.name, 'author')} className="delete-button-hover">
+                  <img src={Trash} alt="Trash" />
+                </button>
+              </div>
+              {isExpanded && (
                   <div className="hover-popup">
                     {Object.entries(author_typing).map(([key, value]) => {
-                      // Skip the description field and empty fields
                       if (value === '' || value === null || value === undefined || key === "name") return null;
 
-                      // Convert non-primitive types to string using JSON.stringify
-                      const displayValue = (typeof value === 'object' || typeof value === 'function') 
-                        ? JSON.stringify(value, null, 2) 
-                        : String(value); // Ensures the value is a string or a valid ReactNode
+                      const displayValue = (typeof value === 'object' || typeof value === 'function')
+                        ? JSON.stringify(value, null, 2)
+                        : String(value);
 
                       return (
                         <p key={key}>
@@ -136,50 +139,38 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
                     })}
                   </div>
                 )}
-              </div>
-              <button 
-                onClick={() => handleDelete(author_typing.name, 'author')}
-                className="delete-button"
-              >
-                <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
-              </button>
             </div>
           );
         }
       } else {
+        const isExpanded = expandedItems.includes("field" + key);
+
         res.push(
-          <div 
-            key={"field" + key} 
-            className="field-item"
-            onMouseEnter={() => setHoveredItem("field" + key)}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
+          <div key={"field" + key} className="field-item-hover-popup">
             <div className='hover-popup-title-container'>
-              <button onClick={() => openPopup("field", { fieldName: key, fieldDescription: value })}>            
-                {/* <span style={{ color: 'gray' }}>[{key}] </span>  Possibly indicate default?*/}
-                <span>{key}{/*value*/}</span>    
+              <button onClick={() => toggleExpand("field" + key)}>
+                {isExpanded ? <img src={UpArrow} alt="Expand" /> : <img src={DownArrow} alt="Collapse" />}
               </button>
-              {hoveredItem === "field" + key && (
-                <div className="hover-popup">
-                  <p>{value}</p>
-                  {/* Add more information as needed */}
-                </div>
-              )}
+              <button onClick={() => openPopup("field", { fieldName: key, fieldDescription: value })}>
+                <span>{key}</span>
+              </button>
+              <button onClick={() => handleDelete(key, 'field')} className="delete-button-hover">
+                <img src={Trash} alt="Trash" />
+              </button>
             </div>
-            <button 
-              onClick={() => handleDelete(key, 'field')}
-              className="delete-button"
-            >
-              <img src={Trash} alt="Trash" style={{ width: '20px', height: '20px' }} />
-            </button>
-            
+          {isExpanded && (
+              <div className="hover-popup">
+                <p>{value}</p>
+                {/* Add more information as needed */}
+              </div>
+            )}
           </div>
         );
       }
     }
 
     return res;
-  }
+  };
 
   const handleDelete = (name: string, type: string) => {
     switch (type) {
@@ -198,7 +189,7 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
 
     updateState();
     updateMetadataString();
-  }
+  };
 
   return (
     <div className="list-item-container">
@@ -209,6 +200,6 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
       </div>
     </div>
   );
-}
+};
 
 export default ListItems;
