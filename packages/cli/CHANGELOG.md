@@ -1,5 +1,12 @@
 # @jspsych/metadata-cli
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [974243d]
+  - @jspsych/metadata@0.0.3
+
 ## 0.1.0
 
 ### Minor Changes

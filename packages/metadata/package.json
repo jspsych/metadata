@@ -1,6 +1,6 @@
 {
   "name": "@jspsych/metadata",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "jsPsych package for creating and customizing metadata according to Psych-DS standards.",
   "type": "module",
   "main": "dist/index.js",
