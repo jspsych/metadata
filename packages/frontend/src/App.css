@@ -241,16 +241,21 @@ html, body {
   height: 20px; /* Larger image size */
 }
 
+.expand-button {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 .variable-item-hover-popup, .field-item-hover-popup, .author-item-hover-popup {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px solid #ddd; /* Optional: add border for better separation */
+  border: 1px solid #e0e0e0; /* Even lighter gray border */
   border-radius: 10px; /* Optional: add rounded corners */
   gap: 5px;
-  padding-left: 8px;
-  padding-right: 8px;
+  /* padding-left: 8px;
+  padding-right: 8px; */
   margin-bottom: 10px;
 }
 

@@ -69,10 +69,17 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
           const isExpanded = expandedItems.includes("variable" + variable_key);
 
           res.push(
-            <div key={"variable" + variable_key} className="variable-item-hover-popup">
+            <div
+              key={"variable" + variable_key}
+              className="variable-item-hover-popup"
+              style={{
+                paddingLeft: isExpanded ? '10px' : '0px', // Adjust padding as needed
+                paddingRight: isExpanded ? '10px' : '0px' // Adjust padding as needed
+              }}
+            >
               <div className='hover-popup-title-container'>
-                <button onClick={() => toggleExpand("variable" + variable_key)}>
-                  {isExpanded ? '-' : '+'}
+                <button className="expand-button" onClick={() => toggleExpand("variable" + variable_key)}>
+                  {isExpanded ? <img src={UpArrow} alt="Expand" /> : <img src={DownArrow} alt="Collapse" />}
                 </button>
                 <button onClick={() => openPopup("variables", variable)}>
                   <span>{variable.name}</span>
@@ -83,23 +90,23 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
               </div>
 
               {isExpanded && (
-                  <div className="hover-popup">
-                    <p>{typeof variable.description === 'object' ? JSON.stringify(variable.description, null, 2) : variable.description}</p>
-                    {Object.entries(variable).map(([key, value]) => {
-                      if (key === 'description' || value === '' || value === null || value === undefined || key === "@type" || key === "name") return null;
+                <div className="hover-popup">
+                  <p>{typeof variable.description === 'object' ? JSON.stringify(variable.description, null, 2) : variable.description}</p>
+                  {Object.entries(variable).map(([key, value]) => {
+                    if (key === 'description' || value === '' || value === null || value === undefined || key === "@type" || key === "name") return null;
 
-                      const displayValue = (typeof value === 'object' || typeof value === 'function')
-                        ? JSON.stringify(value, null, 2)
-                        : String(value);
+                    const displayValue = (typeof value === 'object' || typeof value === 'function')
+                      ? JSON.stringify(value, null, 2)
+                      : String(value);
 
-                      return (
-                        <p key={key}>
-                          <strong>{key}:</strong> {displayValue}
-                        </p>
-                      );
-                    })}
-                  </div>
-                )}
+                    return (
+                      <p key={key}>
+                        <strong>{key}:</strong> {displayValue}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         }
@@ -110,10 +117,14 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
           const isExpanded = expandedItems.includes("author" + author_key);
 
           res.push(
-            <div key={"author" + author_key} className="author-item-hover-popup">
+            <div key={"author" + author_key} className="author-item-hover-popup"
+              style={{
+                paddingLeft: isExpanded ? '10px' : '0px', // Adjust padding as needed
+                paddingRight: isExpanded ? '10px' : '0px' // Adjust padding as needed
+              }}>
               <div className='hover-popup-title-container'>
-                <button onClick={() => toggleExpand("author" + author_key)}>
-                  {isExpanded ? '-' : '+'}
+                <button className="expand-button" onClick={() => toggleExpand("author" + author_key)}>
+                  {isExpanded ? <img src={UpArrow} alt="Expand"/> : <img src={DownArrow} alt="Collapse" />}
                 </button>
                 <button onClick={() => openPopup("author", author_typing)}>
                   <span>{author_typing.name}</span>
@@ -146,10 +157,14 @@ const ListItems: React.FC<ListItemsProps> = ({ jsPsychMetadata, updateMetadataSt
         const isExpanded = expandedItems.includes("field" + key);
 
         res.push(
-          <div key={"field" + key} className="field-item-hover-popup">
+          <div key={"field" + key} className="field-item-hover-popup"
+            style={{
+              paddingLeft: isExpanded ? '10px' : '0px', // Adjust padding as needed
+              paddingRight: isExpanded ? '10px' : '0px' // Adjust padding as needed
+            }}>
             <div className='hover-popup-title-container'>
-              <button onClick={() => toggleExpand("field" + key)}>
-                {isExpanded ? <img src={UpArrow} alt="Expand" /> : <img src={DownArrow} alt="Collapse" />}
+              <button className="expand-button" onClick={() => toggleExpand("field" + key)}>
+                {isExpanded ? <img src={UpArrow} alt="Expand"/> : <img src={DownArrow} alt="Collapse" />}
               </button>
               <button onClick={() => openPopup("field", { fieldName: key, fieldDescription: value })}>
                 <span>{key}</span>
