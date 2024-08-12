@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthorFields } from '../../../../metadata/dist/AuthorsMap';
 import JsPsychMetadata from '@jspsych/metadata';
+import Plus from '../../assets/plus.svg';
 
 interface AuthorFormProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -38,67 +39,83 @@ const AuthorForm: React.FC<AuthorFormProps> = ({ jsPsychMetadata, updateMetadata
     setAuthors([...authors, { name: '', identifier: '' }]);
   };
 
+
   const handleSubmit = () => {
     for (const author of authors) {
       console.log("handling author:", author);
 
       const name = author['name'];
       const identifier = author['identifier'];
-      const oldName = ("oldName" in author) ? author["oldName"] : "";
+      const oldName: string = ("oldName" in author) ? author["oldName"] as string: "";
       const existed = ("oldName" in author);
 
       if (name === "") continue; // skip if no name
 
       if (!existed) { // no old name means can just add the two new fields
-        if (identifier === "") jsPsychMetadata.setAuthor({ "name": name}); 
-        else jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier});
-      }
-      else { // 1. need to check if name changed to delete 2. need to hanlde oldfields
-        // const addAuthor = "this is where need to process fields and iterate through them checking if empty or not";
-
-        if (oldName === name){ // case where need handle old Fields
-          // add author
-        } else { // case where delete
-          jsPsychMetadata.deleteAuthor(author["oldName"] as string); // weird type casting where just for this need to break
-          // add author
+        if (identifier === "") {
+            jsPsychMetadata.setAuthor({ "name": name });
+        } else {
+            jsPsychMetadata.setAuthor({ "name": name, "identifier": identifier });
         }
-      }
+      } else { 
+        // cleaning up old fields
+        const authorWithIndex = author as AuthorFields & Record<string, unknown>; // typecasting
+        for (const key in authorWithIndex) { 
+          if (authorWithIndex[key] === "" || key === "oldName") {
+            delete authorWithIndex[key];
+          }
+        }
 
+        if (oldName !== name) {
+          jsPsychMetadata.deleteAuthor(oldName); 
+        }
+
+        jsPsychMetadata.setAuthor(authorWithIndex);
+      }
     }
-    // iterate thrugh authors figuring out whether have to delete or not based on old name and setting them to equal whatever 
-    // setting is okay because will overwrite the old script
-    handleScreenChange('data', 'skip');
+
+    handleScreenChange('data', 'Skip');
     updateMetadataString();
+  }
+
+  const handleBack = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleScreenChange('form', 'Save');
   }
 
   return (
     <div>
-      <h2>Authors</h2>
+      <div className='preview-header'>
+        <h2>Authors</h2>
+        <button className="previewButton" onClick={addEmptyAuthor}>
+          <img src={Plus} alt="Trash" style={{ width: '20px', height: '20px' }} />
+        </button>
+      </div>
+      <p>The name field is required and any author missing the name field will not be added. This can be edited and authors can be added later.</p>
       {authors.map((author, index) => (
         <div key={index}>
-          <label>
-            Name:
+          <label className="authorLabel">
+            Name: <span style={{ color: 'red' }}>*</span>
             <input
               type="text"
+              className="authorInput"
               value={author.name}
               onChange={(e) => handleNameChange(index, e.target.value)}
             />
           </label>
-          <label>
+          <label className="authorLabel">
             Identifier:
             <input
               type="text"
+              className="authorInput"
               value={author.identifier}
               onChange={(e) => handleIdentifierChange(index, e.target.value)}
             />
           </label>
         </div>
       ))}
-      <button onClick={() => {
-        console.log(authors);
-        addEmptyAuthor();
-      }}>Add Author</button>
-      <button onClick={handleSubmit}>Submit</button>
+      <button className="authorFormBack" type="button" onClick={handleBack}>Back</button>
+      <button className="authorFormSubmit" onClick={handleSubmit}>Submit</button>
     </div>
   );
 };

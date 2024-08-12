@@ -8,9 +8,10 @@ import JsPsychMetadata, { AuthorFields, VariableFields } from '@jspsych/metadata
 interface OptionsProps {
   jsPsychMetadata: JsPsychMetadata;
   updateMetadataString: () => void;
+  setPage: (s: string) => void;
 }
 
-const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataString } ) => {
+const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataString, setPage } ) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState('');
   const [popupData, setPopupData] = useState<any>({}); // State to hold popup-specific data
@@ -74,10 +75,29 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
     updateMetadataString(); // calls update to the UI string and is broken
   }
 
+  const default_vars = {
+    "citation": "Acknowledging original authors (URL or scholarly work)",
+    "license": "Author-assigned 'license' for data/material use (URL preferred)",
+    "funder": "List of sources of funding (grant numbers, person or organization)",
+    "url": "The canonical source for the dataset.",
+    "identifier": "Identifier(s) that uniquely distinguish the dataset (e.g., DOI, PMID, etc.).",
+    "privacyPolicy": "One of open, private, open_deidentified, or open_redacted.",
+    keywords: "Comma-separated keywords used to assist search.",
+    "author": {
+      additional_author: "Name of additional authors not defined"
+    },
+    "variableMeasured": {
+      additional_variable: { 
+        name: "Name of variable created during not added when generating defaults"
+      }
+    }
+  }
+
+    // can clean up setPopupType and setPopupData
   const renderPopup = () => {
     switch (popupType) {
       case 'list':
-        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} updateMetadataString={updateMetadataString} />;
+        return <ListPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} setPopupType={setPopupType} setPopupData={setPopupData} updateMetadataString={updateMetadataString} data={default_vars} openPopup={openPopup} />;
       case 'field':
         return <FieldPopup jsPsychMetadata={jsPsychMetadata} onClose={closePopup} onSave={handleSave} currentPopup={popupType} setPopupType={setPopupType} popupData={popupData} />;
       case 'author':
@@ -93,13 +113,15 @@ const Options: React.FC<OptionsProps> = ( { jsPsychMetadata, updateMetadataStrin
     <>
       <div className="optionsPage">
         <h1>Metadata Options</h1>
-        <p>It is highly advised you enter author information and edit the title </p>
-        <button className="optionsButton" onClick={() => openPopup('list')}>Edit existing field</button>
-        <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button>
-        <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Save metadata locally</button>
+        <p>You can browse fields that are commonly added to Psych-DS datasets with their corresponding descriptions, return the to the previous screen to upload additional data,
+          or download the metadata as a dataset_description.json file.
+        </p>
+        <button className="optionsButton" onClick={() => openPopup('list')}>Browse fields</button>
+        {/* <button className="optionsButton" onClick={() => openPopup('field')}>Add metadata field</button> */}
+        <button className="optionsButton" onClick={() => jsPsychMetadata.localSave()}>Download</button>
+        <button className="optionsButton" onClick={() => setPage('upload-data')}>Upload additional data</button>
 
         {isPopupOpen && renderPopup()}
-      {/* <button onClick={() => console.log(jsPsychMetadata.getMetadata())}>print metadata</button> */}
       </div>
     </>
   );

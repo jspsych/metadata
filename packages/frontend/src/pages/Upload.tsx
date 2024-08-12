@@ -9,28 +9,33 @@ interface UploadProps {
   jsPsychMetadata: JsPsychMetadata;
   setPage: (s: string) => void;
   updateMetadataString: () => void;
+  startScreen?: string; // optional parameter to determien which of upload screens begins at
 } 
 
-const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetadataString }) => {
-  const [ dataScreen, setDataScreen] = useState('metadata');
+const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetadataString, startScreen }) => {
+  const [ dataScreen, setDataScreen] = useState(startScreen ? startScreen: 'metadata');
   const [ buttonText, setButtonText ] = useState('Skip');
-  const [ pageNumber, setPageNumber ] = useState<number>(1);
-
+  const [ pageNumber, setPageNumber ] = useState<number>(startScreen ? 4 : 1); // bad way to write, but fixes immediate logic of displayData
+ 
   const handleScreenChange = (newPage?: string, newButtonText?: string) => {
     if (newPage !== undefined){ 
       setDataScreen(newPage);
       switch (newPage) {
         case 'metadata':
           setPageNumber(1);
+          setButtonText("Skip");
           break;
         case 'form':
           setPageNumber(2);
+          // setButtonText("Save"); - handled within components & static
           break;
         case 'author':
           setPageNumber(3);
+          // setButtonText("Submit"); - handled within components & static
           break;
         case 'data':
           setPageNumber(4);
+          setButtonText("Skip");
       }
     }
 
@@ -56,8 +61,7 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
         return <button 
                 className="upload-continue" 
                 onClick={() => {
-                  handleScreenChange('form');
-                  setButtonText('Skip')
+                  handleScreenChange('form', 'Skip'); // not sure if perfectly replaces -> setButtonText('Skip')
                 }}>
                   {buttonText}
                </button>; 
@@ -66,14 +70,23 @@ const Upload: React.FC<UploadProps> = ( { jsPsychMetadata, setPage, updateMetada
       case 'author':
         return; // this will be handled internally to tie behavior with form
       case 'data':
-        return <button 
+        return <div className="backSubmitButtonContainer">
+                <button 
+                  className="upload-back" 
+                  onClick={() => {
+                    handleScreenChange("author", "Save");
+                  }}>
+                    Back
+                </button>
+                <button 
                   className="upload-continue" 
                   onClick={() => {
-                    setPage('viewOptions')
+                    setPage('viewOptions') // can't use handle screenChange because setPage not included, could update to handle 'viewOptions
                     setButtonText('Skip')
                   }}>
                     {buttonText}
-                </button>;
+                </button>
+               </div>;
     }
   }
   

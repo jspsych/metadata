@@ -48,6 +48,19 @@ html, body {
   overflow-y: auto; /* Adds vertical scroll if content exceeds max-height */
 }
 
+.popup-content form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Adjust as needed */
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-submit {
+  flex: 0 1 auto; /* Size based on content */
+  margin: auto; /* Centers the button horizontally */
+}
+
 .delete-button {
   display: inline-flex; /* Makes the button only as wide as its content */
   align-items: center;  /* Centers the content vertically within the button */
@@ -158,17 +171,104 @@ html, body {
 /* .promptFormSurvey label {
 } */
 
-.promptFormSurvey input {
+.promptFormSurvey input, .authorInput {
   margin-left: 10px;
+  padding: 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
 .promptFormSubmit {
   width: fit-content;
+}
 
+.authorFormAddAuthors, .authorFormSubmit {
+  margin: 15px;
+}
+
+.authorLabel {
+  margin-left: 10px;
 }
 
 .pageDescription {
   margin-bottom: 32px;
 }
+
+
+/* Preview page */
+
+.preview-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.previewButton {
+  margin: 10px;
+  padding: 0px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: none;
+}
+
+/* Button Container */
+
+.backSubmitButtonContainer {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+}
+
+/* HoverPopup */
+.hover-popup {
+  white-space: normal; /* Allows text to wrap */
+  word-wrap: break-word; /* Ensures long words or URLs wrap to the next line */
+}
+
+.hover-popup-title-container {
+  padding: 5px;
+  display: flex;
+  flex-direction: row;
+}
+
+.hover-popup-title-container button:first-of-type {
+  margin-right: 4px; /* Adjust the margin to make the gap smaller */
+}
+
+.hover-popup-title-container button:last-of-type {
+  margin-left: 4px; /* Optional: Adjust if needed for symmetry */
+}
+
+.delete-button-hover {
+  /* display: inline-flex; */
+  padding: 5px 5px;
+  align-items: center;  /* Centers the content vertically within the button */
+  justify-content: center; /* Centers the content horizontally within the button */
+} 
+
+
+.delete-button-hover img {
+  width: 20px;  /* Larger image size */
+  height: 20px; /* Larger image size */
+}
+
+.expand-button {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.variable-item-hover-popup, .field-item-hover-popup, .author-item-hover-popup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e0e0e0; /* Even lighter gray border */
+  border-radius: 10px; /* Optional: add rounded corners */
+  gap: 5px;
+  /* padding-left: 8px;
+  padding-right: 8px; */
+  margin-bottom: 10px;
+}
+

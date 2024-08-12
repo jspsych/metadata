@@ -18,7 +18,7 @@ export type VariableFormData = {
   identifier: string; // identifier that distinguish across dataset (URL), confusing should check description
   minValue: number | undefined;
   maxValue: number | undefined;
-  levels: string[] | []; // technically property values in the other one but not sure how to format it
+  levels: string[] | [] | string; // string because of form data 
   levelsOrdered: boolean | undefined;
   na: boolean | undefined;
   naValue: string;
@@ -32,7 +32,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
   const [formData, setFormData] = useState<VariableFormData>({
     "@type": popupData["@type"] || "",
     name: popupData["name"] || "", // required
-    description: popupData["description"] || "",
+    description: (typeof popupData["description"] === 'object'? JSON.stringify(popupData["description"], null, 2): popupData["description"]) || "",
     value: popupData["value"] ||  "", // string, boolean, or number
     identifier: popupData["identifier"] || "", // identifier that distinguish across dataset (URL), confusing should check description
     minValue: popupData["minValue"] || undefined,
@@ -91,7 +91,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="@type">@type</label>
+            <label htmlFor="@type">@type </label>
             <input
               type="text"
               id="@type"
@@ -112,17 +112,18 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             {nameError && <div style={{ color: 'red' }}>{nameError}</div>}
           </div>
           <div>
-            <label htmlFor="description">description</label>
-            <input
-              type="text"
+            <label htmlFor="description">description </label>
+            <textarea
               id="description"
               name="description"
               value={formData.description}
               onChange={handleChange}
+              rows={8} // Adjust the number of rows as needed
+              cols={60} // Adjust the number of columns as needed
             />
           </div>
           <div>
-            <label htmlFor="value">value</label>
+            <label htmlFor="value">value </label>
             <select
               id="value"
               name="value"
@@ -137,7 +138,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             </select>
           </div>
           <div>
-            <label htmlFor="identifier">identifier</label>
+            <label htmlFor="identifier">identifier </label>
             <input
               type="text"
               id="identifier"
@@ -147,7 +148,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             />
           </div>
           <div>
-            <label htmlFor="minValue">minValue</label>
+            <label htmlFor="minValue">minValue </label>
             <input
               type="number"
               id="minValue"
@@ -157,7 +158,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             />
           </div>
           <div>
-            <label htmlFor="maxValue">maxValue</label>
+            <label htmlFor="maxValue">maxValue </label>
             <input
               type="number"
               id="maxValue"
@@ -166,9 +167,19 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
               onChange={handleChange}
             />
           </div>
-          {/* neeed to add levels */}
           <div>
-            <label>Levels Ordered:</label>
+            <label htmlFor="levels">levels </label>
+            <textarea
+              id="levels"
+              name="levels"
+              value={formData.levels}
+              onChange={handleChange}
+              rows={8} // Adjust the number of rows as needed
+              cols={60} // Adjust the number of columns as needed
+            />
+          </div>          
+          <div>
+            <label>Levels Ordered: </label>
             <div>
               <label>
                 <input
@@ -240,7 +251,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             </div>
           </div>
           <div>
-            <label htmlFor="naValue">naValue</label>
+            <label htmlFor="naValue">naValue </label>
             <input
               type="text"
               id="naValue"
@@ -250,7 +261,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             />
           </div>          
           <div>
-            <label htmlFor="alternateName">alternateName</label>
+            <label htmlFor="alternateName">alternateName </label>
             <input
               type="text"
               id="alternateName"
@@ -260,7 +271,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
             />
           </div>          
           <div>
-            <label htmlFor="privacy">privacy</label>
+            <label htmlFor="privacy">privacy </label>
             <input
               type="text"
               id="privacy"
@@ -269,7 +280,7 @@ const VariablePopup: React.FC<VariablePopup> = ( { onClose, onSave, currentPopup
               onChange={handleChange}
             />
           </div>
-          <button type="submit">Save</button>
+          <button className='popup-submit' type="submit">Save</button>
         </form>
       </div>
     </div>
