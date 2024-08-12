@@ -70,7 +70,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, set
         <button className="close-button" onClick={onClose}>X</button>
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="@type">@type</label>
+            <label htmlFor="@type">@type </label>
             <input
               type="text"
               id="@type"
@@ -91,7 +91,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, set
             {nameError && <div style={{ color: 'red' }}>{nameError}</div>}
           </div>
           <div>
-            <label htmlFor="givenName">givenName</label>
+            <label htmlFor="givenName">givenName </label>
             <input
               type="text"
               id="givenName"
@@ -101,7 +101,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, set
             />
           </div>
           <div>
-            <label htmlFor="familyName">familyName</label>
+            <label htmlFor="familyName">familyName </label>
             <input
               type="text"
               id="familyName"
@@ -111,7 +111,7 @@ const AuthorPopup: React.FC<AuthorPopup> = ({ onClose, onSave, currentPopup, set
             />
           </div>
           <div>
-            <label htmlFor="identifier">identifier</label>
+            <label htmlFor="identifier">identifier </label>
             <input
               type="text"
               id="identifier"

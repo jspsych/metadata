@@ -68,7 +68,28 @@ const Preview: React.FC<PreviewProps> = ( { jsPsychMetadata, updateMetadataStrin
         break;
       case 'variable':
         const variable = formData as VariableFormData;
-        const filteredVariable = filterEmptyFields(variable) as VariableFields;
+        
+        // Initialize levels as an empty array
+        let levels: string[] = [];
+
+        // Convert levels to string if it's an array or keep it as a string
+        const levelsString = Array.isArray(variable.levels) ? JSON.stringify(variable.levels) : variable.levels || '';
+
+        try {
+          // Attempt to parse levels from JSON
+          levels = JSON.parse(levelsString);
+        } catch (error) {
+          // If parsing fails, fallback to splitting a comma-separated string
+          levels = (levelsString || '').split(',').map(item => item.trim()).filter(item => item !== '');
+        }
+
+        // Update variable with parsed levels array
+        const updatedVariable = {
+          ...variable,
+          levels: levels
+        };
+
+        const filteredVariable = filterEmptyFields(updatedVariable) as VariableFields;
 
         if ("name" in filteredVariable && oldName && oldName !== "") jsPsychMetadata.deleteVariable(oldName);
           
