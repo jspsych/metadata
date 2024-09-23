@@ -126,7 +126,7 @@ export class PluginCache {
         pluginType,
         "with error",
         error,
-        "Note: if you are using a plugin not supported the main JsPsych branch this will always fail."
+        "Note: if you are using a plugin not supported in the main JsPsych branch this will always fail."
       );
       return undefined;
     }
