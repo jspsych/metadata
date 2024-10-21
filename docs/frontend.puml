@@ -1,0 +1,36 @@
+@startuml
+Actor User
+
+package "Frontend" {
+  [User preferences]
+  [Data directory]
+}
+
+package "Metadata module" {
+  [Internal logic]
+  [PluginCache]
+}
+
+package "External services" {
+  [npm]
+}
+
+' User interactions
+User --> [Data directory] : "Pass data directory"
+User --> [User preferences] : "Set Preferences"
+
+' Internal processing and external services
+[Data directory] --> [Internal logic] : "Send Bundled Data"
+[Internal logic] --> [PluginCache] : "Load Plugins"
+[PluginCache] <--> [npm] : "Fetch/Update Plugins"
+
+' Final output: Metadata file
+[Metadata file] #green
+[Internal logic] --> (Metadata file) : returns metadata file
+
+note right of [Frontend]
+  This doesn't create the correct directory structure because the lack of a dedicated backend.
+  From the frontend you are unable to edit the users file system.
+end note
+
+@enduml
