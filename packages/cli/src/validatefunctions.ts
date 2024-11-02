@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { expandHomeDir } from "./utils.js";
+import { expandHomeDir, printDirectoryStructure } from "./utils.js";
 import { validate } from "psychds-validator";
 
 export const validatePsychDS = async (path: string) => {
+  await printDirectoryStructure(path);
 
   const result = await validate(path);
   console.log("\n\ndataset has been validated:", result, "\n\n");
