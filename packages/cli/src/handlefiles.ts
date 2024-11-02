@@ -14,7 +14,11 @@ export function createDirectoryWithStructure(directoryPath: string): void {
       `# My Project
       Human-readable description of the project and dataset.`,
     'CHANGES.md': 'For version tracking - if the dataset is updated after being uploaded/shared, changes (with human-readable descriptions) may be recorded here.',
-  };
+    'documentation': {}, // recommended directory
+    'materials' : {}, // recommended directory
+    'results': {},  // recommended directory
+    'analysis': {}, // recommended directory
+  }; 
 
   // Create the directory
   fs.mkdirSync(expandedPath, { recursive: true });

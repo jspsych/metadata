@@ -5,7 +5,7 @@ import { hideBin } from 'yargs/helpers';
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
-import { validateDirectory, validateJson } from './validatefunctions.js';
+import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions.js';
 import { createDirectoryWithStructure } from './handlefiles.js';
 
 // Define a type for the parsed arguments
@@ -203,7 +203,11 @@ const main = async () => {
   
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
-  saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
+  await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
+
+  validatePsychDS(project_path);
 };
+
+
 
 main();

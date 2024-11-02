@@ -128,10 +128,10 @@ export const processOptions = async (metadata, filePath, verbose=false) => {
 }
 
 // Saving data
-export function saveTextToFile(textstr, filename, directory = '.') {
+export async function saveTextToFile(textstr, filename, directory = '.') {
   const filePath = path.join(directory, filename);
 
-  fs.writeFile(filePath, textstr, 'utf8', (err) => {
+  await fs.writeFile(filePath, textstr, 'utf8', (err) => {
     if (err) {
       console.error(`Error writing to file ${filePath}:`, err);
     } else {

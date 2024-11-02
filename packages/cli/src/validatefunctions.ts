@@ -1,6 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { expandHomeDir } from "./utils.js";
+import { validate } from "psychds-validator";
+
+export const validatePsychDS = async (path: string) => {
+
+  const result = await validate(path);
+  console.log("\n\ndataset has been validated:", result, "\n\n");
+}
 
 // Validating if input is a directory
 export const validateDirectory = async (filePath: string): Promise<boolean> => {
