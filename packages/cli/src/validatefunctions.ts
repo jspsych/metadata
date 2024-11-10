@@ -4,10 +4,23 @@ import { expandHomeDir, printDirectoryStructure } from "./utils.js";
 import { validate } from "psychds-validator";
 
 export const validatePsychDS = async (path: string) => {
-  await printDirectoryStructure(path);
+  await printDirectoryStructure(path); /// why is there error with metadata in wrong location
 
   const result = await validate(path);
   console.log("\n\ndataset has been validated:", result, "\n\n");
+
+  // await handlePsychDSValidate(result);
+}
+
+const handlePsychDSValidate = async (validationObject: any/*Promise<ValidationResult>*/) => {
+  // console.log(validationObject['issues']);
+  for (const [key, issue] of (validationObject['issues'])) {
+    console.log("Issue Key:", key);
+    console.log("Severity:", issue.severity);
+    console.log("Reason:", issue.reason);
+    console.log("Files Affected:", issue.files);
+    console.log("Requires:", issue.requires);
+  }
 }
 
 // Validating if input is a directory
