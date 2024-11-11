@@ -3,23 +3,47 @@ import path from "path";
 import { expandHomeDir, printDirectoryStructure } from "./utils.js";
 import { validate } from "psychds-validator";
 
-export const validatePsychDS = async (path: string) => {
+export const validatePsychDS = async (path: string, verbose: boolean) => {
   await printDirectoryStructure(path); /// why is there error with metadata in wrong location
 
   const result = await validate(path);
-  console.log("\n\ndataset has been validated:", result, "\n\n");
+  
+  if (verbose) console.log("\n\ndataset has been validated:", result, "\n\n"); // might want to remove this
 
-  // await handlePsychDSValidate(result);
+  await handlePsychDSValidate(result, verbose);
 }
 
-const handlePsychDSValidate = async (validationObject: any/*Promise<ValidationResult>*/) => {
+const handlePsychDSValidate = async (validationObject: any/*Promise<ValidationResult>*/, verbose: boolean) => {
+  const warnings: any[] = [];
+  const errors: any[] = [];
+
   // console.log(validationObject['issues']);
   for (const [key, issue] of (validationObject['issues'])) {
-    console.log("Issue Key:", key);
-    console.log("Severity:", issue.severity);
-    console.log("Reason:", issue.reason);
-    console.log("Files Affected:", issue.files);
-    console.log("Requires:", issue.requires);
+    if (issue.severity === 'warning') {
+      // console.log("this is a warning:", issue, "\n")
+      warnings.push(issue);
+    }
+    else if (issue.severity === 'error') {
+      // console.log("this is an error:", issue, "\n"); 
+      errors.push(issue);
+    }
+    // console.log("Issue Key:", key);, console.log("Severity:", issue.severity);, console.log("Reason:", issue.reason);, console.log("Files Affected:", issue.files);, console.log("Requires:", issue.requires);
+  }
+
+  // sum up errors and warnings and print necessary information below
+  if (errors.length == 0){
+    console.log(`✔ Dataset is Psych-DS compliant. Validation process finished with ${errors.length} errors and ${warnings.length} warnings.`);
+  } {
+    console.log(`x Dataset is not Psych-DS compliant. Validation process finished with ${errors.length} errors and ${warnings.length} warnings.\n\n`);
+
+    for (const error of errors) {
+      console.log(error.key, ":", error.reason);
+    }
+  }
+
+  if (verbose) {
+    console.log("this is running in verbose mode");
+    // either print warnings, or print whole object
   }
 }
 

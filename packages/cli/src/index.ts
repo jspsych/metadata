@@ -205,7 +205,8 @@ const main = async () => {
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 
-  validatePsychDS(project_path);
+  // validate the output after saving the dataset_description
+  await validatePsychDS(project_path, verbose);
 };
 
 
