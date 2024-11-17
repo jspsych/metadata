@@ -5,7 +5,7 @@ import { hideBin } from 'yargs/helpers';
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
-import { validateDirectory, validateJson } from './validatefunctions.js';
+import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions.js';
 import { createDirectoryWithStructure } from './handlefiles.js';
 
 // Define a type for the parsed arguments
@@ -168,12 +168,14 @@ const main = async () => {
 
   var project_path, new_project;
 
+  // this checks if there is an existing metadata file
   if (argv['psych-ds-dir'] 
     && await validateDirectory(argv['psych-ds-dir']) 
     && await validateJson(argv['psych-ds-dir'] + "/dataset_description.json", "dataset_description.json")){  
       project_path = argv['psych-ds-dir'];
       new_project = false;
       await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
+      await validatePsychDS(project_path, verbose);
       if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
@@ -203,7 +205,12 @@ const main = async () => {
   
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
-  saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
+  await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
+
+  // validate the output after saving the dataset_description
+  await validatePsychDS(project_path, verbose);
 };
+
+
 
 main();

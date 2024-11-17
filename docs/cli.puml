@@ -1,0 +1,48 @@
+@startuml
+Actor User
+
+package "CLI" {
+  [User preferences]
+  [Directory bundler]
+  [Data directory]
+}
+
+package "Metadata module" {
+  [Internal logic]
+  [PluginCache]
+}
+
+package "External services" {
+  [npm]
+}
+
+' User interactions
+User --> [Data directory] : "Pass data directory"
+User --> [User preferences] : "Set Preferences"
+
+' Directory bundler operations
+[Data directory] --> [Directory bundler] : "Bundle Data"
+[User preferences] --> [Directory bundler] : "Apply Preferences"
+
+' Internal processing and external services
+[Data directory] --> [Internal logic] : "Send Bundled Data"
+[Internal logic] --> [PluginCache] : "Load Plugins"
+[PluginCache] <--> [npm] : "Fetch/Update Plugins"
+
+' Final output: Metadata file
+(Metadata file) <-- [Internal logic]  : "Create Metadata File"
+
+' Optional: Directory bundler uses the Metadata File
+(Metadata file) --> [Directory bundler] : "Use Metadata"
+
+[Psych-DS directory with compliant metadata] #green
+[Directory bundler] --> (Psych-DS directory with compliant metadata) : Final output
+
+
+note left of [CLI]
+  Currently this is the desired structure because 
+  not only creates the metadata but also the
+  Psych-DS directory.
+end note
+
+@enduml

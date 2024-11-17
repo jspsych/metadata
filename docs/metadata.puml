@@ -1,0 +1,36 @@
+@startuml
+
+package "Data Files" {
+  [DataFile1]
+  [DataFile2]
+}
+
+package "Metadata module" {
+  [Internal logic]
+  [PluginCache]
+}
+
+package "External services" {
+  [npm]
+}
+
+' Data flow through the process
+[DataFile1] ---> [Internal logic]
+[DataFile2] ---> [Internal logic]
+
+[Internal logic] -> [PluginCache]
+[PluginCache] <-> [npm]
+
+' Final output: Metadata file
+[Internal logic] --> (Metadata file) : "Final Output"
+
+' Emphasize that the Metadata file is the end
+(Metadata file) #green
+
+note right of [Data Files]
+  Each file is passed in seperately and aren't 
+  not valid for the Psych-DS directory structure.
+end note
+
+
+@enduml

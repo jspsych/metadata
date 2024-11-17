@@ -1,3 +1,5 @@
+// Todo: this seems deprecated, may want to remove this and delete from the build file
+
 import JsPsychMetadata from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToFile, generatePath } from "./data.js";
 
