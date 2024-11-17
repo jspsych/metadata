@@ -55,3 +55,8 @@ The metadata-options file must be in .json format and needs to include the same
 ### Naming Requirements
 
 The ```dataset_description.json``` must be named as is according to Psych-DS specification, and the rest of the files must be organized as Psych-DS requirements.
+
+
+## Psych-DS Validator
+
+When running the cli tool, all metadata will undergo an automatic validation when loading existing metadata and upon the process of creating new metadata files. This process will print out any resulting errors that cause this validation to fail and the number of warnings encounter. The warnings will not be print out by default, but can instead be seen by running the CLI again with the --verbose flag. 
