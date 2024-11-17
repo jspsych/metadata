@@ -34,17 +34,22 @@ const handlePsychDSValidate = async (validationObject: any/*Promise<ValidationRe
   if (errors.length == 0){
     console.log(`✔ Dataset is Psych-DS compliant. Validation process finished with ${errors.length} errors and ${warnings.length} warnings.`);
   } {
-    console.log(`x Dataset is not Psych-DS compliant. Validation process finished with ${errors.length} errors and ${warnings.length} warnings.\n\n`);
+    console.log(`x Dataset is not Psych-DS compliant. Validation process finished with ${errors.length} errors and ${warnings.length} warnings.\n`);
 
-    for (const error of errors) {
-      console.log(error.key, ":", error.reason);
+    for (const index in errors) {
+      const error = errors[index]; 
+      console.log(`Error #${index} ` + error.key, ":", error.reason + "\n");
     }
   }
 
+
   if (verbose) {
-    console.log("this is running in verbose mode");
-    // either print warnings, or print whole object
-  }
+    for (const index in warnings) {
+      const warning = warnings[index]; 
+      console.log(`Warning #${index} ` + warning.key, ":", warning.reason + "\n");
+    }
+  } else console.log("Note: rerun this process with the --verbose flag in order to see information about warnings.\n")
+
 }
 
 // Validating if input is a directory
