@@ -168,12 +168,14 @@ const main = async () => {
 
   var project_path, new_project;
 
+  // this checks if there is an existing metadata file
   if (argv['psych-ds-dir'] 
     && await validateDirectory(argv['psych-ds-dir']) 
     && await validateJson(argv['psych-ds-dir'] + "/dataset_description.json", "dataset_description.json")){  
       project_path = argv['psych-ds-dir'];
       new_project = false;
       await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
+      await validatePsychDS(project_path, verbose);
       if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
