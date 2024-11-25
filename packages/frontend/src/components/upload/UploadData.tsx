@@ -1,5 +1,7 @@
 import JsPsychMetadata from '@jspsych/metadata';
 import React, { useState, useRef, useEffect } from 'react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 type UploadDataProps = {
   jsPsychMetadata: JsPsychMetadata;
@@ -13,6 +15,8 @@ type FileData = {
   fileType: string;
   filePath: string;
 };
+
+
 
 const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadataString, handleScreenChange }) => {
   const [ fileList, setFileList ] = useState<File[]>([]);
@@ -58,6 +62,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
     
     try {
       const fileDataArray = await processFiles(fileList);
+      createDirectoryAndZip(fileDataArray);
   
       // Process each file data asynchronously
       for (const { name, content, fileType, filePath } of fileDataArray) {
@@ -68,14 +73,14 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
         try {
           if (name === "dataset_description.json"){ 
             // await jsPsychMetadata.generate(content); // load above
-            screenName = name + " [skipped, please upload below]";
+            screenName = name + " [skipped, please during the previous Metadata prompt.]";
           }
           else if (fileType === "json") {
             await jsPsychMetadata.generate(content); // Use the text content with jsPsychMetadata.
-            screenName = name + " [success]";
+            screenName = name + " ✔";
           } else if (fileType === 'csv') {
             await jsPsychMetadata.generate(content, {}, "csv");
-            screenName = name + " [success]";
+            screenName = name + " ✔";
           } else {
             screenName = name + "[skipped, unsupported filetype for jsPsych data]";
             console.warn("Unsupported file type:", fileType, "for filePath", filePath);
@@ -101,6 +106,32 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
     }
   }, []);
 
+  const createDirectoryAndZip = async (fileDataArray: FileData[]) => {
+    const zip = new JSZip();
+
+      // Create subdirectory
+      const folder = zip.folder('organized_files');
+
+      // Add uploaded files
+      fileDataArray.forEach(({ name, content }) => {
+        if (folder) folder.file(name, content);
+      });
+
+      // Create additional JSON files
+      if (folder) folder.file('metadata.json', JSON.stringify({ created: new Date().toISOString() }));
+
+      // Generate the zip file
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+      // Download the zip file
+      saveAs(zipBlob, 'data_files.zip');
+  };
+
+  const handleZipAndDownload = async () => {
+      const fileDataArray = await processFiles(fileList); // Use your existing logic
+      createDirectoryAndZip(fileDataArray);
+  };
+
   return (
     <div className="uploadDataPage">
       <h2>Data file upload</h2>
@@ -111,6 +142,7 @@ const UploadData: React.FC<UploadDataProps> = ({ jsPsychMetadata, updateMetadata
       <p>
         You may upload as many files as you want.
       </p>
+      {/* <form onSubmit={handleZipAndDownload}> */}
       <form onSubmit={loadFiles}>
         <input
           type="file"
