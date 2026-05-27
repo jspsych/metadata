@@ -141,7 +141,9 @@ export class PluginCache {
    * @returns {{}}
    */
   private parseJavadocString(script: string) {
-    const dataString = script.match(/data:\s*{([\s\S]*?)};\s*/).join();
+    const matchResult = script.match(/data:\s*{([\s\S]*?)};\s*/);
+    if (!matchResult) return {};
+    const dataString = matchResult.join();
     const result = {};
     // Regular expression to match each variable block
     const varRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*{\s*([\s\S]*?)\s*},?/gs;
