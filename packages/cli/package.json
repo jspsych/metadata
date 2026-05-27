@@ -22,19 +22,9 @@
   },
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "npm run build:data:esm && npm run build:validate:esm && npm run build:files:esm && npm run build:utils:esm && npm run build:cli:esm",
-    "build:data:esm": "esbuild src/data.ts --packages=external --format=esm --platform=node --outfile=dist/esm/data.js",
-    "build:validate:esm": "esbuild src/validatefunctions.ts --packages=external --format=esm --platform=node --outfile=dist/esm/validatefunctions.js",
-    "build:files:esm": "esbuild src/handlefiles.ts --packages=external --format=esm --platform=node --outfile=dist/esm/handlefiles.js",
-    "build:utils:esm": "esbuild src/utils.ts --packages=external --format=esm --platform=node --outfile=dist/esm/utils.js",
-    "build:cli:esm": "esbuild src/index.ts --packages=external --format=esm --platform=node --outfile=dist/esm/index.js",
-    "cli": "node dist/esm/index.js",
-    "build:cjs": "npm run build:data:cjs && npm run build:validate:cjs && npm run build:files:cjs && npm run build:utils:cjs && npm run build:cli:cjs",
-    "build:data:cjs": "esbuild src/data.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/data.js",
-    "build:validate:cjs": "esbuild src/validatefunctions.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/validatefunctions.js",
-    "build:files:cjs": "esbuild src/handlefiles.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/handlefiles.js",
-    "build:utils:cjs": "esbuild src/utils.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/utils.js",
-    "build:cli:cjs": "npm run build:utils:cjs && npm run build:files:cjs && npm run build:validate:cjs && npm run build:data:cjs && esbuild src/index.ts --packages=external --format=cjs --platform=node --outfile=dist/cjs/index.cjs"
+    "build:esm": "esbuild src/index.ts --bundle --format=esm --platform=node --outfile=dist/esm/index.js",
+    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --outfile=dist/cjs/index.cjs",
+    "cli": "node dist/esm/index.js"
   },
   "dependencies": {
     "@inquirer/prompts": "^5.1.2",
