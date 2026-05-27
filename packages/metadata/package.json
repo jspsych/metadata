@@ -41,6 +41,7 @@
   },
   "homepage": "https://www.jspsych.org/latest/metadata",
   "devDependencies": {
+    "@jspsych/config": "^3.3.3",
     "@types/jest": "^29.5.12",
     "husky": "^9.0.11",
     "ts-jest": "^29.1.4",

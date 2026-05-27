@@ -1,4 +1,4 @@
-import JsPsychMetadata from "../src/index.js";
+import JsPsychMetadata from "../src/index";
 
 // missing displaying data modules tests
 describe("JsPsychMetadata", () => {

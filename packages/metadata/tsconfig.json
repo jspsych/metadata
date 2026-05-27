@@ -2,8 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2018",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ES2020",
+    "moduleResolution": "node",
     "paths": {
       "csv-parse/browser/esm": ["node_modules/csv-parse/lib/browser/esm/index.d.ts"]
     },
