@@ -1,7 +1,7 @@
-import { AuthorFields, AuthorsMap } from "./AuthorsMap.js";
-import { PluginCache } from "./PluginCache.js";
-import { saveTextToFile, parseCSV } from "./utils.js";
-import { VariableFields, VariablesMap } from "./VariablesMap.js";
+import { AuthorFields, AuthorsMap } from "./AuthorsMap";
+import { PluginCache } from "./PluginCache";
+import { saveTextToFile, parseCSV } from "./utils";
+import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
  * Class that handles the storage, update and retrieval of metadata according to Psych-DS
