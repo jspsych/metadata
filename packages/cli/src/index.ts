@@ -4,9 +4,9 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { input, select } from '@inquirer/prompts';
 import JsPsychMetadata from "@jspsych/metadata";
-import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data.js";
-import { validateDirectory, validateJson } from './validatefunctions.js';
-import { createDirectoryWithStructure } from './handlefiles.js';
+import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data";
+import { validateDirectory, validateJson } from './validatefunctions';
+import { createDirectoryWithStructure } from './handlefiles';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -43,7 +43,7 @@ const argv = yargs(hideBin(process.argv))
   .help()
   .argv as Argv;
 
-async function metadataOptionsPrompt(metadata, verbose){
+async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean){
   const answer = await select({
     message: 'Would you like to customize the metadata by providing a .json specifying changes?',
     choices: [
@@ -78,7 +78,7 @@ async function metadataOptionsPrompt(metadata, verbose){
 
 }
 
-const promptProjectStructure = async (metadata) => {
+const promptProjectStructure = async (metadata: JsPsychMetadata) => {
   const answer = await select({
     message: 'Would you like to generate a new project directory or update an existing project directory?',
     choices: [
@@ -144,7 +144,7 @@ const promptName = async () => {
   return project_name;
 }
 
-const promptData = async (metadata, verbose, targetDirectoryPath) => {
+const promptData = async (metadata: JsPsychMetadata, verbose: boolean, targetDirectoryPath: string) => {
   // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
   var data_path;
   

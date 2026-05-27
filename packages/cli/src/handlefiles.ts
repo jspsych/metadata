@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { expandHomeDir } from './utils.js';
+import { expandHomeDir } from './utils';
 
 
 // creates directory structure for the Psych-Ds format allowing future functions to write data to here

@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { expandHomeDir } from "./utils.js";
+import JsPsychMetadata from "@jspsych/metadata";
+import { expandHomeDir } from "./utils";
 
 // creating path -> handles the absolute vs non-absolute paths
-export const generatePath = (inputPath) => {
+export const generatePath = (inputPath: string): string => {
   if (path.isAbsolute(inputPath)) {
     return inputPath;
   } else {
@@ -11,7 +12,7 @@ export const generatePath = (inputPath) => {
   }
 };
 
-const copyFileWithStructure = async (sourceFilePath, verbose, targetDirectoryPath) => {
+const copyFileWithStructure = async (sourceFilePath: string, verbose: boolean, targetDirectoryPath: string) => {
   try {
     sourceFilePath = expandHomeDir(sourceFilePath);
     targetDirectoryPath = expandHomeDir(targetDirectoryPath);
@@ -32,7 +33,7 @@ const copyFileWithStructure = async (sourceFilePath, verbose, targetDirectoryPat
 };
 
 // processing single file, need to refactor this into a seperate call
-const processFile = async (metadata, directoryPath, file, verbose, targetDirectoryPath?) => {
+const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string) => {
   const filePath = path.join(directoryPath, file);
   if (verbose) console.log("Reading file:", filePath); 
 
@@ -63,12 +64,12 @@ const processFile = async (metadata, directoryPath, file, verbose, targetDirecto
 }
 
 // Processing directory recursively up to one level
-export const processDirectory = async (metadata, directoryPath, verbose=false, targetDirectoryPath?) => {
+export const processDirectory = async (metadata: JsPsychMetadata, directoryPath: string, verbose: boolean = false, targetDirectoryPath?: string) => {
   directoryPath = expandHomeDir(directoryPath);
   let total = 0;
   let failed = 0;
 
-  const processDirectoryRecursive = async (currentPath, level) => {
+  const processDirectoryRecursive = async (currentPath: string, level: number) => {
     if (level > 1){ 
       console.warn("Can only read subdirectories one level deep:", directoryPath);
       return;
@@ -110,7 +111,7 @@ export const processDirectory = async (metadata, directoryPath, verbose=false, t
 };
 
 // Processing metadata options json
-export const processOptions = async (metadata, filePath, verbose=false) => {
+export const processOptions = async (metadata: JsPsychMetadata, filePath: string, verbose: boolean = false) => {
   try {
     const metadata_options_path = expandHomeDir(generatePath(filePath));
     const data = fs.readFileSync(metadata_options_path, "utf8"); // synchronous read
@@ -127,21 +128,7 @@ export const processOptions = async (metadata, filePath, verbose=false) => {
   }
 }
 
-// Saving data
-export function saveTextToFile(textstr, filename, directory = '.') {
-  const filePath = path.join(directory, filename);
-
-  fs.writeFile(filePath, textstr, 'utf8', (err) => {
-    if (err) {
-      console.error(`Error writing to file ${filePath}:`, err);
-    } else {
-      console.log(`File ${filePath} has been saved.`);
-    }
-  });
-}
-
-// in case path goes to file already
-export function saveTextToPath(textstr, filePath = './file.txt') {
+export function saveTextToPath(textstr: string, filePath: string = './file.txt') {
   filePath = expandHomeDir(filePath);
 
   fs.writeFile(filePath, textstr, 'utf8', (err) => {
@@ -154,7 +141,7 @@ export function saveTextToPath(textstr, filePath = './file.txt') {
 }
 
 // function for loading metadata
-export const loadMetadata = async (metadata, filePath) => {
+export const loadMetadata = async (metadata: JsPsychMetadata, filePath: string) => {
   filePath = expandHomeDir(filePath);
   const fileName = path.basename(filePath).toLowerCase(); // Extract the file name from the filePath
 
