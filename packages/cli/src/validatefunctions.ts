@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { expandHomeDir } from "./utils.js";
+import { expandHomeDir } from "./utils";
 
 // Validating if input is a directory
 export const validateDirectory = async (filePath: string): Promise<boolean> => {
