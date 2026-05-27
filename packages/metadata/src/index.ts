@@ -55,7 +55,7 @@ export default class JsPsychMetadata {
     "trial_type",
     "trial_index",
     "time_elapsed",
-    "extenstion_type",
+    "extension_type",
     "extension_version",
   ]);
   
@@ -382,30 +382,18 @@ export default class JsPsychMetadata {
     }
 
     if (ext === 'json') {
-      try {
-        parsed_data = JSON.parse(data);
-      } catch (error) {
-        console.error("Error parsing JSON data:", error);
-        return;
-      }
-    } 
-    
-    // Check if parsed_data is an array (assuming it's an array of observations)
-    if (!Array.isArray(parsed_data)) {
-      console.error("Parsed data is not in correct format: Expected an array", parsed_data);
-      return;
+      parsed_data = JSON.parse(data);
     }
 
-    if (typeof parsed_data !== "object") {
-      console.error("Unable to parse data object, not in correct format:", typeof parsed_data);
-      return;
+    if (!Array.isArray(parsed_data)) {
+      throw new Error("Parsed data is not in correct format: Expected an array of observations");
     }
 
     for (const observation of parsed_data) {
       await this.generateObservation(observation);
     }
-    
-    await this.updateMetadata(metadata); 
+
+    await this.updateMetadata(metadata);
   }
 
   /**
