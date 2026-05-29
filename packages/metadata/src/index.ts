@@ -425,7 +425,19 @@ export default class JsPsychMetadata {
       var value = observation[variable];
       var type = typeof value;
 
-      if (value === null || value === undefined || value === '' || value === "null"){ 
+      // Ensure every column header appears in variableMeasured even if all its values are null/empty.
+      // Columns that never get a real value keep value:"unknown" and no levels, which satisfies the
+      // Psych-DS requirement that every CSV column header has a corresponding variableMeasured entry.
+      if (!this.containsVariable(variable) && !this.ignored_variables.has(variable)) {
+        this.setVariable({
+          "@type": "PropertyValue",
+          name: variable,
+          description: { default: "unknown" },
+          value: "unknown",
+        });
+      }
+
+      if (value === null || value === undefined || value === '' || value === "null"){
         continue; // Error checking
       }
 
@@ -484,7 +496,6 @@ export default class JsPsychMetadata {
     var type = typeof value;
 
     if (!this.containsVariable(variable)) {
-      // probs should have update description called here
       const new_var = {
         "@type": "PropertyValue",
         name: variable,
@@ -492,6 +503,11 @@ export default class JsPsychMetadata {
         value: type,
       };
       this.setVariable(new_var);
+    } else {
+      // Column was pre-registered with value:"unknown" in generateObservation; upgrade to the real type
+      // now that we have a concrete value.
+      const existing = this.getVariable(variable) as VariableFields;
+      if (existing.value === "unknown") this.updateVariable(variable, "value", type);
     }
 
     // hit the update variable decription fields

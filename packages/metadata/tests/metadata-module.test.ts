@@ -1,5 +1,71 @@
 import JsPsychMetadata from "../src/index";
 
+describe("always-empty columns in variableMeasured", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  test("column with all empty values appears in variableMeasured with value:unknown", async () => {
+    const csv = [
+      "trial_type,rt,eye_tracking_status",
+      "jsPsych-html-keyboard-response,450,",
+      "jsPsych-html-keyboard-response,512,",
+      "jsPsych-html-keyboard-response,389,",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const names = variableMeasured.map((v) => v.name);
+
+    expect(names).toContain("eye_tracking_status");
+
+    const emptyCol = variableMeasured.find((v) => v.name === "eye_tracking_status");
+    expect(emptyCol.value).toBe("unknown");
+    expect(emptyCol.levels).toBeUndefined();
+    expect(emptyCol.minValue).toBeUndefined();
+    expect(emptyCol.maxValue).toBeUndefined();
+  });
+
+  test("column with only null string values appears in variableMeasured with value:unknown", async () => {
+    const csv = [
+      "trial_type,rt,score",
+      "jsPsych-html-keyboard-response,450,null",
+      "jsPsych-html-keyboard-response,512,null",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const emptyCol = variableMeasured.find((v) => v.name === "score");
+
+    expect(emptyCol).toBeDefined();
+    expect(emptyCol.value).toBe("unknown");
+    expect(emptyCol.levels).toBeUndefined();
+  });
+
+  test("column with some empty and some real values gets the correct type, not unknown", async () => {
+    const csv = [
+      "trial_type,rt,score",
+      "jsPsych-html-keyboard-response,450,",
+      "jsPsych-html-keyboard-response,512,8",
+      "jsPsych-html-keyboard-response,389,",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const partialCol = variableMeasured.find((v) => v.name === "score");
+
+    expect(partialCol).toBeDefined();
+    expect(partialCol.value).toBe("number");
+    expect(partialCol.value).not.toBe("unknown");
+  });
+
+});
+
 // missing displaying data modules tests
 describe("JsPsychMetadata", () => {
   let jsPsychMetadata: JsPsychMetadata;
