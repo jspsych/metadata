@@ -66,10 +66,15 @@ describe("always-empty columns in variableMeasured", () => {
 
 });
 
+// Note: JSON input is intentionally not tested here. When reading JSON, rows with a key absent
+// entirely (rather than null/empty) never enter generateObservation for that key, so pre-registration
+// doesn't fire for that row. This is pre-existing design tied to the non-rectangular JSON structure
+// issue, which is tracked separately.
 describe("variableMeasured completeness for CSV input", () => {
   let jsPsychMetadata: JsPsychMetadata;
 
-  // Extracts every column name from a CSV header row
+  // Splits a CSV header row into column names. Assumes no quoted commas in headers — all test
+  // data here is controlled and satisfies this constraint.
   function csvColumnNames(csv: string): string[] {
     return csv.split("\n")[0].split(",");
   }
@@ -78,6 +83,7 @@ describe("variableMeasured completeness for CSV input", () => {
     jsPsychMetadata = new JsPsychMetadata();
   });
 
+  // Baseline: the fix should not break the common case where all columns have values.
   test("all columns appear when every column has values in every row", async () => {
     const csv = [
       "trial_type,rt,response,stimulus",
@@ -112,6 +118,10 @@ describe("variableMeasured completeness for CSV input", () => {
     for (const col of csvColumnNames(csv)) {
       expect(outputNames).toContain(col);
     }
+
+    // Also verify the always-empty column's description serializes correctly through getList()
+    const emptyCol = variableMeasured.find((v) => v.name === "eye_tracking_status");
+    expect(emptyCol.description).toBe("unknown");
   });
 
   test("all columns appear when different trial types populate different columns (sparse CSV)", async () => {
