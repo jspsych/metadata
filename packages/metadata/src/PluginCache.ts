@@ -63,8 +63,8 @@ export class PluginCache {
       try {
         return this.parseJavadocString(script);
       } 
-      catch (err) { // make this more descriptive
-        console.warn("* Error parsing", pluginType);
+      catch (err) {
+        console.warn("* Error parsing", pluginType, err);
         return {};
       }
     }
@@ -118,6 +118,10 @@ export class PluginCache {
 
     try {
       const response = await fetch(unpkgUrl);
+      if (!response.ok) {
+        console.warn(`Plugin source not found for: ${pluginType} (HTTP ${response.status}). Descriptions will default to "unknown".`);
+        return undefined;
+      }
       const scriptContent = await response.text();
       return scriptContent;
     } catch (error) {
@@ -133,38 +137,64 @@ export class PluginCache {
   }
 
   /**
-   * Function that parses javadoc and creates the object containing all the parsed descriptions 
-   * with their corresponding names.
+   * Extracts the content of the top-level `data: { ... }` block from a jsPsych plugin source
+   * file using brace counting. This is more robust than a regex approach because the data block
+   * ends with `},` (not `};`), and plugin sources contain deeply nested objects that would
+   * cause a lazy regex to stop at the wrong closing brace.
+   *
+   * @private
+   * @param {string} script - Full plugin source text.
+   * @returns {string | null} Content between the outer braces of the data block, or null if not found.
+   */
+  private extractDataBlock(script: string): string | null {
+    const dataStart = script.search(/\bdata:\s*\{/);
+    if (dataStart === -1) return null;
+    const braceStart = script.indexOf('{', dataStart);
+    if (braceStart === -1) return null;
+    let depth = 0;
+    for (let i = braceStart; i < script.length; i++) {
+      if (script[i] === '{') depth++;
+      else if (script[i] === '}') {
+        if (--depth === 0) return script.substring(braceStart + 1, i);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Parses JSDoc comments and variable blocks from the data section of a jsPsych plugin source.
+   * Note: for variables with deeply nested properties (e.g. a `nested:` sub-object), the props
+   * regex stops at the first inner `},` rather than the variable's true closing brace. The
+   * description is still captured correctly; only the props object may be incomplete for those
+   * variables.
    *
    * @private
    * @param {string} script - The script text content of the fetching.
    * @returns {{}}
    */
   private parseJavadocString(script: string) {
-    const matchResult = script.match(/data:\s*{([\s\S]*?)};\s*/);
-    if (!matchResult) return {};
-    const dataString = matchResult.join();
+    const dataBlock = this.extractDataBlock(script);
+    if (!dataBlock) return {};
+
     const result = {};
-    // Regular expression to match each variable block
     const varRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*{\s*([\s\S]*?)\s*},?/gs;
     const propRegex = /\s*(\w+):\s*([^,\s]+)/g;
 
-    // Match each variable block
     let match;
-    while ((match = varRegex.exec(dataString)) !== null) {
+    while ((match = varRegex.exec(dataBlock)) !== null) {
       let [, description, varName, props] = match;
-      description = description.trim().replace(/\s+/g, " "); // Clean up description
+      description = description.trim().replace(/\s+/g, " ");
 
       const propsObj = {};
       let propMatch;
       while ((propMatch = propRegex.exec(props)) !== null) {
-        let [, propName, propValue] = propMatch;
+        const [, propName, propValue] = propMatch;
         propsObj[propName] = propValue;
       }
 
       result[varName] = {
         description: description,
-        ...propsObj, // Add all additional properties to the result object
+        ...propsObj,
       };
     }
 
