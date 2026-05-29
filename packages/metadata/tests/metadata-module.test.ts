@@ -66,6 +66,76 @@ describe("always-empty columns in variableMeasured", () => {
 
 });
 
+describe("variableMeasured completeness for CSV input", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  // Extracts every column name from a CSV header row
+  function csvColumnNames(csv: string): string[] {
+    return csv.split("\n")[0].split(",");
+  }
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  test("all columns appear when every column has values in every row", async () => {
+    const csv = [
+      "trial_type,rt,response,stimulus",
+      "jsPsych-html-keyboard-response,450,f,<p>Hello</p>",
+      "jsPsych-html-keyboard-response,512,j,<p>World</p>",
+      "jsPsych-html-keyboard-response,389,f,<p>Again</p>",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const outputNames = variableMeasured.map((v) => v.name);
+
+    for (const col of csvColumnNames(csv)) {
+      expect(outputNames).toContain(col);
+    }
+  });
+
+  test("all columns appear when one column is always empty", async () => {
+    const csv = [
+      "trial_type,rt,response,eye_tracking_status",
+      "jsPsych-html-keyboard-response,450,f,",
+      "jsPsych-html-keyboard-response,512,j,",
+      "jsPsych-html-keyboard-response,389,f,",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const outputNames = variableMeasured.map((v) => v.name);
+
+    for (const col of csvColumnNames(csv)) {
+      expect(outputNames).toContain(col);
+    }
+  });
+
+  test("all columns appear when different trial types populate different columns (sparse CSV)", async () => {
+    // Simulates realistic jsPsych output where keyboard-response trials have rt/response/stimulus
+    // and survey trials have question_order but leave rt and stimulus empty
+    const csv = [
+      "trial_type,rt,response,stimulus,question_order",
+      "jsPsych-html-keyboard-response,450,f,<p>Hello</p>,",
+      "jsPsych-html-keyboard-response,512,j,<p>World</p>,",
+      "jsPsych-survey-likert,,4,,forward",
+      "jsPsych-survey-likert,,2,,reverse",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const outputNames = variableMeasured.map((v) => v.name);
+
+    for (const col of csvColumnNames(csv)) {
+      expect(outputNames).toContain(col);
+    }
+  });
+});
+
 // missing displaying data modules tests
 describe("JsPsychMetadata", () => {
   let jsPsychMetadata: JsPsychMetadata;
