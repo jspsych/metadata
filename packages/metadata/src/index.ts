@@ -434,7 +434,7 @@ export default class JsPsychMetadata {
 
     for (const variable in observation) {
       var value = observation[variable];
-      var type = typeof value;
+      var type: string = typeof value;
 
       if (value === null || value === undefined || value === '' || value === "null"){ 
         continue; // Error checking
