@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile, parseCSV } from "./utils";
+import { saveTextToFile, parseCSV, tryParseJSON } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -67,6 +67,8 @@ export default class JsPsychMetadata {
    * @type {boolean}
    */
   private verbose: boolean = false;
+
+  private extractedArrays: Map<string, Array<Record<string, any>>> = new Map();
 
   /**
    * Creates an instance of JsPsychMetadata while passing in JsPsych object to have access to context
@@ -310,6 +312,15 @@ export default class JsPsychMetadata {
   }
 
   /**
+   * Returns accumulated array-column data keyed by column name.
+   * Each entry is a list of rows with trial_index, element_index, and the element's own fields.
+   * Used by the CLI to write Psych-DS compliant separate CSV files.
+   */
+  getExtractedArrays(): Map<string, Array<Record<string, any>>> {
+    return this.extractedArrays;
+  }
+
+  /**
    * Method that allows you to display metadata at the end of an experiment.
    *
    * @param {string} [elementId="jspsych-metadata-display"] - Id for how to style the metadata. Defaults to default styling.
@@ -423,7 +434,7 @@ export default class JsPsychMetadata {
 
     for (const variable in observation) {
       var value = observation[variable];
-      var type = typeof value;
+      var type: string = typeof value;
 
       if (value === null || value === undefined || value === '' || value === "null"){ 
         continue; // Error checking
@@ -437,11 +448,41 @@ export default class JsPsychMetadata {
         } else if (value.toLowerCase() === "true" || value.toLowerCase() === "false") {
           type = "boolean";
           value = (value.toLowerCase() === "true");
+        } else if (value.startsWith("{") || value.startsWith("[")) {
+          const parsed = tryParseJSON(value);
+          if (parsed !== null) {
+            value = parsed;
+            type = Array.isArray(parsed) ? "array" : "object";
+          }
         }
       }
 
       if (this.ignored_variables.has(variable)) this.updateFields(variable, value, type);
-      else {
+      else if (type === "object" && value !== null && !Array.isArray(value)) {
+        await this.expandObjectFields(variable, value, pluginType, version);
+      } else if (type === "array" || (type === "object" && Array.isArray(value))) {
+        // Register parent via generateMetadata to get the plugin description, then
+        // override the stored type to "array" (generateMetadata would infer "object"
+        // because typeof [] === "object" in JS).
+        await this.generateMetadata(variable, value, pluginType, version);
+        this.updateVariable(variable, "value", "array");
+
+        // Accumulate array-of-objects rows for separate CSV output.
+        // Only object elements are expanded; null / primitive elements are skipped.
+        const objectElements = (value as any[]).filter(
+          (el) => el !== null && typeof el === "object" && !Array.isArray(el)
+        );
+        if (objectElements.length > 0) {
+          const trialIndex = observation["trial_index"];
+          const existing = this.extractedArrays.get(variable) ?? [];
+          (value as any[]).forEach((element, elementIndex) => {
+            if (element !== null && typeof element === "object" && !Array.isArray(element)) {
+              existing.push({ trial_index: trialIndex, element_index: elementIndex, ...element });
+            }
+          });
+          this.extractedArrays.set(variable, existing);
+        }
+      } else {
         await this.generateMetadata(variable, value, pluginType, version);
 
         if (extensionType) {
@@ -594,6 +635,21 @@ export default class JsPsychMetadata {
         this.setAuthor(author);
       }
     } else this.setMetadataField(key, value);
+  }
+
+  /**
+   * Registers the top-level keys of a plain JSON object as dotted sub-variables
+   * (e.g. response.Q0, response.Q1) and registers the parent with value: "object".
+   * One level deep only.
+   */
+  private async expandObjectFields(parentName: string, obj: Record<string, any>, pluginType: string, version: string) {
+    // Register the parent through the normal path so the plugin description is fetched.
+    // typeof obj === "object", so generateMetadata stores value: "object" and updateFields
+    // skips levels automatically — no override needed.
+    await this.generateMetadata(parentName, obj, pluginType, version);
+    for (const key of Object.keys(obj)) {
+      await this.generateMetadata(`${parentName}.${key}`, obj[key], pluginType, version);
+    }
   }
 
   /**
