@@ -72,3 +72,27 @@ export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: str
   }
   return lines.join('\r\n');
 }
+
+/**
+ * Returns a filename not already present in `used`. If `base` is free it is returned
+ * as-is; otherwise a numeric suffix is inserted into the measure segment
+ * (e.g. foo_measure-bar_data.csv → foo_measure-bar-2_data.csv) until a free name is found.
+ *
+ * deriveArrayFilename is a lossy, many-to-one mapping (sanitization collapses separators,
+ * and only the basename is used), so distinct source files / columns can produce the same
+ * name. Since all extracted CSVs are written to a single flat directory, this prevents one
+ * from silently overwriting another.
+ */
+export function disambiguateArrayFilename(base: string, used: Set<string>): string {
+  if (!used.has(base)) return base;
+
+  const suffix = '_data.csv';
+  const root = base.endsWith(suffix) ? base.slice(0, -suffix.length) : base.replace(/\.csv$/i, '');
+  let n = 2;
+  let candidate = `${root}-${n}${suffix}`;
+  while (used.has(candidate)) {
+    n += 1;
+    candidate = `${root}-${n}${suffix}`;
+  }
+  return candidate;
+}

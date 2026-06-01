@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV } from "@jspsych/metadata";
-import { expandHomeDir, deriveArrayFilename, objectsToCSV } from "./utils";
+import { expandHomeDir, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV } from "./utils";
 
 export interface GenerateOptions {
   arrayJoinKeys?: string[];
@@ -107,7 +107,7 @@ const copyFileWithStructure = async (sourceFilePath: string, verbose: boolean, t
 };
 
 // processing single file, need to refactor this into a seperate call
-const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string, options: GenerateOptions = {}) => {
+const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string, options: GenerateOptions = {}, usedArrayFilenames: Set<string> = new Set()) => {
   const filePath = path.join(directoryPath, file);
   if (verbose) console.log("Reading file:", filePath);
 
@@ -141,7 +141,12 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       const joinKeys = metadata.getArrayJoinKeys();
       const priorityCols = [...joinKeys, 'element_index'];
       for (const [colName, rows] of extractedArrays) {
-        const outFilename = deriveArrayFilename(file, colName);
+        const derivedFilename = deriveArrayFilename(file, colName);
+        const outFilename = disambiguateArrayFilename(derivedFilename, usedArrayFilenames);
+        if (outFilename !== derivedFilename) {
+          console.log(`  ! "${derivedFilename}" already exists; writing array data for "${colName}" as "${outFilename}" instead.`);
+        }
+        usedArrayFilenames.add(outFilename);
         const outPath = path.join(targetDirectoryPath, outFilename);
         await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
         if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
@@ -160,6 +165,9 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
   directoryPath = expandHomeDir(directoryPath);
   let total = 0;
   let failed = 0;
+  // Shared across all files so extracted-array CSV names are disambiguated against the
+  // whole output directory, not just within a single source file.
+  const usedArrayFilenames = new Set<string>();
 
   const processDirectoryRecursive = async (currentPath: string, level: number) => {
     if (level > 1){ 
@@ -183,7 +191,7 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
           await processDirectoryRecursive(itemPath, level + 1);
         } else {
           total += 1;
-          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath, options)) failed += 1; // returns false if failed
+          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath, options, usedArrayFilenames)) failed += 1; // returns false if failed
         }
       }
 
