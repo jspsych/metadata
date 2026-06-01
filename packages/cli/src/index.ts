@@ -282,7 +282,9 @@ const main = async () => {
     arrayJoinKeys = await promptJoinKeys(preResult.parsedData, preResult.analysis, initialKeys, preResult.fileName);
   }
 
-  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys });
+  // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
+  // user, so suppress the library's per-file warning to avoid repeating it.
+  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true });
   
   // check if it's a valid path and then prompt the options
   if (argv['metadata-options'] && validateJson(argv['metadata-options'])){

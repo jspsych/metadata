@@ -5,6 +5,7 @@ import { expandHomeDir, deriveArrayFilename, objectsToCSV } from "./utils";
 
 export interface GenerateOptions {
   arrayJoinKeys?: string[];
+  suppressJoinKeyWarning?: boolean;
 }
 
 /**

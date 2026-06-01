@@ -429,4 +429,14 @@ describe("generate() arrayJoinKeys option", () => {
     expect(meta.getExtractedArrays().has("mouse_tracking_data")).toBe(true);
     warnSpy.mockRestore();
   });
+
+  test("suppressJoinKeyWarning silences the warning but still extracts arrays", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData, {}, "json", { suppressJoinKeyWarning: true });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("not unique"));
+    expect(meta.getExtractedArrays().has("mouse_tracking_data")).toBe(true);
+    warnSpy.mockRestore();
+  });
 });

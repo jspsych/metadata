@@ -418,7 +418,7 @@ export default class JsPsychMetadata {
    * @param {Object} [metadata={}] - Optional metadata to be processed. Each key-value pair in this object will be processed individually.
    * @param {boolean} [csv=false] - Flag indicating if the data is in a string CSV. If true, the data will be parsed as CSV.
    */
-  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[] } = {}) {
+  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean } = {}) {
     this.extractedArrays = new Map();
     this.arrayJoinKeys = options.arrayJoinKeys ?? ['trial_index'];
 
@@ -436,8 +436,11 @@ export default class JsPsychMetadata {
       throw new Error("Parsed data is not in correct format: Expected an array of observations");
     }
 
+    // Callers that already surface join-key uniqueness to the user (e.g. the CLI's
+    // interactive pre-analysis prompt) can suppress this warning to avoid repeating it
+    // once per file.
     const analysis = analyzeJoinKeys(parsed_data as Array<Record<string, any>>, this.arrayJoinKeys);
-    if (!analysis.isUnique) this.warnJoinKeyUniqueness(analysis);
+    if (!analysis.isUnique && !options.suppressJoinKeyWarning) this.warnJoinKeyUniqueness(analysis);
 
     for (const observation of parsed_data) {
       await this.generateObservation(observation);
