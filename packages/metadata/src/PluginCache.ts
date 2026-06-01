@@ -142,6 +142,12 @@ export class PluginCache {
    * ends with `},` (not `};`), and plugin sources contain deeply nested objects that would
    * cause a lazy regex to stop at the wrong closing brace.
    *
+   * Known limitations (acceptable for current jsPsych plugin sources):
+   * - Matches the first `data:` property in the file; a plugin with a `data:` field inside its
+   *   `parameters` block before the top-level `info.data` block would extract the wrong object.
+   * - Brace counting treats every `{`/`}` as structural; braces inside string literals or JSDoc
+   *   comments (e.g. `/** e.g. {foo: 1} *\/`) would throw off the counter.
+   *
    * @private
    * @param {string} script - Full plugin source text.
    * @returns {string | null} Content between the outer braces of the data block, or null if not found.
@@ -207,6 +213,9 @@ export class PluginCache {
           if (--depth === 0) { braceEnd = i; break; }
         }
       }
+      // Advance past this variable's closing brace so the next exec() starts outside it,
+      // preventing nested JSDoc entries from being matched again by the outer loop.
+      varStartRegex.lastIndex = braceEnd + 1;
       const varContent = block.substring(braceStart + 1, braceEnd);
 
       const propsObj: Record<string, any> = {};

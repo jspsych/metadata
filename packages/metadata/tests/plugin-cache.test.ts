@@ -131,11 +131,38 @@ describe("PluginCache parsing fixes", () => {
       )
     ).resolves.not.toThrow();
 
-    // Should warn about the missing source, not about a parse error
+    // Should warn about the missing source, not about a parse error.
+    // Use mock.calls directly because toHaveBeenCalledWith checks exact argument lists —
+    // the "Error parsing" warn takes multiple args, so a single-arg matcher would never match it.
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Plugin source not found"));
-    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("Error parsing"));
+    const errorParsingCalled = warnSpy.mock.calls.some((args) =>
+      args.some((a) => typeof a === "string" && a.includes("Error parsing"))
+    );
+    expect(errorParsingCalled).toBe(false);
 
     const variableMeasured = meta.getMetadata()["variableMeasured"] as any[];
     expect(variableMeasured.find((e) => e.name === "score")).toBeDefined();
+  });
+
+  test("plugin source with no data block: returns empty cache and falls back to unknown", async () => {
+    const NO_DATA_SOURCE = `
+const info = <const>{
+  name: "mock-no-data",
+  parameters: {},
+  citations: '__CITATIONS__',
+};
+`;
+    (global as any).fetch = makeFetch(NO_DATA_SOURCE);
+    const meta = new JsPsychMetadata();
+    await expect(
+      meta.generate(
+        JSON.stringify([{ trial_type: "mock-no-data", trial_index: 0, time_elapsed: 100, score: 5 }])
+      )
+    ).resolves.not.toThrow();
+
+    const variableMeasured = meta.getMetadata()["variableMeasured"] as any[];
+    const score = variableMeasured.find((e) => e.name === "score");
+    expect(score).toBeDefined();
+    expect(score.description).toBe("unknown");
   });
 });
