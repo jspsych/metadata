@@ -458,34 +458,38 @@ export default class JsPsychMetadata {
         }
       }
 
-      if (this.ignored_variables.has(variable)) this.updateFields(variable, value, type);
-      else if (type === "object" && value !== null && !Array.isArray(value)) {
-        await this.expandObjectFields(variable, value, pluginType, version);
-      } else if (type === "array" || (type === "object" && Array.isArray(value))) {
-        // Register parent via generateMetadata to get the plugin description, then
-        // override the stored type to "array" (generateMetadata would infer "object"
-        // because typeof [] === "object" in JS).
-        await this.generateMetadata(variable, value, pluginType, version);
-        this.updateVariable(variable, "value", "array");
-
-        // Accumulate array-of-objects rows for separate CSV output.
-        // Only object elements are expanded; null / primitive elements are skipped.
-        const objectElements = (value as any[]).filter(
-          (el) => el !== null && typeof el === "object" && !Array.isArray(el)
-        );
-        if (objectElements.length > 0) {
-          const trialIndex = observation["trial_index"];
-          const existing = this.extractedArrays.get(variable) ?? [];
-          (value as any[]).forEach((element, elementIndex) => {
-            if (element !== null && typeof element === "object" && !Array.isArray(element)) {
-              existing.push({ trial_index: trialIndex, element_index: elementIndex, ...element });
-            }
-          });
-          this.extractedArrays.set(variable, existing);
-        }
+      if (this.ignored_variables.has(variable)) {
+        this.updateFields(variable, value, type);
       } else {
-        await this.generateMetadata(variable, value, pluginType, version);
+        if (type === "object" && value !== null && !Array.isArray(value)) {
+          await this.expandObjectFields(variable, value, pluginType, version);
+        } else if (type === "array" || (type === "object" && Array.isArray(value))) {
+          // Register parent via generateMetadata to get the plugin description, then
+          // override the stored type to "array" (generateMetadata would infer "object"
+          // because typeof [] === "object" in JS).
+          await this.generateMetadata(variable, value, pluginType, version);
+          this.updateVariable(variable, "value", "array");
 
+          // Accumulate array-of-objects rows for separate CSV output.
+          // Only object elements are expanded; null / primitive elements are skipped.
+          const objectElements = (value as any[]).filter(
+            (el) => el !== null && typeof el === "object" && !Array.isArray(el)
+          );
+          if (objectElements.length > 0) {
+            const trialIndex = observation["trial_index"];
+            const existing = this.extractedArrays.get(variable) ?? [];
+            (value as any[]).forEach((element, elementIndex) => {
+              if (element !== null && typeof element === "object" && !Array.isArray(element)) {
+                existing.push({ trial_index: trialIndex, element_index: elementIndex, ...element });
+              }
+            });
+            this.extractedArrays.set(variable, existing);
+          }
+        } else {
+          await this.generateMetadata(variable, value, pluginType, version);
+        }
+
+        // Extension descriptions apply to all non-ignored variables regardless of type.
         if (extensionType) {
           await Promise.all(
             extensionType.map(async (ext, index) => {

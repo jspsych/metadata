@@ -196,4 +196,53 @@ describe("Nested JSON column handling", () => {
       expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 99 });
     });
   });
+
+  // ─── Extension description handling ─────────────────────────────────────────
+
+  describe("extension descriptions for nested columns", () => {
+    const EXT_BASE = {
+      trial_type: "mock-plugin",
+      trial_index: 0,
+      time_elapsed: 100,
+      extension_type: ["mock-extension"],
+      extension_version: ["1.0.0"],
+    };
+
+    // When the plugin and extension return the same description text, updateDescription
+    // merges them under a combined key ("mock-plugin, mock-extension"). Either way,
+    // the key contains "mock-extension", confirming the extension fetch ran.
+    const hasExtensionKey = (description: any) =>
+      typeof description === "object" &&
+      Object.keys(description).some((k) => k.includes("mock-extension"));
+
+    test("array-valued column gets extension description alongside plugin description", async () => {
+      const data = JSON.stringify([
+        { ...EXT_BASE, mouse_tracking_data: [{ x: 1, y: 2 }] },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      expect(hasExtensionKey(meta.getVariable("mouse_tracking_data")["description"])).toBe(true);
+    });
+
+    test("object-valued column gets extension description alongside plugin description", async () => {
+      const data = JSON.stringify([
+        { ...EXT_BASE, response: { Q0: 4, Q1: 3 } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      expect(hasExtensionKey(meta.getVariable("response")["description"])).toBe(true);
+    });
+
+    test("string-valued column still gets extension description (regression guard)", async () => {
+      const data = JSON.stringify([
+        { ...EXT_BASE, response: "yes" },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      expect(hasExtensionKey(meta.getVariable("response")["description"])).toBe(true);
+    });
+  });
 });
