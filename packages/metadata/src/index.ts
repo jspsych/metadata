@@ -386,6 +386,7 @@ export default class JsPsychMetadata {
    * @param {boolean} [csv=false] - Flag indicating if the data is in a string CSV. If true, the data will be parsed as CSV.
    */
   async generate(data, metadata = {}, ext = 'json') {
+    this.extractedArrays = new Map();
     var parsed_data;
 
     if (ext === 'csv') {

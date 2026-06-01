@@ -179,5 +179,21 @@ describe("Nested JSON column handling", () => {
       expect(rows[1]).toMatchObject({ trial_index: 1, element_index: 0, x: 2 });
       expect(rows[2]).toMatchObject({ trial_index: 1, element_index: 1, x: 3 });
     });
+
+    test("second generate() call resets extracted arrays — rows from first call are not retained", async () => {
+      const data1 = JSON.stringify([
+        { ...BASE, trial_index: 0, mouse_tracking_data: [{ x: 1 }, { x: 2 }] },
+      ]);
+      const data2 = JSON.stringify([
+        { ...BASE, trial_index: 0, mouse_tracking_data: [{ x: 99 }] },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data1);
+      await meta.generate(data2);
+
+      const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 99 });
+    });
   });
 });
