@@ -130,6 +130,11 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
     if (targetDirectoryPath) {
       await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
 
+      // dataset_description.json takes the loadMetadata() branch above, which does not
+      // reset extractedArrays. Without this guard we would re-write the previous data
+      // file's array rows under a filename derived from "dataset_description.json".
+      if (file === "dataset_description.json") return true;
+
       // Write a separate Psych-DS CSV for each array-of-objects column detected during generate()
       const extractedArrays = metadata.getExtractedArrays();
       const joinKeys = metadata.getArrayJoinKeys();
