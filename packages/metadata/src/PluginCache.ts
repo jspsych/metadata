@@ -157,22 +157,13 @@ export class PluginCache {
     if (dataStart === -1) return null;
     const braceStart = script.indexOf('{', dataStart);
     if (braceStart === -1) return null;
-    let depth = 0;
-    for (let i = braceStart; i < script.length; i++) {
-      if (script[i] === '{') depth++;
-      else if (script[i] === '}') {
-        if (--depth === 0) return script.substring(braceStart + 1, i);
-      }
-    }
-    return null;
+    const braceEnd = this.findMatchingBrace(script, braceStart);
+    if (braceEnd === -1) return null;
+    return script.substring(braceStart + 1, braceEnd);
   }
 
   /**
    * Parses JSDoc comments and variable blocks from the data section of a jsPsych plugin source.
-   * Note: for variables with deeply nested properties (e.g. a `nested:` sub-object), the props
-   * regex stops at the first inner `},` rather than the variable's true closing brace. The
-   * description is still captured correctly; only the props object may be incomplete for those
-   * variables.
    *
    * @private
    * @param {string} script - The script text content of the fetching.
@@ -196,23 +187,17 @@ export class PluginCache {
   private extractJsdocFields(block: string): Record<string, any> {
     const result: Record<string, any> = {};
     const varStartRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*\{/g;
-    const propRegex = /(\w+):\s*([^,\s{]+)/g;
+    const propRegex = /(\w+):\s*([^,\s{}]+)/g;
 
     let match;
     while ((match = varStartRegex.exec(block)) !== null) {
       const description = match[1].trim().replace(/\s+/g, " ");
       const varName = match[2];
 
-      // Use brace counting to find the true closing brace for this variable.
       const braceStart = match.index + match[0].length - 1;
-      let depth = 0;
-      let braceEnd = braceStart;
-      for (let i = braceStart; i < block.length; i++) {
-        if (block[i] === "{") depth++;
-        else if (block[i] === "}") {
-          if (--depth === 0) { braceEnd = i; break; }
-        }
-      }
+      const braceEnd = this.findMatchingBrace(block, braceStart);
+      if (braceEnd === -1) continue;
+
       // Advance past this variable's closing brace so the next exec() starts outside it,
       // preventing nested JSDoc entries from being matched again by the outer loop.
       varStartRegex.lastIndex = braceEnd + 1;
@@ -227,23 +212,36 @@ export class PluginCache {
 
       result[varName] = { description, ...propsObj };
 
-      // Recursively extract any JSDoc-annotated fields inside a `nested:` sub-object.
+      // Flat merge by design: nested params are cached at the same level as top-level params
+      // so they can be looked up directly by variable name if they appear as top-level columns.
       const nestedSearch = /\bnested:\s*\{/.exec(varContent);
       if (nestedSearch) {
         const nestedBraceStart = varContent.indexOf("{", nestedSearch.index);
-        let nestedDepth = 0;
-        let nestedBraceEnd = nestedBraceStart;
-        for (let i = nestedBraceStart; i < varContent.length; i++) {
-          if (varContent[i] === "{") nestedDepth++;
-          else if (varContent[i] === "}") {
-            if (--nestedDepth === 0) { nestedBraceEnd = i; break; }
-          }
+        const nestedBraceEnd = this.findMatchingBrace(varContent, nestedBraceStart);
+        if (nestedBraceEnd !== -1) {
+          Object.assign(result, this.extractJsdocFields(varContent.substring(nestedBraceStart + 1, nestedBraceEnd)));
         }
-        const nestedBlock = varContent.substring(nestedBraceStart + 1, nestedBraceEnd);
-        Object.assign(result, this.extractJsdocFields(nestedBlock));
       }
     }
 
     return result;
+  }
+
+  /**
+   * Returns the index of the `}` that closes the `{` at `startIndex`, using brace counting.
+   * Returns -1 if the source is unbalanced (no matching closing brace found).
+   *
+   * @private
+   * @param {string} str - String to search.
+   * @param {number} startIndex - Index of the opening `{`.
+   * @returns {number}
+   */
+  private findMatchingBrace(str: string, startIndex: number): number {
+    let depth = 0;
+    for (let i = startIndex; i < str.length; i++) {
+      if (str[i] === "{") depth++;
+      else if (str[i] === "}" && --depth === 0) return i;
+    }
+    return -1;
   }
 }
