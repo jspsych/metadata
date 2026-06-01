@@ -128,16 +128,15 @@ export const processOptions = async (metadata: JsPsychMetadata, filePath: string
   }
 }
 
-export function saveTextToPath(textstr: string, filePath: string = './file.txt') {
+export async function saveTextToPath(textstr: string, filePath: string = './file.txt'): Promise<void> {
   filePath = expandHomeDir(filePath);
 
-  fs.writeFile(filePath, textstr, 'utf8', (err) => {
-    if (err) {
-      console.error(`\nError writing to file ${filePath}:`, err);
-    } else {
-      console.log(`\n✔ File ${filePath} has been saved.`);
-    }
-  });
+  try {
+    await fs.promises.writeFile(filePath, textstr, 'utf8');
+    console.log(`\n✔ File ${filePath} has been saved.`);
+  } catch (err) {
+    console.error(`\nError writing to file ${filePath}:`, err);
+  }
 }
 
 // function for loading metadata

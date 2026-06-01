@@ -16,25 +16,18 @@ afterEach(() => {
 });
 
 describe("saveTextToPath", () => {
-  test("writes content to a new file", (done) => {
+  test("writes content to a new file", async () => {
     const filePath = path.join(tmpDir, "output.json");
-    saveTextToPath('{"name":"test"}', filePath);
-    // saveTextToPath uses async fs.writeFile; poll briefly for completion
-    setTimeout(() => {
-      expect(fs.existsSync(filePath)).toBe(true);
-      expect(fs.readFileSync(filePath, "utf8")).toBe('{"name":"test"}');
-      done();
-    }, 100);
+    await saveTextToPath('{"name":"test"}', filePath);
+    expect(fs.existsSync(filePath)).toBe(true);
+    expect(fs.readFileSync(filePath, "utf8")).toBe('{"name":"test"}');
   });
 
-  test("overwrites an existing file", (done) => {
+  test("overwrites an existing file", async () => {
     const filePath = path.join(tmpDir, "output.json");
     fs.writeFileSync(filePath, "old content");
-    saveTextToPath("new content", filePath);
-    setTimeout(() => {
-      expect(fs.readFileSync(filePath, "utf8")).toBe("new content");
-      done();
-    }, 100);
+    await saveTextToPath("new content", filePath);
+    expect(fs.readFileSync(filePath, "utf8")).toBe("new content");
   });
 });
 
