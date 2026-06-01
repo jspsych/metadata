@@ -173,12 +173,15 @@ export function analyzeJoinKeys(
   }
 
   const added = workingKeys.slice(keys.length);
+  const greedyIsUnique = new Set(
+    parsedData.map(row => workingKeys.map(k => String(row[k] ?? '')).join('\0'))
+  ).size === parsedData.length;
   return {
     isUnique,
     duplicateCount,
     duplicateValues,
     candidates,
-    suggestedAdditionalKeys: added.length > 0 ? added : null,
+    suggestedAdditionalKeys: (added.length > 0 && greedyIsUnique) ? added : null,
   };
 }
 

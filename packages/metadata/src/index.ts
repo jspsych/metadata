@@ -716,5 +716,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys } from "./utils";
+export { analyzeJoinKeys, parseCSV } from "./utils";
 export type { JoinKeyAnalysis } from "./utils";

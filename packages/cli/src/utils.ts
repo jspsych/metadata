@@ -50,10 +50,9 @@ export function deriveArrayFilename(sourceFile: string, columnName: string): str
  * trial_index and element_index columns are placed first; remaining columns
  * follow in the order they first appear across all rows.
  */
-export function objectsToCSV(rows: Array<Record<string, any>>): string {
+export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: string[] = ['trial_index', 'element_index']): string {
   if (rows.length === 0) return '';
 
-  const priorityCols = ['trial_index', 'element_index'];
   const allKeys = new Set<string>();
   for (const row of rows) {
     for (const key of Object.keys(row)) allKeys.add(key);
@@ -63,7 +62,7 @@ export function objectsToCSV(rows: Array<Record<string, any>>): string {
 
   const escape = (val: any): string => {
     const str = val === null || val === undefined ? '' : String(val);
-    return str.includes(',') || str.includes('"') || str.includes('\n')
+    return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
       ? `"${str.replace(/"/g, '""')}"` : str;
   };
 
