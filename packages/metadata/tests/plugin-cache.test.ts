@@ -30,9 +30,11 @@ const info = <const>{
       type: ParameterType.COMPLEX,
       array: true,
       nested: {
+        /** The page index in the instructions. */
         page_index: {
           type: ParameterType.INT,
         },
+        /** Time spent viewing the page in milliseconds. */
         viewing_time: {
           type: ParameterType.INT,
         },
@@ -98,6 +100,25 @@ describe("PluginCache parsing fixes", () => {
     const v = variableMeasured.find((e) => e.name === "view_history");
     expect(v.description).not.toBe("unknown");
     expect(v.description).toMatch(/history of pages/i);
+  });
+
+  test("nested plugin: descriptions for nested params are extracted when those keys appear as top-level columns", async () => {
+    (global as any).fetch = makeFetch(NESTED_PLUGIN_SOURCE);
+    const meta = new JsPsychMetadata();
+    await meta.generate(
+      JSON.stringify([{ trial_type: "mock-nested", trial_index: 0, time_elapsed: 100, page_index: 0, viewing_time: 1200 }])
+    );
+    const variableMeasured = meta.getMetadata()["variableMeasured"] as any[];
+
+    const pageIndex = variableMeasured.find((e) => e.name === "page_index");
+    expect(pageIndex).toBeDefined();
+    expect(pageIndex.description).not.toBe("unknown");
+    expect(pageIndex.description).toMatch(/page index/i);
+
+    const viewingTime = variableMeasured.find((e) => e.name === "viewing_time");
+    expect(viewingTime).toBeDefined();
+    expect(viewingTime.description).not.toBe("unknown");
+    expect(viewingTime.description).toMatch(/viewing the page/i);
   });
 
   test("non-ok HTTP response: falls back to unknown description without throwing", async () => {

@@ -175,27 +175,64 @@ export class PluginCache {
   private parseJavadocString(script: string) {
     const dataBlock = this.extractDataBlock(script);
     if (!dataBlock) return {};
+    return this.extractJsdocFields(dataBlock);
+  }
 
-    const result = {};
-    const varRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*{\s*([\s\S]*?)\s*},?/gs;
-    const propRegex = /\s*(\w+):\s*([^,\s]+)/g;
+  /**
+   * Extracts JSDoc-annotated fields from a data block string. Uses brace counting to find
+   * each variable's true closing brace, then recursively processes any `nested:` sub-object
+   * so that nested parameter descriptions are also captured.
+   *
+   * @private
+   * @param {string} block - Content of a data or nested block (without outer braces).
+   * @returns {Record<string, any>}
+   */
+  private extractJsdocFields(block: string): Record<string, any> {
+    const result: Record<string, any> = {};
+    const varStartRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*\{/g;
+    const propRegex = /(\w+):\s*([^,\s{]+)/g;
 
     let match;
-    while ((match = varRegex.exec(dataBlock)) !== null) {
-      let [, description, varName, props] = match;
-      description = description.trim().replace(/\s+/g, " ");
+    while ((match = varStartRegex.exec(block)) !== null) {
+      const description = match[1].trim().replace(/\s+/g, " ");
+      const varName = match[2];
 
-      const propsObj = {};
+      // Use brace counting to find the true closing brace for this variable.
+      const braceStart = match.index + match[0].length - 1;
+      let depth = 0;
+      let braceEnd = braceStart;
+      for (let i = braceStart; i < block.length; i++) {
+        if (block[i] === "{") depth++;
+        else if (block[i] === "}") {
+          if (--depth === 0) { braceEnd = i; break; }
+        }
+      }
+      const varContent = block.substring(braceStart + 1, braceEnd);
+
+      const propsObj: Record<string, any> = {};
       let propMatch;
-      while ((propMatch = propRegex.exec(props)) !== null) {
-        const [, propName, propValue] = propMatch;
-        propsObj[propName] = propValue;
+      propRegex.lastIndex = 0;
+      while ((propMatch = propRegex.exec(varContent)) !== null) {
+        propsObj[propMatch[1]] = propMatch[2];
       }
 
-      result[varName] = {
-        description: description,
-        ...propsObj,
-      };
+      result[varName] = { description, ...propsObj };
+
+      // Recursively extract any JSDoc-annotated fields inside a `nested:` sub-object.
+      const nestedSearch = /\bnested:\s*\{/.exec(varContent);
+      if (nestedSearch) {
+        const nestedBraceStart = varContent.indexOf("{", nestedSearch.index);
+        let nestedDepth = 0;
+        let nestedBraceEnd = nestedBraceStart;
+        for (let i = nestedBraceStart; i < varContent.length; i++) {
+          if (varContent[i] === "{") nestedDepth++;
+          else if (varContent[i] === "}") {
+            if (--nestedDepth === 0) { nestedBraceEnd = i; break; }
+          }
+        }
+        const nestedBlock = varContent.substring(nestedBraceStart + 1, nestedBraceEnd);
+        Object.assign(result, this.extractJsdocFields(nestedBlock));
+      }
     }
 
     return result;
