@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile, parseCSV, tryParseJSON } from "./utils";
+import { saveTextToFile, parseCSV, tryParseJSON, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -51,13 +51,7 @@ export default class JsPsychMetadata {
    * @private
    * @type {*}
    */
-  private ignored_variables = new Set([
-    "trial_type",
-    "trial_index",
-    "time_elapsed",
-    "extension_type",
-    "extension_version",
-  ]);
+  private ignored_variables = new Set(SYSTEM_COLUMNS);
   
   /**
    * Verbose mode that is used in by the tools that call this to print fetching messages and 
@@ -69,6 +63,7 @@ export default class JsPsychMetadata {
   private verbose: boolean = false;
 
   private extractedArrays: Map<string, Array<Record<string, any>>> = new Map();
+  private arrayJoinKeys: string[] = ['trial_index'];
 
   /**
    * Creates an instance of JsPsychMetadata while passing in JsPsych object to have access to context
@@ -313,11 +308,49 @@ export default class JsPsychMetadata {
 
   /**
    * Returns accumulated array-column data keyed by column name.
-   * Each entry is a list of rows with trial_index, element_index, and the element's own fields.
+   * Each entry is a list of rows with join key columns, element_index, and the element's own fields.
    * Used by the CLI to write Psych-DS compliant separate CSV files.
    */
   getExtractedArrays(): Map<string, Array<Record<string, any>>> {
     return this.extractedArrays;
+  }
+
+  /**
+   * Returns the join key columns used in the most recent generate() call.
+   * The CLI uses this to order columns correctly in extracted array CSVs.
+   */
+  getArrayJoinKeys(): string[] {
+    return [...this.arrayJoinKeys];
+  }
+
+  private warnJoinKeyUniqueness(analysis: JoinKeyAnalysis): void {
+    const keyStr = this.arrayJoinKeys.join(', ');
+    const exampleStr = analysis.duplicateValues
+      .slice(0, 3)
+      .map(v => Object.entries(v).map(([k, val]) => `${k}=${val}`).join(', '))
+      .join('; ');
+
+    let msg = `[jspsych-metadata] Join key (${keyStr}) is not unique in this dataset\n` +
+      `  (${analysis.duplicateCount} duplicate rows; e.g. ${exampleStr})\n`;
+
+    if (analysis.suggestedAdditionalKeys !== null && analysis.suggestedAdditionalKeys.length === 0) {
+      const sufficient = analysis.candidates.filter(c => c.makesUnique).map(c => c.column);
+      const example = JSON.stringify([sufficient[0], ...this.arrayJoinKeys]);
+      msg += `  Sufficient fix: add one of these columns to arrayJoinKeys:\n` +
+        `    ${sufficient.join(', ')}\n` +
+        `  Pass { arrayJoinKeys: ${example} } as the options argument to generate().`;
+    } else if (analysis.suggestedAdditionalKeys !== null && analysis.suggestedAdditionalKeys.length > 0) {
+      const combined = JSON.stringify([...analysis.suggestedAdditionalKeys, ...this.arrayJoinKeys]);
+      msg += `  No single column makes rows unique. Suggested combination:\n` +
+        `    ${analysis.suggestedAdditionalKeys.join(' + ')}\n` +
+        `  Pass { arrayJoinKeys: ${combined} } as the options argument to generate().`;
+    } else {
+      msg += `  No combination of available columns was found to make rows unique.\n` +
+        `  Your data may contain genuinely duplicate rows.\n` +
+        `  Extracted array CSVs will have non-unique join keys.`;
+    }
+
+    console.warn(msg);
   }
 
   /**
@@ -385,8 +418,10 @@ export default class JsPsychMetadata {
    * @param {Object} [metadata={}] - Optional metadata to be processed. Each key-value pair in this object will be processed individually.
    * @param {boolean} [csv=false] - Flag indicating if the data is in a string CSV. If true, the data will be parsed as CSV.
    */
-  async generate(data, metadata = {}, ext = 'json') {
+  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[] } = {}) {
     this.extractedArrays = new Map();
+    this.arrayJoinKeys = options.arrayJoinKeys ?? ['trial_index'];
+
     var parsed_data;
 
     if (ext === 'csv') {
@@ -400,6 +435,9 @@ export default class JsPsychMetadata {
     if (!Array.isArray(parsed_data)) {
       throw new Error("Parsed data is not in correct format: Expected an array of observations");
     }
+
+    const analysis = analyzeJoinKeys(parsed_data as Array<Record<string, any>>, this.arrayJoinKeys);
+    if (!analysis.isUnique) this.warnJoinKeyUniqueness(analysis);
 
     for (const observation of parsed_data) {
       await this.generateObservation(observation);
@@ -476,11 +514,11 @@ export default class JsPsychMetadata {
             (el) => el !== null && typeof el === "object" && !Array.isArray(el)
           );
           if (objectElements.length > 0) {
-            const trialIndex = observation["trial_index"];
+            const joinValues = this.arrayJoinKeys.reduce((acc, k) => { acc[k] = observation[k]; return acc; }, {} as Record<string, any>);
             const existing = this.extractedArrays.get(variable) ?? [];
             (value as any[]).forEach((element, elementIndex) => {
               if (element !== null && typeof element === "object" && !Array.isArray(element)) {
-                existing.push({ trial_index: trialIndex, element_index: elementIndex, ...element });
+                existing.push({ ...joinValues, element_index: elementIndex, ...element });
               }
             });
             this.extractedArrays.set(variable, existing);
@@ -674,7 +712,9 @@ export default class JsPsychMetadata {
   }
 }
 
-export { 
-  AuthorFields, 
+export {
+  AuthorFields,
   VariableFields
 }
+export { analyzeJoinKeys } from "./utils";
+export type { JoinKeyAnalysis } from "./utils";

@@ -1,4 +1,5 @@
 import JsPsychMetadata from "../src/index";
+import { analyzeJoinKeys } from "../src/utils";
 
 const MOCK_PLUGIN_SOURCE = `
   const info = {
@@ -244,5 +245,188 @@ describe("Nested JSON column handling", () => {
 
       expect(hasExtensionKey(meta.getVariable("response")["description"])).toBe(true);
     });
+  });
+});
+
+// ─── analyzeJoinKeys unit tests ───────────────────────────────────────────────
+
+describe("analyzeJoinKeys", () => {
+  const rows = [
+    { trial_type: "p", trial_index: 0, time_elapsed: 100, subject_id: "s1", session: "a", condition: "x" },
+    { trial_type: "p", trial_index: 1, time_elapsed: 200, subject_id: "s1", session: "a", condition: "x" },
+    { trial_type: "p", trial_index: 0, time_elapsed: 100, subject_id: "s2", session: "b", condition: "x" },
+    { trial_type: "p", trial_index: 1, time_elapsed: 200, subject_id: "s2", session: "b", condition: "x" },
+  ];
+
+  test("returns isUnique: true when keys are already unique", () => {
+    const result = analyzeJoinKeys(rows, ["subject_id", "trial_index"]);
+    expect(result.isUnique).toBe(true);
+    expect(result.duplicateCount).toBe(0);
+    expect(result.suggestedAdditionalKeys).toBeNull();
+  });
+
+  test("returns isUnique: false with correct duplicateCount when trial_index alone repeats", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    expect(result.isUnique).toBe(false);
+    expect(result.duplicateCount).toBe(2); // trial_index 0 and 1 each appear twice
+  });
+
+  test("duplicateValues contains example key maps for duplicate rows", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    expect(result.duplicateValues.length).toBeGreaterThan(0);
+    expect(result.duplicateValues[0]).toHaveProperty("trial_index");
+  });
+
+  test("excludes system columns (trial_type, time_elapsed, etc.) from candidates", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    const cols = result.candidates.map(c => c.column);
+    expect(cols).not.toContain("trial_type");
+    expect(cols).not.toContain("time_elapsed");
+    expect(cols).not.toContain("extension_type");
+  });
+
+  test("excludes already-selected keys from candidates", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    const cols = result.candidates.map(c => c.column);
+    expect(cols).not.toContain("trial_index");
+  });
+
+  test("marks subject_id as makesUnique: true (it alone resolves all duplicates)", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    const subjectCandidate = result.candidates.find(c => c.column === "subject_id");
+    expect(subjectCandidate).toBeDefined();
+    expect(subjectCandidate!.makesUnique).toBe(true);
+  });
+
+  test("marks condition as makesUnique: false (constant column, does not help)", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    const condCandidate = result.candidates.find(c => c.column === "condition");
+    expect(condCandidate).toBeDefined();
+    expect(condCandidate!.makesUnique).toBe(false);
+  });
+
+  test("suggestedAdditionalKeys is [] when sufficient single candidates exist", () => {
+    const result = analyzeJoinKeys(rows, ["trial_index"]);
+    // subject_id alone is sufficient, so suggestedAdditionalKeys signals "pick one"
+    expect(result.suggestedAdditionalKeys).toEqual([]);
+  });
+
+  test("suggestedAdditionalKeys is non-empty when no single column is sufficient", () => {
+    // Build data where neither subject_id nor session alone is enough,
+    // but together they are. All rows share trial_index=0 and the same rt,
+    // so neither rt, subject_id, nor session alone achieves uniqueness.
+    const noSingleRows = [
+      { trial_index: 0, subject_id: "s1", session: "a", rt: 300 },
+      { trial_index: 0, subject_id: "s1", session: "b", rt: 300 },
+      { trial_index: 0, subject_id: "s2", session: "a", rt: 300 },
+      { trial_index: 0, subject_id: "s2", session: "b", rt: 300 },
+    ];
+    const result = analyzeJoinKeys(noSingleRows, ["trial_index"]);
+    expect(result.isUnique).toBe(false);
+    expect(result.candidates.some(c => c.makesUnique)).toBe(false);
+    expect(result.suggestedAdditionalKeys).not.toBeNull();
+    expect(result.suggestedAdditionalKeys!.length).toBeGreaterThan(0);
+    // Verify the suggested combination actually achieves uniqueness
+    const combined = ["trial_index", ...result.suggestedAdditionalKeys!];
+    const compositeKeys = noSingleRows.map(r => combined.map(k => r[k]).join("\0"));
+    expect(new Set(compositeKeys).size).toBe(noSingleRows.length);
+  });
+
+  test("empty dataset returns isUnique: true", () => {
+    const result = analyzeJoinKeys([], ["trial_index"]);
+    expect(result.isUnique).toBe(true);
+  });
+});
+
+// ─── generate() arrayJoinKeys option ─────────────────────────────────────────
+
+describe("generate() arrayJoinKeys option", () => {
+  const mockFetch2 = jest.fn().mockResolvedValue({
+    text: () => Promise.resolve(""),
+  });
+
+  beforeEach(() => {
+    (global as any).fetch = mockFetch2;
+    mockFetch2.mockClear();
+  });
+
+  const multiSubjectData = JSON.stringify([
+    { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, subject_id: "s1",
+      mouse_tracking_data: [{ x: 1, y: 2 }] },
+    { trial_type: "mock-plugin", trial_index: 1, time_elapsed: 200, subject_id: "s1",
+      mouse_tracking_data: [{ x: 3, y: 4 }] },
+    { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, subject_id: "s2",
+      mouse_tracking_data: [{ x: 5, y: 6 }] },
+    { trial_type: "mock-plugin", trial_index: 1, time_elapsed: 200, subject_id: "s2",
+      mouse_tracking_data: [{ x: 7, y: 8 }] },
+  ]);
+
+  test("custom arrayJoinKeys: extracted rows include all specified join columns", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData, {}, "json", { arrayJoinKeys: ["subject_id", "trial_index"] });
+
+    const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toMatchObject({ subject_id: "s1", trial_index: 0, element_index: 0, x: 1, y: 2 });
+    expect(rows[2]).toMatchObject({ subject_id: "s2", trial_index: 0, element_index: 0, x: 5, y: 6 });
+  });
+
+  test("custom arrayJoinKeys: composite keys are unique across all extracted rows", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData, {}, "json", { arrayJoinKeys: ["subject_id", "trial_index"] });
+
+    const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
+    const keys = rows.map(r => `${r.subject_id}\0${r.trial_index}\0${r.element_index}`);
+    expect(new Set(keys).size).toBe(rows.length);
+  });
+
+  test("getArrayJoinKeys() returns the keys used in the last generate() call", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData, {}, "json", { arrayJoinKeys: ["subject_id", "trial_index"] });
+    expect(meta.getArrayJoinKeys()).toEqual(["subject_id", "trial_index"]);
+  });
+
+  test("default trial_index behavior is unchanged for single-subject data", async () => {
+    const singleSubjectData = JSON.stringify([
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100,
+        mouse_tracking_data: [{ x: 1 }] },
+    ]);
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const meta = new JsPsychMetadata();
+    await meta.generate(singleSubjectData);
+
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("not unique"));
+    const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
+    expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 1 });
+    warnSpy.mockRestore();
+  });
+
+  test("non-unique default keys: console.warn fires with duplicate count", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("not unique"));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("duplicate rows"));
+    warnSpy.mockRestore();
+  });
+
+  test("warning message lists sufficient candidate columns", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData);
+
+    const message = warnSpy.mock.calls[0]?.[0] as string;
+    expect(message).toContain("subject_id");
+    warnSpy.mockRestore();
+  });
+
+  test("processing still completes and extractedArrays is populated even when keys are non-unique", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const meta = new JsPsychMetadata();
+    await meta.generate(multiSubjectData);
+
+    expect(meta.getExtractedArrays().has("mouse_tracking_data")).toBe(true);
+    warnSpy.mockRestore();
   });
 });
