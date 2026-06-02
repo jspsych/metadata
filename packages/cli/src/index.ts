@@ -367,7 +367,7 @@ const main = async () => {
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
-  await validatePsychDS(project_path as string, verbose);
+  if (typeof project_path === 'string') await validatePsychDS(project_path, verbose);
 };
 
 main();
