@@ -1,0 +1,20 @@
+{
+  "name": "minimal-e2e-invalid",
+  "schemaVersion": "Psych-DS 0.4.0",
+  "@type": "Dataset",
+  "description": "Invalid fixture: @context is intentionally omitted to trigger a validation error.",
+  "variableMeasured": [
+    {
+      "@type": "PropertyValue",
+      "name": "trial_type",
+      "description": "The name of the plugin used to run the trial.",
+      "value": "string"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "trial_index",
+      "description": "The index of the current trial across the whole experiment.",
+      "value": "numeric"
+    }
+  ]
+}

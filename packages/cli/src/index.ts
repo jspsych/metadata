@@ -5,7 +5,7 @@ import { hideBin } from 'yargs/helpers';
 import { input, select, checkbox, Separator } from '@inquirer/prompts';
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis } from "@jspsych/metadata";
 import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory } from "./data";
-import { validateDirectory, validateJson } from './validatefunctions';
+import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 
 // Define a type for the parsed arguments
@@ -312,6 +312,8 @@ const main = async () => {
       project_path = argv['psych-ds-dir'];
       new_project = false;
       await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
+      // project_path is argv['psych-ds-dir'] (a string) inside this branch — no typeof guard needed here.
+      await validatePsychDS(project_path, verbose);
       if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
@@ -364,7 +366,8 @@ const main = async () => {
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
-  saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
+  await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
+  if (typeof project_path === 'string') await validatePsychDS(project_path, verbose);
 };
 
 main();

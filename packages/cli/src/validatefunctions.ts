@@ -1,6 +1,39 @@
 import fs from "fs";
 import path from "path";
 import { expandHomeDir } from "./utils";
+import { validate } from "psychds-validator";
+
+export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<void> => {
+  let result;
+  try {
+    result = await validate(path.relative(process.cwd(), datasetPath));
+  } catch (err) {
+    console.warn(`\nWarning: Psych-DS validation could not run: ${err instanceof Error ? err.message : err}`);
+    return;
+  }
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  for (const [, issue] of result.issues) {
+    if (issue.severity === 'error') errors.push(`${issue.key}: ${issue.reason}`);
+    else if (issue.severity === 'warning') warnings.push(`${issue.key}: ${issue.reason}`);
+  }
+
+  if (errors.length === 0) {
+    console.log(`\n✔ Psych-DS validation passed (${warnings.length} warning${warnings.length !== 1 ? 's' : ''}).`);
+  } else {
+    console.log(`\n✘ Psych-DS validation failed: ${errors.length} error${errors.length !== 1 ? 's' : ''}, ${warnings.length} warning${warnings.length !== 1 ? 's' : ''}.\n`);
+    errors.forEach((msg, i) => console.log(`  Error ${i + 1}: ${msg}`));
+  }
+
+  if (verbose && warnings.length > 0) {
+    console.log();
+    warnings.forEach((msg, i) => console.log(`  Warning ${i + 1}: ${msg}`));
+  } else if (!verbose && warnings.length > 0) {
+    console.log("  (Rerun with --verbose to see warnings.)");
+  }
+};
 
 // Validating if input is a directory
 export const validateDirectory = async (filePath: string): Promise<boolean> => {
