@@ -9,13 +9,6 @@
  * so running this script confirms that (a) psychds-validator is importable,
  * (b) the valid fixture is genuinely valid, and (c) the invalid fixture is caught.
  *
- * ⚠ Known Windows limitation
- * psychds-validator uses @deno/shim-deno, which causes isDeno to be true even in
- * Node.js. This makes the package use POSIX-only path.join throughout, producing
- * paths like "//dataset_description.json" instead of "/dataset_description.json"
- * on Windows. Pattern matching then fails and every dataset appears invalid.
- * Run this script on macOS/Linux (or in CI) for meaningful results.
- *
  * Usage (from repo root):
  *   node dev/e2e/validate.mjs
  */
@@ -56,5 +49,5 @@ async function check(label, datasetPath) {
   }
 }
 
-await check('valid-project (expect: 0 errors)',   path.join(__dirname, 'valid-project'));
-await check('invalid-project (expect: ≥1 error)', path.join(__dirname, 'invalid-project'));
+await check('valid-project (expect: 0 errors)',   path.relative(process.cwd(), path.join(__dirname, 'valid-project')));
+await check('invalid-project (expect: ≥1 error)', path.relative(process.cwd(), path.join(__dirname, 'invalid-project')));
