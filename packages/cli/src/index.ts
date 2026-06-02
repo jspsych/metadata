@@ -212,6 +212,12 @@ const promptUnknownDescriptions = async (metadata: JsPsychMetadata) => {
     });
 
     if (description.trim()) {
+      // updateVariable's "description" handling is append-only — it accumulates
+      // descriptions across plugins rather than overwriting. Clear the existing
+      // "unknown" entry first so the user's value replaces it instead of sitting
+      // alongside the stale "unknown".
+      const variable = metadata.getVariable(name) as { description?: Record<string, string> };
+      variable.description = {};
       metadata.updateVariable(name, "description", { user: description.trim() });
     }
   }
