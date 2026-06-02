@@ -124,25 +124,39 @@ describe("variableMeasured completeness for CSV input", () => {
     expect(emptyCol.description).toBe("unknown");
   });
 
-  test("all columns appear when different trial types populate different columns (sparse CSV)", async () => {
-    // Simulates realistic jsPsych output where keyboard-response trials have rt/response/stimulus
-    // and survey trials have question_order but leave rt and stimulus empty
+  test("sparse CSV: partially-empty columns resolve to a real type while always-empty columns stay unknown", async () => {
+    // Simulates realistic jsPsych output where keyboard-response trials populate rt/stimulus and
+    // survey trials populate question_order, each leaving the other columns empty. eye_tracking_status
+    // is empty in every row. This exercises the pre-registration upgrade path: a column first seen with
+    // an empty value is registered as value:"unknown", then upgraded to its real type once any later
+    // row supplies a concrete value — but only for columns that are ever populated.
     const csv = [
-      "trial_type,rt,response,stimulus,question_order",
-      "jsPsych-html-keyboard-response,450,f,<p>Hello</p>,",
-      "jsPsych-html-keyboard-response,512,j,<p>World</p>,",
-      "jsPsych-survey-likert,,4,,forward",
-      "jsPsych-survey-likert,,2,,reverse",
+      "trial_type,rt,response,stimulus,question_order,eye_tracking_status",
+      "jsPsych-html-keyboard-response,450,f,<p>Hello</p>,,", // rt/stimulus set; question_order empty here
+      "jsPsych-html-keyboard-response,512,j,<p>World</p>,,",
+      "jsPsych-survey-likert,,4,,forward,", // rt/stimulus empty here; question_order set
+      "jsPsych-survey-likert,,2,,reverse,",
     ].join("\n");
 
     await jsPsychMetadata.generate(csv, {}, "csv");
 
     const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
     const outputNames = variableMeasured.map((v) => v.name);
+    const byName = (name: string) => variableMeasured.find((v) => v.name === name);
 
+    // Every header is still present regardless of sparsity.
     for (const col of csvColumnNames(csv)) {
       expect(outputNames).toContain(col);
     }
+
+    // Columns empty in the *first* row they appear in must still upgrade to their real type once a
+    // later row populates them — the "unknown" placeholder must not stick.
+    expect(byName("question_order").value).toBe("string"); // populated only in the survey rows
+    expect(byName("rt").value).toBe("number"); // populated only in the keyboard rows
+
+    // A column with no value in any row keeps the placeholder.
+    expect(byName("eye_tracking_status").value).toBe("unknown");
+    expect(byName("eye_tracking_status").description).toBe("unknown");
   });
 });
 
