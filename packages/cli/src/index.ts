@@ -2,9 +2,9 @@
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { input, select } from '@inquirer/prompts';
-import JsPsychMetadata from "@jspsych/metadata";
-import { processDirectory, processOptions, saveTextToPath, loadMetadata } from "./data";
+import { input, select, checkbox, Separator } from '@inquirer/prompts';
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis } from "@jspsych/metadata";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory } from "./data";
 import { validateDirectory, validateJson } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 
@@ -42,6 +42,90 @@ const argv = yargs(hideBin(process.argv))
   })
   .help()
   .argv as Argv;
+
+/**
+ * Interactively resolves which join-key columns should be used for extracted array CSVs.
+ * Shows a categorised checkbox prompt when trial_index (or other initial keys) are not unique,
+ * re-checks after each selection, and offers a "proceed anyway" escape.
+ * Returns the final list of join-key column names.
+ */
+async function promptJoinKeys(
+  parsedData: Array<Record<string, any>>,
+  initialAnalysis: JoinKeyAnalysis,
+  initialKeys: string[],
+  fileName: string
+): Promise<string[]> {
+  let currentKeys = [...initialKeys];
+  let analysis = initialAnalysis;
+
+  while (!analysis.isUnique) {
+    const keyLabel = currentKeys.join(', ');
+    console.log(
+      `\n⚠  [${keyLabel}] not unique in "${fileName}": ` +
+      `${analysis.duplicateCount} duplicate row${analysis.duplicateCount === 1 ? '' : 's'} found.`
+    );
+    if (analysis.duplicateValues.length > 0) {
+      console.log(
+        '   Example duplicates: ' +
+        analysis.duplicateValues.slice(0, 3).map(v => JSON.stringify(v)).join(', ')
+      );
+    }
+    if (analysis.suggestedAdditionalKeys && analysis.suggestedAdditionalKeys.length > 0) {
+      console.log(`   Suggested addition: [${analysis.suggestedAdditionalKeys.join(', ')}]`);
+    }
+
+    if (analysis.candidates.length === 0) {
+      console.log('   No candidate columns found — the data may contain genuinely duplicate rows.');
+      break;
+    }
+
+    const sufficient = analysis.candidates.filter(c => c.makesUnique && c.column !== '__proceed__');
+    const insufficient = analysis.candidates.filter(c => !c.makesUnique && c.column !== '__proceed__');
+
+    type Choice = { name: string; value: string; checked: boolean };
+    const choices: Array<Choice | Separator> = [];
+    if (sufficient.length > 0) {
+      choices.push(new Separator('── Sufficient alone ──'));
+      for (const c of sufficient) {
+        choices.push({ name: c.column, value: c.column, checked: true });
+      }
+    }
+    if (insufficient.length > 0) {
+      choices.push(new Separator('── Reduces duplicates ──'));
+      for (const c of insufficient) {
+        choices.push({ name: c.column, value: c.column, checked: false });
+      }
+    }
+    choices.push(new Separator());
+    choices.push({
+      name: 'Proceed anyway (extracted CSVs may have duplicate rows)',
+      value: '__proceed__',
+      checked: false,
+    });
+
+    const selected: string[] = await checkbox({
+      message: 'Select additional join-key columns for extracted array CSVs:',
+      choices,
+    });
+
+    if (selected.includes('__proceed__')) break;
+
+    const additionalKeys = selected.filter(s => s !== '__proceed__');
+    if (additionalKeys.length === 0) {
+      console.log('   No columns selected. Select at least one column or choose "Proceed anyway".');
+      continue;
+    }
+
+    currentKeys = [...currentKeys, ...additionalKeys];
+    analysis = analyzeJoinKeys(parsedData, currentKeys);
+
+    if (analysis.isUnique) {
+      console.log(`✔ [${currentKeys.join(', ')}] uniquely identifies all rows.`);
+    }
+  }
+
+  return currentKeys;
+}
 
 async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean){
   const answer = await select({
@@ -144,21 +228,14 @@ const promptName = async () => {
   return project_name;
 }
 
-const promptData = async (metadata: JsPsychMetadata, verbose: boolean, targetDirectoryPath: string) => {
-  // can prompt an additional reading data -> keeps reading data until it is done and then writes it to the data_directory of the folder
-  var data_path;
-  
-  data_path = await input({
-    message: 'Please pass a path a data directory that has not been added to the metadata already. This should not already be in the project folder, and will be copied over when created.',
-    validate: async (input) => {  
-      if (await validateDirectory(input)){ 
-        return true;
-      }
+const promptDataDir = async (): Promise<string> => {
+  return input({
+    message: 'Please pass a path to a data directory. This should not already be in the project folder, and will be copied over when created.',
+    validate: async (input) => {
+      if (await validateDirectory(input)) return true;
       return "Please enter a valid path to a valid directory.";
     }
   });
-
-  await processDirectory(metadata, data_path, verbose, targetDirectoryPath); // will check if already existing metadata and won't need to prompt
 }
 
 // can seperate the process argv's out into seperate function
@@ -187,12 +264,27 @@ const main = async () => {
     metadata.setMetadataField("name", project_name); // same as above
   }
 
-  // check if it's a valid data directory and run it if it is possible
-  if (argv['data-dir'] && await validateDirectory(argv['data-dir'])){
-    if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
-    await processDirectory(metadata, argv['data-dir'] , verbose, `${project_path}/data`); // will check if already existing metadata and won't need to prompt
+  // Determine data directory path (from flag or interactive prompt)
+  let dataDir: string;
+  if (argv['data-dir'] && await validateDirectory(argv['data-dir'])) {
+    dataDir = argv['data-dir'];
+  } else {
+    dataDir = await promptDataDir();
   }
-  else await promptData(metadata, verbose, `${project_path}/data`); 
+
+  if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
+
+  // Pre-flight: check whether default join key (trial_index) is unique; prompt if not
+  const initialKeys = ['trial_index'];
+  const preResult = await preAnalyzeDirectory(dataDir, initialKeys);
+  let arrayJoinKeys = initialKeys;
+  if (preResult && !preResult.analysis.isUnique) {
+    arrayJoinKeys = await promptJoinKeys(preResult.parsedData, preResult.analysis, initialKeys, preResult.fileName);
+  }
+
+  // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
+  // user, so suppress the library's per-file warning to avoid repeating it.
+  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true });
   
   // check if it's a valid path and then prompt the options
   if (argv['metadata-options'] && validateJson(argv['metadata-options'])){

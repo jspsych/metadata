@@ -1,7 +1,81 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata from "@jspsych/metadata";
-import { expandHomeDir } from "./utils";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV } from "@jspsych/metadata";
+import { expandHomeDir, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV } from "./utils";
+
+export interface GenerateOptions {
+  arrayJoinKeys?: string[];
+  suppressJoinKeyWarning?: boolean;
+}
+
+/**
+ * Reads all data files (JSON or CSV, not dataset_description.json) from a directory,
+ * runs a join-key uniqueness analysis on each, and returns the worst-case result
+ * (file with the highest duplicateCount). Returns null if no suitable file is found
+ * or all files are unique (preserving the caller's "all good" fast path).
+ */
+export async function preAnalyzeDirectory(
+  directoryPath: string,
+  initialKeys: string[] = ['trial_index']
+): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null> {
+  directoryPath = expandHomeDir(directoryPath);
+
+  let items: fs.Dirent[];
+  try {
+    items = await fs.promises.readdir(directoryPath, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null = null;
+
+  // Collect all candidate file paths at the top level and one subdirectory deep,
+  // matching the traversal depth of processDirectory.
+  const filePaths: Array<{ filePath: string; name: string }> = [];
+  for (const item of items) {
+    if (item.isDirectory()) {
+      try {
+        const subItems = await fs.promises.readdir(path.join(directoryPath, item.name), { withFileTypes: true });
+        for (const subItem of subItems) {
+          if (!subItem.isDirectory()) {
+            filePaths.push({ filePath: path.join(directoryPath, item.name, subItem.name), name: subItem.name });
+          }
+        }
+      } catch { continue; }
+    } else {
+      filePaths.push({ filePath: path.join(directoryPath, item.name), name: item.name });
+    }
+  }
+
+  for (const { filePath, name } of filePaths) {
+    if (name === 'dataset_description.json') continue;
+
+    const ext = path.extname(name).toLowerCase();
+    if (ext !== '.json' && ext !== '.csv') continue;
+
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      let parsedData: Array<Record<string, any>>;
+
+      if (ext === '.json') {
+        const raw = JSON.parse(content);
+        if (!Array.isArray(raw)) continue;
+        parsedData = raw as Array<Record<string, any>>;
+      } else {
+        parsedData = (await parseCSV(content)) as Array<Record<string, any>>;
+      }
+
+      const analysis = analyzeJoinKeys(parsedData, initialKeys);
+      if (!analysis.isUnique && (worst === null || analysis.duplicateCount > worst.analysis.duplicateCount)) {
+        worst = { parsedData, analysis, fileName: name };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return worst;
+}
 
 // creating path -> handles the absolute vs non-absolute paths
 export const generatePath = (inputPath: string): string => {
@@ -33,9 +107,9 @@ const copyFileWithStructure = async (sourceFilePath: string, verbose: boolean, t
 };
 
 // processing single file, need to refactor this into a seperate call
-const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string) => {
+const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string, options: GenerateOptions = {}, usedArrayFilenames: Set<string> = new Set()) => {
   const filePath = path.join(directoryPath, file);
-  if (verbose) console.log("Reading file:", filePath); 
+  if (verbose) console.log("Reading file:", filePath);
 
   try {
     const content = await fs.promises.readFile(filePath, "utf8");
@@ -44,17 +118,40 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
     switch (fileExtension){
       case '.json':
         if (file === "dataset_description.json") metadata.loadMetadata(content); // need to remove this for the files that are being called with the CLI
-        else await metadata.generate(content);
+        else await metadata.generate(content, {}, 'json', options);
         break;
       case '.csv':
-        await metadata.generate(content, {}, 'csv');
+        await metadata.generate(content, {}, 'csv', options);
         break;
       default:
         console.error(`"${file}" is not .csv or .json format.`);
         return false;
     }
 
-    if (targetDirectoryPath) await copyFileWithStructure(filePath, verbose, targetDirectoryPath); // error catching to create backwards compability with CLI and old cli prompting
+    if (targetDirectoryPath) {
+      await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
+
+      // dataset_description.json takes the loadMetadata() branch above, which does not
+      // reset extractedArrays. Without this guard we would re-write the previous data
+      // file's array rows under a filename derived from "dataset_description.json".
+      if (file === "dataset_description.json") return true;
+
+      // Write a separate Psych-DS CSV for each array-of-objects column detected during generate()
+      const extractedArrays = metadata.getExtractedArrays();
+      const joinKeys = metadata.getArrayJoinKeys();
+      const priorityCols = [...joinKeys, 'element_index'];
+      for (const [colName, rows] of extractedArrays) {
+        const derivedFilename = deriveArrayFilename(file, colName);
+        const outFilename = disambiguateArrayFilename(derivedFilename, usedArrayFilenames);
+        if (outFilename !== derivedFilename) {
+          console.log(`  ! "${derivedFilename}" already exists; writing array data for "${colName}" as "${outFilename}" instead.`);
+        }
+        usedArrayFilenames.add(outFilename);
+        const outPath = path.join(targetDirectoryPath, outFilename);
+        await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
+        if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
+      }
+    }
   } catch (err) {
     console.error(`Error reading file ${file}: ${err} Please ensure this is data generated by JsPsych.`);
     return false;
@@ -64,10 +161,13 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
 }
 
 // Processing directory recursively up to one level
-export const processDirectory = async (metadata: JsPsychMetadata, directoryPath: string, verbose: boolean = false, targetDirectoryPath?: string) => {
+export const processDirectory = async (metadata: JsPsychMetadata, directoryPath: string, verbose: boolean = false, targetDirectoryPath?: string, options: GenerateOptions = {}) => {
   directoryPath = expandHomeDir(directoryPath);
   let total = 0;
   let failed = 0;
+  // Shared across all files so extracted-array CSV names are disambiguated against the
+  // whole output directory, not just within a single source file.
+  const usedArrayFilenames = new Set<string>();
 
   const processDirectoryRecursive = async (currentPath: string, level: number) => {
     if (level > 1){ 
@@ -91,7 +191,7 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
           await processDirectoryRecursive(itemPath, level + 1);
         } else {
           total += 1;
-          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath)) failed += 1; // returns false if failed
+          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath, options, usedArrayFilenames)) failed += 1; // returns false if failed
         }
       }
 
