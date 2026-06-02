@@ -9,13 +9,20 @@ export interface PsychDSValidationResult {
   missingRecommendedFields: string[];
 }
 
-function parseMissingFields(issues: Map<string, any>, key: string): string[] {
+export function parseMissingFields(issues: Map<string, any>, key: string): string[] {
   const issue = issues.get(key);
   if (!issue) return [];
-  const firstFile = Array.from(issue.files.values())[0] as any;
-  const evidence: string = firstFile?.evidence ?? '';
-  const match = evidence.match(/\[([^\]]+)\]/);
-  return match ? match[1].split(',').map((f: string) => f.trim()).filter(Boolean) : [];
+  const fields = new Set<string>();
+  for (const file of issue.files.values()) {
+    const evidence: string = (file as any)?.evidence ?? '';
+    const match = evidence.match(/\[([^\]]+)\]/);
+    if (match) {
+      match[1].split(',').map((f: string) => f.trim()).filter(Boolean).forEach(f => fields.add(f));
+    } else if (evidence) {
+      console.warn(`Warning: could not parse missing fields from validator evidence: ${evidence}`);
+    }
+  }
+  return [...fields];
 }
 
 export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<PsychDSValidationResult> => {
