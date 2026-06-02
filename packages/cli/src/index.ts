@@ -385,10 +385,10 @@ const main = async () => {
         const updatedMetadata = JSON.stringify(metadata.getMetadata(), null, 2);
         await saveTextToPath(updatedMetadata, `${project_path}/dataset_description.json`);
         const revalidation = await validatePsychDS(project_path, verbose);
+        if (revalidation.hasErrors) process.exit(1);
         if (revalidation.missingRecommendedFields.length > 0) {
           console.log(`\nConsider adding these recommended fields to your metadata: ${revalidation.missingRecommendedFields.join(', ')}`);
         }
-        if (revalidation.hasErrors) process.exit(1);
       } else {
         process.exit(1);
       }
