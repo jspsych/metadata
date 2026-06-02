@@ -64,6 +64,7 @@ async function promptJoinKeys(
       `\n⚠  [${keyLabel}] not unique in "${fileName}": ` +
       `${analysis.duplicateCount} duplicate row${analysis.duplicateCount === 1 ? '' : 's'} found.`
     );
+    console.log('   Nested arrays need a unique row ID to be saved as separate CSV files.');
     if (analysis.duplicateValues.length > 0) {
       console.log(
         '   Example duplicates: ' +
@@ -129,17 +130,17 @@ async function promptJoinKeys(
 
 async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean){
   const answer = await select({
-    message: 'Would you like to customize the metadata by providing a .json specifying changes?',
+    message: 'Would you like to customize the metadata?',
     choices: [
       {
-        name: 'Use default metadata',
+        name: 'Use defaults',
         value: false,
-        description: 'Can edit using text editor or rerun this CLI with a metadata options file.',
+        description: 'You can always edit dataset_description.json directly or re-run this CLI later.',
       },
       {
-        name: 'Customize metadata',
+        name: 'Use a custom metadata file',
         value: true,
-        description: 'Should only customize if you have a prepared .json with format according to the Psych-DS and JsPsych metadata specifications.',
+        description: 'Use a .json file that follows the Psych-DS and jsPsych metadata specifications to override generated metadata (authors, variable descriptions, etc.).',
       },
     ],
   });
@@ -148,10 +149,10 @@ async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean
 
   if (answer){
     optionsPath = await input({
-      message: 'Enter the path to the metadata options file in json format:',
+      message: 'Path to metadata options .json file:',
       validate: async (input) => {
         if (validateJson(input)) return true;
-        return "Please enter a valid path to a json file";
+        return "File not found or not valid JSON — check the path and try again.";
       }
     });
 
@@ -164,17 +165,17 @@ async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean
 
 const promptProjectStructure = async (metadata: JsPsychMetadata) => {
   const answer = await select({
-    message: 'Would you like to generate a new project directory or update an existing project directory?',
+    message: 'What would you like to do?',
     choices: [
       {
-        name: 'Generate new project',
+        name: 'Create a new project',
         value: 'generate',
-        description: 'Select if you have not generated a Psych-DS compliant project folder.',
+        description: 'Create a Psych-DS project from your data.',
       },
       {
-        name: 'Update existing project',
+        name: 'Update an existing project',
         value: 'update',
-        description: 'Selected if you want to update Psych-DS compliant project folder',
+        description: 'Refresh metadata for a previously generated Psych-DS project.',
       },
     ],
   });
@@ -183,29 +184,27 @@ const promptProjectStructure = async (metadata: JsPsychMetadata) => {
 
   try {
     switch(answer){
-      case "generate": // this doesn't have to be a directory 
+      case "generate":
         project_path = await input({
-          message: 'Enter the folder you want to generate the data:',
-          validate: async (input) => {  
-            if (await validateDirectory(input)){  // not sure how to check this
-              return true;
-            }
-            return "Please enter a valid path to a valid directory";
+          message: 'Path to the folder where the new project will be created:',
+          validate: async (input) => {
+            if (await validateDirectory(input)) return true;
+            return "Not a valid folder — check the path and try again.";
           }
         });
         return [project_path, true];
-      case "update": // when this hapepns we will want to read the directory through the file system and need to figure out how to handle this case
+      case "update":
         project_path = await input({
-          message: 'Enter the path to the project directory:', // 
+          message: 'Path to existing project folder (must contain dataset_description.json):',
           validate: async (input) => {
             try {
-              if (await validateDirectory(input) && await validateJson(input + "/dataset_description.json", "dataset_description.json")){  // and will need to check that contains dataset_description.json -> validate that this is existing psych-DS dataset, validateJson with inpput
-                return true; 
+              if (await validateDirectory(input) && await validateJson(input + "/dataset_description.json", "dataset_description.json")){
+                return true;
               }
-              return "Please enter a valid path to the project directory. Be sure it includes a dataset_description.json file in the root otherwise it will not work.";
+              return "This folder is not a valid Psych-DS project (dataset_description.json not found). Please enter the path to an existing Psych-DS project folder.";
             } catch (err) {
               console.error(err);
-              return "Please enter a valid path to the project directory. Be sure it includes a dataset_description.json file in the root otherwise it will not work.";
+              return "This folder is not a valid Psych-DS project (dataset_description.json not found). Please enter the path to an existing Psych-DS project folder.";
             }
           }
         });
@@ -222,7 +221,7 @@ const promptProjectStructure = async (metadata: JsPsychMetadata) => {
 // should only do if generating 
 const promptName = async () => {
   const project_name = await input({
-    message: 'What would you like to name the project? This will be used for the metadata and to name the directory.',
+    message: 'Enter the project name (used as the folder name and in the metadata):'
   });
 
   return project_name;
@@ -230,10 +229,10 @@ const promptName = async () => {
 
 const promptDataDir = async (): Promise<string> => {
   return input({
-    message: 'Please pass a path to a data directory. This should not already be in the project folder, and will be copied over when created.',
+    message: 'Path to your raw data folder (files will be copied, not moved):',
     validate: async (input) => {
       if (await validateDirectory(input)) return true;
-      return "Please enter a valid path to a valid directory.";
+      return "Not a valid folder — check the path and try again.";
     }
   });
 }
