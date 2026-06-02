@@ -10,9 +10,8 @@ export function createDirectoryWithStructure(directoryPath: string): void {
   const structure = {
     'data': {
     },
-    'README.md': 
-      `# My Project
-      Human-readable description of the project and dataset.`,
+    'README.md':
+      `# My Project\nHuman-readable description of the project and dataset.`,
     'CHANGES.md': 'For version tracking - if the dataset is updated after being uploaded/shared, changes (with human-readable descriptions) may be recorded here.',
   };
 

@@ -47,5 +47,8 @@ describe("createDirectoryWithStructure", () => {
     createDirectoryWithStructure(nested);
     expect(fs.existsSync(nested)).toBe(true);
     expect(fs.statSync(nested).isDirectory()).toBe(true);
+    expect(fs.existsSync(path.join(nested, "data"))).toBe(true);
+    expect(fs.existsSync(path.join(nested, "README.md"))).toBe(true);
+    expect(fs.existsSync(path.join(nested, "CHANGES.md"))).toBe(true);
   });
 });
