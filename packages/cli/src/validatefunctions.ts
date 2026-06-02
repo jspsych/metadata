@@ -4,7 +4,13 @@ import { expandHomeDir } from "./utils";
 import { validate } from "psychds-validator";
 
 export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<void> => {
-  const result = await validate(datasetPath);
+  let result;
+  try {
+    result = await validate(datasetPath);
+  } catch (err) {
+    console.warn(`\nWarning: Psych-DS validation could not run: ${err instanceof Error ? err.message : err}`);
+    return;
+  }
 
   const errors: string[] = [];
   const warnings: string[] = [];
