@@ -313,6 +313,7 @@ const main = async () => {
       project_path = argv['psych-ds-dir'];
       new_project = false;
       await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
+      // project_path is argv['psych-ds-dir'] (a string) inside this branch — no typeof guard needed here.
       await validatePsychDS(project_path, verbose);
       if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }

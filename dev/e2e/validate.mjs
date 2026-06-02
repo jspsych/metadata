@@ -1,5 +1,5 @@
 /**
- * E2E verification script for PR #52 (feat/cli): integrate psych-ds validator).
+ * E2E verification script for the psych-ds validator integration in the CLI.
  *
  * Calls psychds-validator directly against two minimal fixtures:
  *   valid-project   — all required fields present; should report 0 errors
