@@ -22,8 +22,8 @@
   },
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "esbuild src/index.ts --bundle --format=esm --platform=node --outfile=dist/esm/index.js",
-    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --outfile=dist/cjs/index.cjs",
+    "build:esm": "esbuild src/index.ts --bundle --format=esm --platform=node --external:psychds-validator --outfile=dist/esm/index.js",
+    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --external:psychds-validator --outfile=dist/cjs/index.cjs",
     "cli": "node dist/esm/index.js",
     "test": "jest"
   },
@@ -35,6 +35,7 @@
   "dependencies": {
     "@inquirer/prompts": "^5.1.2",
     "@jspsych/metadata": "*",
+    "psychds-validator": "^1.5.0",
     "yargs": "^17.7.2"
   }
 }
