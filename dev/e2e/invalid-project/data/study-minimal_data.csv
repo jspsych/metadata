@@ -1,0 +1,3 @@
+trial_type,trial_index,time_elapsed,rt,stimulus,response
+html-keyboard-response,0,512,350,<p>Press a key.</p>,a
+html-keyboard-response,1,1024,420,<p>Press another key.</p>,b
