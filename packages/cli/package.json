@@ -24,7 +24,13 @@
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "esbuild src/index.ts --bundle --format=esm --platform=node --outfile=dist/esm/index.js",
     "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --outfile=dist/cjs/index.cjs",
-    "cli": "node dist/esm/index.js"
+    "cli": "node dist/esm/index.js",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@sucrase/jest-plugin": "^3.0.0",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0"
   },
   "dependencies": {
     "@inquirer/prompts": "^5.1.2",

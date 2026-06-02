@@ -1,3 +1,3 @@
 module.exports = {
-  projects: ["packages/metadata"],
+  projects: ["packages/metadata", "packages/cli"],
 };
