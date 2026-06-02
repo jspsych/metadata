@@ -32,7 +32,9 @@ describe("createDirectoryWithStructure", () => {
     const readmePath = path.join(targetDir, "README.md");
     expect(fs.existsSync(readmePath)).toBe(true);
     const content = fs.readFileSync(readmePath, "utf8");
-    expect(content).toContain("My Project");
+    expect(content).toBe(
+      "# My Project\nHuman-readable description of the project and dataset."
+    );
   });
 
   test("creates CHANGES.md with expected content", () => {
