@@ -238,6 +238,68 @@ const promptDataDir = async (): Promise<string> => {
   });
 }
 
+const SYSTEM_VARIABLE_NAMES = new Set([
+  "trial_type",
+  "trial_index",
+  "time_elapsed",
+  "extension_type",
+  "extension_version",
+]);
+
+function hasUnknownDescription(variable: any): boolean {
+  const desc = variable["description"];
+  if (!desc) return false;
+  if (typeof desc === "string") return desc === "unknown";
+  if (typeof desc === "object") {
+    const values = Object.values(desc) as string[];
+    return values.length > 0 && values.every((v) => v === "unknown");
+  }
+  return false;
+}
+
+const promptUnknownDescriptions = async (metadata: JsPsychMetadata) => {
+  const unknownVars = metadata.getVariableNames().filter((name) => {
+    if (SYSTEM_VARIABLE_NAMES.has(name)) return false;
+    return hasUnknownDescription(metadata.getVariable(name));
+  });
+
+  if (unknownVars.length === 0) return;
+
+  const fillIn = await select({
+    message: `${unknownVars.length} variable(s) have unknown descriptions. Would you like to fill them in?`,
+    choices: [
+      {
+        name: "Fill in descriptions",
+        value: true,
+        description: "You will be prompted for each variable. Press Enter to skip individual ones.",
+      },
+      {
+        name: "Skip",
+        value: false,
+        description: "Leave descriptions as unknown in the dataset_description.json.",
+      },
+    ],
+  });
+
+  if (!fillIn) return;
+
+  for (const name of unknownVars) {
+    const description = await input({
+      message: `Description for "${name}" (press Enter to skip):`,
+    });
+
+    if (description.trim()) {
+      // updateVariable's "description" handling is append-only — it accumulates
+      // descriptions across plugins rather than overwriting. Clear the existing
+      // "unknown" entry first so the user's value replaces it instead of sitting
+      // alongside the stale "unknown".
+      const variable = metadata.getVariable(name) as { description?: Record<string, string> };
+      variable.description = {};
+      metadata.updateVariable(name, "description", { user: description.trim() });
+    }
+  }
+};
+
 // can seperate the process argv's out into seperate function
 const main = async () => {
   const verbose = argv.verbose ? argv.verbose : false;
@@ -293,6 +355,14 @@ const main = async () => {
   }
   else await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
   
+  const isNonInteractive = !!(
+    argv['psych-ds-dir'] && await validateDirectory(argv['psych-ds-dir']) &&
+    argv['data-dir'] && await validateDirectory(argv['data-dir']) &&
+    argv['metadata-options'] && validateJson(argv['metadata-options'])
+  );
+
+  if (!isNonInteractive) await promptUnknownDescriptions(metadata);
+
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
