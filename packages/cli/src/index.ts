@@ -367,7 +367,28 @@ const main = async () => {
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
-  if (typeof project_path === 'string') await validatePsychDS(project_path, verbose);
+
+  if (typeof project_path === 'string') {
+    const validation = await validatePsychDS(project_path, verbose);
+
+    if (validation.missingRecommendedFields.length > 0) {
+      console.log(`\nConsider adding these recommended fields to your metadata: ${validation.missingRecommendedFields.join(', ')}`);
+    }
+
+    if (validation.missingRequiredFields.length > 0) {
+      console.log('\nSome required fields are missing. Please provide values:');
+      for (const field of validation.missingRequiredFields) {
+        const value = await input({ message: `Value for required field "${field}":` });
+        if (value.trim()) metadata.setMetadataField(field, value.trim());
+      }
+      const updatedMetadata = JSON.stringify(metadata.getMetadata(), null, 2);
+      await saveTextToPath(updatedMetadata, `${project_path}/dataset_description.json`);
+      const revalidation = await validatePsychDS(project_path, verbose);
+      if (revalidation.hasErrors) process.exit(1);
+    } else if (validation.hasErrors) {
+      process.exit(1);
+    }
+  }
 };
 
 main();
