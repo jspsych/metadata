@@ -129,12 +129,39 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
     }
 
     if (targetDirectoryPath) {
-      await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
+      // dataset_description.json takes the loadMetadata() branch above. Copy it through
+      // unchanged and skip conversion + array extraction (the latter would re-write the
+      // previous data file's array rows under a filename derived from this one).
+      if (file === "dataset_description.json") {
+        await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
+        return true;
+      }
 
-      // dataset_description.json takes the loadMetadata() branch above, which does not
-      // reset extractedArrays. Without this guard we would re-write the previous data
-      // file's array rows under a filename derived from "dataset_description.json".
-      if (file === "dataset_description.json") return true;
+      if (fileExtension === '.json') {
+        // Validator-ready output: keep the original JSON under data/raw/, write a converted CSV to data/.
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed)) {
+          console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
+          return false;
+        }
+
+        const csvName = `${path.basename(file, '.json')}.csv`;
+        if (usedArrayFilenames.has(csvName)) {
+          console.error(`Naming collision: "${file}" would overwrite "${csvName}" in data/. Rename one of the source files (Psych-DS naming is handled separately). Skipping.`);
+          return false;
+        }
+        usedArrayFilenames.add(csvName);
+
+        const rawDir = path.join(targetDirectoryPath, 'raw');
+        await fs.promises.mkdir(rawDir, { recursive: true });
+        await fs.promises.writeFile(path.join(rawDir, file), content);
+
+        await fs.promises.writeFile(path.join(targetDirectoryPath, csvName), objectsToCSV(parsed, ['trial_index']));
+        if (verbose) console.log(`  → converted ${file} to ${csvName} (raw saved to raw/${file})`);
+      } else {
+        // .csv input is already validator-ready; copy it through unchanged.
+        await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
+      }
 
       // Write a separate Psych-DS CSV for each array-of-objects column detected during generate()
       const extractedArrays = metadata.getExtractedArrays();

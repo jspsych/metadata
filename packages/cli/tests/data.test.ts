@@ -147,3 +147,73 @@ describe("processDirectory", () => {
     expect(metadata.getMetadataField("name")).toBe("Existing");
   });
 });
+
+describe("processDirectory JSON → CSV conversion", () => {
+  test("writes a converted CSV to data/ and preserves the original JSON under data/raw/", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+
+    const rows = [
+      { trial_index: 0, rt: 200, response: { Q0: "yes" } },
+      { trial_index: 1, rt: 350, tags: ["a", "b"] },
+    ];
+    const original = JSON.stringify(rows);
+    fs.writeFileSync(path.join(srcDir, "experiment.json"), original);
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    const csvPath = path.join(dataDir, "experiment.csv");
+    const rawPath = path.join(dataDir, "raw", "experiment.json");
+    expect(fs.existsSync(csvPath)).toBe(true);
+    expect(fs.existsSync(rawPath)).toBe(true);
+
+    // raw copy is byte-for-byte the original
+    expect(fs.readFileSync(rawPath, "utf8")).toBe(original);
+
+    // nested values are serialised as JSON, never "[object Object]"
+    const csv = fs.readFileSync(csvPath, "utf8");
+    expect(csv).not.toContain("[object Object]");
+    expect(csv).toContain('{""Q0"":""yes""}'); // escaped nested object
+    expect(csv).toContain('[""a"",""b""]');     // escaped nested array
+
+    // the original .json is not left behind in data/
+    expect(fs.existsSync(path.join(dataDir, "experiment.json"))).toBe(false);
+  });
+
+  test("does not convert or copy dataset_description.json into data/", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(srcDir, "dataset_description.json"),
+      JSON.stringify({ name: "X", "@type": "Dataset", description: { default: "d" }, variableMeasured: [] }),
+    );
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    expect(fs.existsSync(path.join(dataDir, "dataset_description.csv"))).toBe(false);
+    expect(fs.existsSync(path.join(dataDir, "raw", "dataset_description.json"))).toBe(false);
+  });
+
+  test("skips a second same-named JSON file instead of silently overwriting", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(path.join(srcDir, "a"), { recursive: true });
+    fs.mkdirSync(path.join(srcDir, "b"), { recursive: true });
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(path.join(srcDir, "a", "data.json"), JSON.stringify([{ trial_index: 0, rt: 1 }]));
+    fs.writeFileSync(path.join(srcDir, "b", "data.json"), JSON.stringify([{ trial_index: 0, rt: 2 }]));
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, srcDir, false, dataDir);
+
+    expect(total).toBe(2);
+    expect(failed).toBe(1); // the colliding second file is skipped, not overwritten
+    expect(fs.existsSync(path.join(dataDir, "data.csv"))).toBe(true);
+  });
+});

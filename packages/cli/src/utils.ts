@@ -46,7 +46,8 @@ export function deriveArrayFilename(sourceFile: string, columnName: string): str
 }
 
 /**
- * Serialises an array of flat objects to RFC 4180 CSV.
+ * Serialises an array of objects to RFC 4180 CSV. Nested objects/arrays in a cell
+ * are serialised as JSON strings so no data is lost.
  * trial_index and element_index columns are placed first; remaining columns
  * follow in the order they first appear across all rows.
  */
@@ -61,7 +62,10 @@ export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: str
   const headers = [...priorityCols.filter(c => allKeys.has(c)), ...otherCols];
 
   const escape = (val: any): string => {
-    const str = val === null || val === undefined ? '' : String(val);
+    if (val === null || val === undefined) return '';
+    // Preserve nested objects/arrays as JSON strings so no data is lost.
+    // (String(val) would collapse them to "[object Object]".)
+    const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
     return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
       ? `"${str.replace(/"/g, '""')}"` : str;
   };
