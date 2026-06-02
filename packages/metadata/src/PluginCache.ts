@@ -63,8 +63,8 @@ export class PluginCache {
       try {
         return this.parseJavadocString(script);
       } 
-      catch (err) { // make this more descriptive
-        console.warn("* Error parsing", pluginType);
+      catch (err) {
+        console.warn("* Error parsing", pluginType, err);
         return {};
       }
     }
@@ -118,6 +118,10 @@ export class PluginCache {
 
     try {
       const response = await fetch(unpkgUrl);
+      if (!response.ok) {
+        console.warn(`Plugin source not found for: ${pluginType} (HTTP ${response.status}). Descriptions will default to "unknown".`);
+        return undefined;
+      }
       const scriptContent = await response.text();
       return scriptContent;
     } catch (error) {
@@ -133,41 +137,111 @@ export class PluginCache {
   }
 
   /**
-   * Function that parses javadoc and creates the object containing all the parsed descriptions 
-   * with their corresponding names.
+   * Extracts the content of the top-level `data: { ... }` block from a jsPsych plugin source
+   * file using brace counting. This is more robust than a regex approach because the data block
+   * ends with `},` (not `};`), and plugin sources contain deeply nested objects that would
+   * cause a lazy regex to stop at the wrong closing brace.
+   *
+   * Known limitations (acceptable for current jsPsych plugin sources):
+   * - Matches the first `data:` property in the file; a plugin with a `data:` field inside its
+   *   `parameters` block before the top-level `info.data` block would extract the wrong object.
+   * - Brace counting treats every `{`/`}` as structural; braces inside string literals or JSDoc
+   *   comments (e.g. `/** e.g. {foo: 1} *\/`) would throw off the counter.
+   *
+   * @private
+   * @param {string} script - Full plugin source text.
+   * @returns {string | null} Content between the outer braces of the data block, or null if not found.
+   */
+  private extractDataBlock(script: string): string | null {
+    const dataStart = script.search(/\bdata:\s*\{/);
+    if (dataStart === -1) return null;
+    const braceStart = script.indexOf('{', dataStart);
+    if (braceStart === -1) return null;
+    const braceEnd = this.findMatchingBrace(script, braceStart);
+    if (braceEnd === -1) return null;
+    return script.substring(braceStart + 1, braceEnd);
+  }
+
+  /**
+   * Parses JSDoc comments and variable blocks from the data section of a jsPsych plugin source.
    *
    * @private
    * @param {string} script - The script text content of the fetching.
    * @returns {{}}
    */
   private parseJavadocString(script: string) {
-    const matchResult = script.match(/data:\s*{([\s\S]*?)};\s*/);
-    if (!matchResult) return {};
-    const dataString = matchResult.join();
-    const result = {};
-    // Regular expression to match each variable block
-    const varRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*{\s*([\s\S]*?)\s*},?/gs;
-    const propRegex = /\s*(\w+):\s*([^,\s]+)/g;
+    const dataBlock = this.extractDataBlock(script);
+    if (!dataBlock) return {};
+    return this.extractJsdocFields(dataBlock);
+  }
 
-    // Match each variable block
+  /**
+   * Extracts JSDoc-annotated fields from a data block string. Uses brace counting to find
+   * each variable's true closing brace, then recursively processes any `nested:` sub-object
+   * so that nested parameter descriptions are also captured.
+   *
+   * @private
+   * @param {string} block - Content of a data or nested block (without outer braces).
+   * @returns {Record<string, any>}
+   */
+  private extractJsdocFields(block: string): Record<string, any> {
+    const result: Record<string, any> = {};
+    const varStartRegex = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(\w+):\s*\{/g;
+    const propRegex = /(\w+):\s*([^,\s{}]+)/g;
+
     let match;
-    while ((match = varRegex.exec(dataString)) !== null) {
-      let [, description, varName, props] = match;
-      description = description.trim().replace(/\s+/g, " "); // Clean up description
+    while ((match = varStartRegex.exec(block)) !== null) {
+      const description = match[1].trim().replace(/\s+/g, " ");
+      const varName = match[2];
 
-      const propsObj = {};
+      const braceStart = match.index + match[0].length - 1;
+      const braceEnd = this.findMatchingBrace(block, braceStart);
+      if (braceEnd === -1) continue;
+
+      // Advance past this variable's closing brace so the next exec() starts outside it,
+      // preventing nested JSDoc entries from being matched again by the outer loop.
+      varStartRegex.lastIndex = braceEnd + 1;
+      const varContent = block.substring(braceStart + 1, braceEnd);
+
+      const propsObj: Record<string, any> = {};
       let propMatch;
-      while ((propMatch = propRegex.exec(props)) !== null) {
-        let [, propName, propValue] = propMatch;
-        propsObj[propName] = propValue;
+      propRegex.lastIndex = 0;
+      while ((propMatch = propRegex.exec(varContent)) !== null) {
+        propsObj[propMatch[1]] = propMatch[2];
       }
 
-      result[varName] = {
-        description: description,
-        ...propsObj, // Add all additional properties to the result object
-      };
+      result[varName] = { description, ...propsObj };
+
+      // Flat merge by design: nested params are cached at the same level as top-level params
+      // so they can be looked up directly by variable name if they appear as top-level columns.
+      const nestedSearch = /\bnested:\s*\{/.exec(varContent);
+      if (nestedSearch) {
+        const nestedBraceStart = varContent.indexOf("{", nestedSearch.index);
+        const nestedBraceEnd = this.findMatchingBrace(varContent, nestedBraceStart);
+        if (nestedBraceEnd !== -1) {
+          Object.assign(result, this.extractJsdocFields(varContent.substring(nestedBraceStart + 1, nestedBraceEnd)));
+        }
+      }
     }
 
     return result;
+  }
+
+  /**
+   * Returns the index of the `}` that closes the `{` at `startIndex`, using brace counting.
+   * Returns -1 if the source is unbalanced (no matching closing brace found).
+   *
+   * @private
+   * @param {string} str - String to search.
+   * @param {number} startIndex - Index of the opening `{`.
+   * @returns {number}
+   */
+  private findMatchingBrace(str: string, startIndex: number): number {
+    let depth = 0;
+    for (let i = startIndex; i < str.length; i++) {
+      if (str[i] === "{") depth++;
+      else if (str[i] === "}" && --depth === 0) return i;
+    }
+    return -1;
   }
 }
