@@ -1,57 +1,144 @@
-# Metadata-CLI Module
+# Metadata CLI
 
-The metadata-cli module contains commands for interacting with the metadata-module to create and modify existing metadata according to [Psych-DS standards](https://psych-ds.github.io/). You can interact with the cli tool by running it with a graphical interface or by passing in the paths to you're data and metadata option .json files.
+A command-line tool for generating [Psych-DS](https://psych-ds.github.io/) compliant metadata for jsPsych experiments. Given a folder of jsPsych data files, it produces a `dataset_description.json` that describes your experiment and its variables according to the Psych-DS standard.
 
 ---
 
-## CLI with prompting (recommended)
+## What is Psych-DS?
 
-To run the CLI with prompting you can call ```npx @jspsych/metadata-cli```. This is the recommended way of running the package.
+[Psych-DS](https://psych-ds.github.io/) is a community standard for organizing and documenting psychology datasets. A Psych-DS compliant project has a predictable folder structure and a `dataset_description.json` file that describes the dataset, its authors, and the variables it contains. This makes your data easier to share, reproduce, and understand.
 
-This will then prompt you through the various CLI options, this includes generating from scratch or using an existing file. There are descriptions of how the files and directories should be structured below. 
+---
 
-## CLI without prompting and optional flags
-
-If you are findng the prompting steps to be more of a hinderance rather, then you can skip steps by directly passing in the arguments when calling npx. 
-
-An example is:
+## Quick start
 
 ```
-npx @jspsych/metadata-cli --verbose --psych-ds-dir=/path/to/existing/metadata/dir --data-dir=/path/to/data/dir --metadata-options=/path/to/metadata-options.json
+npx @jspsych/metadata-cli
 ```
 
-The ```--verbose``` flag when called will make the output more descriptive and will explain all the steps that are happening in more detail. This is only recommended when there is something going wrong and you need to get more information.
+Running the tool without any flags launches the interactive mode, which walks you through each step. This is the recommended way to use the tool.
 
-The ```--psych-ds-dir --data-dir --metadata-options``` flags all correspond to the different prompting steps. Using the example above, you are able to skip all prompting steps by entering the correct information. If any of these inputs are not valid the CLI will prompt you until you enter a valid input.
+---
 
-```--psych-ds-dir``` corresponds to an existing Psych-DS valid directory. This is to be used if want to update existing metadata.
+## Interactive walkthrough
 
-```--data-dir``` corresponds to the data folder that you want to use to update or create the metadata.
+When you run the CLI interactively, it guides you through the following steps:
 
-```--metadata-options``` corresponds to the options.json that you want to use to overwrite the defaults and update the existing metadata.
+### 1. Create a new project or update an existing one
+
+You will be asked whether you want to:
+
+- **Create a new project** — the tool creates a new Psych-DS folder structure and generates metadata from scratch.
+- **Update an existing project** — point the tool to a folder that already contains a `dataset_description.json` and it will load the existing metadata before updating it.
+
+### 2. Project name (new projects only)
+
+If creating a new project, you will be asked for a project name. This is used as the subfolder name and is written into the metadata.
+
+### 3. Path to your data folder
+
+Provide the path to the folder containing your jsPsych data files (`.csv` or `.json`). The tool reads one level of subdirectories. Your files will be **copied** into a `data/` subfolder inside the new project — your originals are not modified.
+
+### 4. Customize metadata (optional)
+
+You can optionally provide a metadata options file (see [Metadata options file](#metadata-options-file) below) to set fields like author names, variable descriptions, and other dataset-level information. If you skip this step you can always edit `dataset_description.json` directly or re-run the CLI later.
+
+### 5. Fill in unknown variable descriptions (optional)
+
+After processing your data files, the tool will flag any variables whose descriptions could not be automatically determined (for example, variables from custom plugins). You can type in descriptions for each one or press Enter to skip.
+
+### 6. Validation
+
+After saving, the tool validates the project against the Psych-DS specification and reports whether it passed, along with any errors or warnings.
+
+---
+
+## Generated project structure
+
+For a new project named `my-experiment`, the tool creates:
+
+```
+my-experiment/
+├── data/                         # copies of your raw data files
+├── dataset_description.json      # generated Psych-DS metadata
+├── README.md                     # placeholder for a human-readable description
+└── CHANGES.md                    # placeholder for version tracking
+```
+
+---
+
+## Flags and non-interactive mode
+
+All prompting steps can be skipped by passing the corresponding flags directly. If all three path flags are provided and valid, the tool runs fully non-interactively.
+
+```
+npx @jspsych/metadata-cli --psych-ds-dir=/path/to/existing/project --data-dir=/path/to/data --metadata-options=/path/to/options.json
+```
+
+| Flag | Alias | Description |
+|------|-------|-------------|
+| `--psych-ds-dir` | `-em` | Path to an existing Psych-DS project folder (must contain `dataset_description.json`). Use this to update existing metadata. |
+| `--data-dir` | `-d` | Path to the folder containing your jsPsych data files. |
+| `--metadata-options` | `-m` | Path to a metadata options `.json` file to customise the generated metadata. |
+| `--verbose` | `-v` | Print detailed output at each step. Useful for debugging. |
+
+If a flag is provided but invalid, the tool will fall back to prompting for that step.
+
+---
+
+## Metadata options file
+
+A metadata options file is a `.json` file that lets you set or override fields in the generated metadata. Any top-level key maps directly to a field in `dataset_description.json`. Authors and variables require a nested structure.
+
+### Example
+
+```json
+{
+  "name": "My Experiment",
+  "description": "A study on response times.",
+  "author": {
+    "Jane Smith": {
+      "name": "Jane Smith",
+      "givenName": "Jane",
+      "familyName": "Smith"
+    }
+  },
+  "variables": {
+    "rt": {
+      "description": {
+        "my-plugin": "Reaction time in milliseconds."
+      }
+    }
+  }
+}
+```
+
+---
+
+## Data file requirements
+
+- Files must be `.csv` or `.json` format generated by jsPsych.
+- The tool reads all files in the target folder and one level of subdirectories.
+- If a `dataset_description.json` is present in the data folder it will be loaded as existing metadata rather than treated as a data file.
+- Non-data files in the folder will be counted as failures but will not prevent the rest of the files from being processed.
+
+---
 
 ## Running the CLI locally
 
-To run the CLI locally, you will need to clone this repo and navigate to the CLI directory. To do this, you must have node installed and it is not recommended unless you have programming experience. This is best if you want to customize the CLI according to your specific use case or want to avoid using npm/npx. 
+For development or customisation, you can run the CLI directly from the source:
 
 1. Clone the repository.
-2. Navigate to the CLI directory.
-3. Install the necessary packages with ```npm install```.
-4. Build the cli file with ```npm run build```.
-5. Run the cli with ```npx .```.
+2. Navigate to `packages/cli`.
+3. Run `npm install`.
+4. Run `npm run build`.
+5. Run `npx .` to launch the CLI.
 
-## Common errors
+Node.js must be installed. This is only recommended if you have programming experience and want to modify the tool.
 
-### Path to data requirements  
+---
 
-The path that is given to the data must be a directory. If you are running the CLI without prompting, the ```dataset_description.json``` should be in the root directory. 
+## Naming requirements
 
-All the files in the data folder must be valid JsPsych-generated .csv and .json files. All the files that are in the directory will be scraped. If the data files are mixed in with other non-data files, there may be unintended errors. The CLI will scrape one level deep into the directories, but will not recurse infinitely. 
-
-### Metadata options requirements 
-
-The metadata-options file must be in .json format and needs to include the same 
-
-### Naming Requirements
-
-The ```dataset_description.json``` must be named as is according to Psych-DS specification, and the rest of the files must be organized as Psych-DS requirements.
+- The metadata file must be named exactly `dataset_description.json`.
+- Data files must be `.csv` or `.json`. Other file types will not be processed.
