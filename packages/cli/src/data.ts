@@ -1,11 +1,19 @@
 import fs from "fs";
 import path from "path";
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV } from "@jspsych/metadata";
-import { expandHomeDir, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV } from "./utils";
+import { expandHomeDir, deriveArrayFilename, disambiguateArrayFilename, disambiguateFilename, objectsToCSV, fileStem, isValidPsychDSDataFilename } from "./utils";
 
 export interface GenerateOptions {
   arrayJoinKeys?: string[];
   suppressJoinKeyWarning?: boolean;
+  /**
+   * Maps an absolute source-file path to its resolved Psych-DS base (the keyword-value
+   * sequence before "_data.csv"). Built by the index.ts pre-pass, which prompts for a
+   * keyword when a filename is non-compliant. A file missing from the map falls back to
+   * its own stem, which is only accepted if it is already Psych-DS-compliant; otherwise
+   * the file is skipped (processFile never invents a keyword — that is the pre-pass's job).
+   */
+  normalizedBases?: Map<string, string>;
 }
 
 /**
@@ -77,6 +85,38 @@ export async function preAnalyzeDirectory(
   return worst;
 }
 
+/**
+ * Lists candidate data files at the top level and one subdirectory deep, matching
+ * processDirectory's traversal depth. Returns absolute-ready { filePath, name } pairs
+ * (directories themselves are excluded). Used by the filename-normalization pre-pass.
+ */
+export async function enumerateDataFiles(directoryPath: string): Promise<Array<{ filePath: string; name: string }>> {
+  directoryPath = expandHomeDir(directoryPath);
+  const out: Array<{ filePath: string; name: string }> = [];
+
+  let items: fs.Dirent[];
+  try {
+    items = await fs.promises.readdir(directoryPath, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+
+  for (const item of items) {
+    if (item.isDirectory()) {
+      try {
+        const subItems = await fs.promises.readdir(path.join(directoryPath, item.name), { withFileTypes: true });
+        for (const subItem of subItems) {
+          if (!subItem.isDirectory()) out.push({ filePath: path.join(directoryPath, item.name, subItem.name), name: subItem.name });
+        }
+      } catch { continue; }
+    } else {
+      out.push({ filePath: path.join(directoryPath, item.name), name: item.name });
+    }
+  }
+
+  return out;
+}
+
 // creating path -> handles the absolute vs non-absolute paths
 export const generatePath = (inputPath: string): string => {
   if (path.isAbsolute(inputPath)) {
@@ -107,7 +147,7 @@ const copyFileWithStructure = async (sourceFilePath: string, verbose: boolean, t
 };
 
 // processing single file, need to refactor this into a seperate call
-const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string, options: GenerateOptions = {}, usedArrayFilenames: Set<string> = new Set()) => {
+const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string, options: GenerateOptions = {}, usedArrayFilenames: Set<string> = new Set(), usedRawFilenames: Set<string> = new Set()) => {
   const filePath = path.join(directoryPath, file);
   if (verbose) console.log("Reading file:", filePath);
 
@@ -137,30 +177,51 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         return true;
       }
 
+      // For JSON sources, parse and validate first so a non-array (or unparseable) file is
+      // skipped before it reserves an output name — otherwise it would needlessly disambiguate
+      // a later valid file that maps to the same base.
+      let parsed: Array<Record<string, any>> | null = null;
       if (fileExtension === '.json') {
-        // Validator-ready output: keep the original JSON under data/raw/, write a converted CSV to data/.
-        const parsed = JSON.parse(content);
-        if (!Array.isArray(parsed)) {
+        const json = JSON.parse(content);
+        if (!Array.isArray(json)) {
           console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
           return false;
         }
+        parsed = json;
+      }
 
-        const csvName = `${path.basename(file, '.json')}.csv`;
-        if (usedArrayFilenames.has(csvName)) {
-          console.error(`Naming collision: "${file}" would overwrite "${csvName}" in data/. Rename one of the source files (Psych-DS naming is handled separately). Skipping.`);
-          return false;
-        }
-        usedArrayFilenames.add(csvName);
+      // Resolve the Psych-DS base (keyword-value sequence before "_data.csv"). The index.ts
+      // pre-pass supplies a base for every source file; fall back to the file's own stem when
+      // called directly (e.g. in tests). Never invent a keyword here — if the resolved base
+      // would not yield a Psych-DS-compliant filename, skip the file rather than writing an
+      // invalid name. The CLI's pre-pass is the single place that prompts to fix such names.
+      const base = options.normalizedBases?.get(path.resolve(filePath)) ?? fileStem(file);
+      if (!isValidPsychDSDataFilename(`${base}_data.csv`)) {
+        console.error(`"${file}" does not follow the Psych-DS naming pattern ([keyword-value_]+data.csv) and no compliant name was provided; skipping. Run via the CLI (which prompts for a keyword) or supply options.normalizedBases.`);
+        return false;
+      }
+      const mainName = disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames);
+      usedArrayFilenames.add(mainName);
 
+      if (parsed) {
+        // Keep the original JSON under data/raw/, write a converted, Psych-DS-named CSV to data/.
+        // data/raw/ is flat (one level deep is flattened), so same-named originals from different
+        // source subdirectories must be disambiguated or they would overwrite one another.
         const rawDir = path.join(targetDirectoryPath, 'raw');
         await fs.promises.mkdir(rawDir, { recursive: true });
-        await fs.promises.writeFile(path.join(rawDir, file), content);
+        const rawName = disambiguateFilename(file, usedRawFilenames);
+        usedRawFilenames.add(rawName);
+        if (rawName !== file) {
+          console.log(`  ! raw/"${file}" already exists; saving original as raw/"${rawName}" instead.`);
+        }
+        await fs.promises.writeFile(path.join(rawDir, rawName), content);
 
-        await fs.promises.writeFile(path.join(targetDirectoryPath, csvName), objectsToCSV(parsed, ['trial_index']));
-        if (verbose) console.log(`  → converted ${file} to ${csvName} (raw saved to raw/${file})`);
+        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), objectsToCSV(parsed, ['trial_index']));
+        if (verbose) console.log(`  → converted ${file} to ${mainName} (raw saved to raw/${rawName})`);
       } else {
-        // .csv input is already validator-ready; copy it through unchanged.
-        await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
+        // .csv input is already CSV; write it out under its Psych-DS-compliant name.
+        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), content);
+        if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
       }
 
       // Write a separate Psych-DS CSV for each array-of-objects column detected during generate()
@@ -168,7 +229,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       const joinKeys = metadata.getArrayJoinKeys();
       const priorityCols = [...joinKeys, 'element_index'];
       for (const [colName, rows] of extractedArrays) {
-        const derivedFilename = deriveArrayFilename(file, colName);
+        const derivedFilename = deriveArrayFilename(base, colName);
         const outFilename = disambiguateArrayFilename(derivedFilename, usedArrayFilenames);
         if (outFilename !== derivedFilename) {
           console.log(`  ! "${derivedFilename}" already exists; writing array data for "${colName}" as "${outFilename}" instead.`);
@@ -192,9 +253,11 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
   directoryPath = expandHomeDir(directoryPath);
   let total = 0;
   let failed = 0;
-  // Shared across all files so extracted-array CSV names are disambiguated against the
-  // whole output directory, not just within a single source file.
+  // Shared across all files so output names are disambiguated against the whole output
+  // directory, not just within a single source file: usedArrayFilenames tracks data/ CSVs,
+  // usedRawFilenames tracks preserved originals under data/raw/.
   const usedArrayFilenames = new Set<string>();
+  const usedRawFilenames = new Set<string>();
 
   const processDirectoryRecursive = async (currentPath: string, level: number) => {
     if (level > 1){ 
@@ -218,7 +281,7 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
           await processDirectoryRecursive(itemPath, level + 1);
         } else {
           total += 1;
-          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath, options, usedArrayFilenames)) failed += 1; // returns false if failed
+          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1; // returns false if failed
         }
       }
 

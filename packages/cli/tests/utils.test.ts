@@ -1,6 +1,15 @@
 import os from "os";
 import path from "path";
-import { expandHomeDir, objectsToCSV } from "../src/utils";
+import {
+  expandHomeDir,
+  objectsToCSV,
+  isValidPsychDSDataFilename,
+  toPsychDSValue,
+  fileStem,
+  deriveArrayFilename,
+  disambiguateArrayFilename,
+  disambiguateFilename,
+} from "../src/utils";
 import { generatePath } from "../src/data";
 
 describe("expandHomeDir", () => {
@@ -64,5 +73,105 @@ describe("objectsToCSV", () => {
     expect(lines[0]).toBe("a,b");
     expect(lines[1]).toBe("1,2");
     expect(lines[2]).toBe("3,");
+  });
+});
+
+describe("isValidPsychDSDataFilename", () => {
+  test("accepts compliant single- and multi-pair names", () => {
+    expect(isValidPsychDSDataFilename("study-minimal_data.csv")).toBe(true);
+    expect(isValidPsychDSDataFilename("subject-001_session-1_data.csv")).toBe(true);
+    expect(isValidPsychDSDataFilename("subject-123a_data.tsv")).toBe(true);
+  });
+
+  test("rejects non-compliant names", () => {
+    expect(isValidPsychDSDataFilename("subject1_data.csv")).toBe(false);   // no key-value pair
+    expect(isValidPsychDSDataFilename("experiment.csv")).toBe(false);      // missing _data
+    expect(isValidPsychDSDataFilename("year2024_data.csv")).toBe(false);   // no hyphen
+    expect(isValidPsychDSDataFilename("subject-a-b_data.csv")).toBe(false); // hyphen in value
+    expect(isValidPsychDSDataFilename("sub1-1_data.csv")).toBe(false);     // digit in keyword
+  });
+});
+
+describe("toPsychDSValue", () => {
+  test("camelCases across non-alphanumeric boundaries", () => {
+    expect(toPsychDSValue("mouse_tracking")).toBe("mouseTracking");
+    expect(toPsychDSValue("mouse-tracking-data")).toBe("mouseTrackingData");
+    expect(toPsychDSValue("My Data")).toBe("MyData");
+  });
+
+  test("leaves already-alphanumeric strings intact", () => {
+    expect(toPsychDSValue("subject1")).toBe("subject1");
+    expect(toPsychDSValue("responseTime")).toBe("responseTime");
+  });
+
+  test("returns the fallback when there are no alphanumeric characters", () => {
+    expect(toPsychDSValue("___")).toBe("value");
+    expect(toPsychDSValue("!!!", "col")).toBe("col");
+  });
+
+  test("output is always a valid Psych-DS value segment", () => {
+    for (const input of ["mouse_tracking", "RT (ms)", "a-b-c", "x.y.z"]) {
+      expect(toPsychDSValue(input)).toMatch(/^[a-zA-Z0-9]+$/);
+    }
+  });
+});
+
+describe("fileStem", () => {
+  test("strips extension and a trailing _data", () => {
+    expect(fileStem("subject-1_data.csv")).toBe("subject-1");
+    expect(fileStem("experiment.json")).toBe("experiment");
+    expect(fileStem("trial.csv")).toBe("trial");
+  });
+});
+
+describe("deriveArrayFilename", () => {
+  test("builds a valid name from the parent base and column", () => {
+    const name = deriveArrayFilename("subject-subject1", "mouse_tracking");
+    expect(name).toBe("subject-subject1_measure-mouseTracking_data.csv");
+    expect(isValidPsychDSDataFilename(name)).toBe(true);
+  });
+
+  test("coerces hyphenated columns to a valid (hyphen-free) value", () => {
+    const name = deriveArrayFilename("study-minimal", "validation-data.pointData");
+    expect(isValidPsychDSDataFilename(name)).toBe(true);
+  });
+});
+
+describe("disambiguateArrayFilename", () => {
+  test("returns the name unchanged when free", () => {
+    expect(disambiguateArrayFilename("subject-1_data.csv", new Set())).toBe("subject-1_data.csv");
+  });
+
+  test("appends a counter to the final value, keeping the name valid", () => {
+    const used = new Set(["subject-1_data.csv"]);
+    const next = disambiguateArrayFilename("subject-1_data.csv", used);
+    expect(next).toBe("subject-12_data.csv");
+    expect(isValidPsychDSDataFilename(next)).toBe(true);
+  });
+
+  test("skips already-used counters", () => {
+    const used = new Set(["x-a_data.csv", "x-a2_data.csv"]);
+    expect(disambiguateArrayFilename("x-a_data.csv", used)).toBe("x-a3_data.csv");
+  });
+});
+
+describe("disambiguateFilename", () => {
+  test("returns the name unchanged when free", () => {
+    expect(disambiguateFilename("data.json", new Set())).toBe("data.json");
+  });
+
+  test("inserts a counter before the extension on collision", () => {
+    const used = new Set(["data.json"]);
+    expect(disambiguateFilename("data.json", used)).toBe("data2.json");
+  });
+
+  test("skips already-used counters", () => {
+    const used = new Set(["data.json", "data2.json"]);
+    expect(disambiguateFilename("data.json", used)).toBe("data3.json");
+  });
+
+  test("handles names without an extension", () => {
+    const used = new Set(["README"]);
+    expect(disambiguateFilename("README", used)).toBe("README2");
   });
 });
