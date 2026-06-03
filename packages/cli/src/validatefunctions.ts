@@ -28,7 +28,7 @@ export const validatePsychDS = async (datasetPath: string, verbose: boolean): Pr
   }
 
   if (verbose && warnings.length > 0) {
-    console.error();
+    console.warn();
     warnings.forEach((msg, i) => console.warn(`  Warning ${i + 1}: ${msg}`));
   } else if (!verbose && warnings.length > 0) {
     console.warn("  (Rerun with --verbose to see warnings.)");
