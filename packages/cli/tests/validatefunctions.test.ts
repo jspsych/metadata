@@ -31,6 +31,7 @@ describe("validatePsychDS", () => {
   test("prints ✔ line when validation passes with no warnings", async () => {
     mockValidate.mockResolvedValue(makeResult([]));
     await validatePsychDS("/some/dataset", false);
+    expect(mockValidate).toHaveBeenCalledWith(path.relative(process.cwd(), "/some/dataset"));
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (0 warnings).");
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
@@ -59,7 +60,22 @@ describe("validatePsychDS", () => {
     ]));
     await validatePsychDS("/some/dataset", true);
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (1 warning).");
+    expect(logSpy).toHaveBeenCalledWith();  // blank separator line
     expect(logSpy).toHaveBeenCalledWith("  Warning 1: OPTIONAL_MISSING: optional field absent");
+    expect(logSpy).toHaveBeenCalledTimes(3);
+  });
+
+  test("prints errors and warnings when both are present and verbose is true", async () => {
+    mockValidate.mockResolvedValue(makeResult([
+      { severity: "error", key: "MISSING_FIELD", reason: "field is required" },
+      { severity: "warning", key: "OPTIONAL_MISSING", reason: "optional field absent" },
+    ]));
+    await validatePsychDS("/some/dataset", true);
+    expect(logSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 1 error, 1 warning.\n");
+    expect(logSpy).toHaveBeenCalledWith("  Error 1: MISSING_FIELD: field is required");
+    expect(logSpy).toHaveBeenCalledWith();  // blank separator line
+    expect(logSpy).toHaveBeenCalledWith("  Warning 1: OPTIONAL_MISSING: optional field absent");
+    expect(logSpy).toHaveBeenCalledTimes(4);
   });
 
   test("uses correct plurals with multiple errors and warnings", async () => {
