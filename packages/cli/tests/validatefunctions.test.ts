@@ -115,11 +115,20 @@ describe("validatePsychDS", () => {
     expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
-  test("prints console.warn and returns without crashing when validate throws", async () => {
+  test("prints console.warn and returns without crashing when validate throws an Error", async () => {
     mockValidate.mockRejectedValue(new Error("validator failed"));
     await expect(validatePsychDS("/some/dataset", false)).resolves.toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(
       "\nWarning: Psych-DS validation could not run: validator failed"
+    );
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  test("prints the thrown value directly when validate throws a non-Error", async () => {
+    mockValidate.mockRejectedValue("something went wrong");
+    await expect(validatePsychDS("/some/dataset", false)).resolves.toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "\nWarning: Psych-DS validation could not run: something went wrong"
     );
     expect(logSpy).not.toHaveBeenCalled();
   });
