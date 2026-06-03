@@ -43,6 +43,17 @@ describe("validatePsychDS", () => {
     await validatePsychDS("/some/dataset", false);
     expect(logSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 1 error, 0 warnings.\n");
     expect(logSpy).toHaveBeenCalledWith("  Error 1: MISSING_FIELD: field is required");
+    expect(logSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test("prints only error lines when errors are present and verbose is true", async () => {
+    mockValidate.mockResolvedValue(makeResult([
+      { severity: "error", key: "MISSING_FIELD", reason: "field is required" },
+    ]));
+    await validatePsychDS("/some/dataset", true);
+    expect(logSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 1 error, 0 warnings.\n");
+    expect(logSpy).toHaveBeenCalledWith("  Error 1: MISSING_FIELD: field is required");
+    expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
   test("prints rerun hint when warnings are present and verbose is false", async () => {
@@ -52,6 +63,7 @@ describe("validatePsychDS", () => {
     await validatePsychDS("/some/dataset", false);
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (1 warning).");
     expect(logSpy).toHaveBeenCalledWith("  (Rerun with --verbose to see warnings.)");
+    expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
   test("prints each warning when warnings are present and verbose is true", async () => {
@@ -78,7 +90,7 @@ describe("validatePsychDS", () => {
     expect(logSpy).toHaveBeenCalledTimes(4);
   });
 
-  test("uses correct plurals with multiple errors and warnings", async () => {
+  test("uses correct plurals with multiple errors and 1 warning", async () => {
     mockValidate.mockResolvedValue(makeResult([
       { severity: "error", key: "ERR1", reason: "reason one" },
       { severity: "error", key: "ERR2", reason: "reason two" },
@@ -88,6 +100,19 @@ describe("validatePsychDS", () => {
     expect(logSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 2 errors, 1 warning.\n");
     expect(logSpy).toHaveBeenCalledWith("  Error 1: ERR1: reason one");
     expect(logSpy).toHaveBeenCalledWith("  Error 2: ERR2: reason two");
+    expect(logSpy).toHaveBeenCalledWith("  (Rerun with --verbose to see warnings.)");
+    expect(logSpy).toHaveBeenCalledTimes(4);
+  });
+
+  test("uses correct plural for multiple warnings", async () => {
+    mockValidate.mockResolvedValue(makeResult([
+      { severity: "warning", key: "WARN1", reason: "warn one" },
+      { severity: "warning", key: "WARN2", reason: "warn two" },
+    ]));
+    await validatePsychDS("/some/dataset", false);
+    expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (2 warnings).");
+    expect(logSpy).toHaveBeenCalledWith("  (Rerun with --verbose to see warnings.)");
+    expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
   test("prints console.warn and returns without crashing when validate throws", async () => {
