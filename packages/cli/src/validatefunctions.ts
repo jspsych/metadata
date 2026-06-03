@@ -23,15 +23,15 @@ export const validatePsychDS = async (datasetPath: string, verbose: boolean): Pr
   if (errors.length === 0) {
     console.log(`\n✔ Psych-DS validation passed (${warnings.length} warning${warnings.length !== 1 ? 's' : ''}).`);
   } else {
-    console.log(`\n✘ Psych-DS validation failed: ${errors.length} error${errors.length !== 1 ? 's' : ''}, ${warnings.length} warning${warnings.length !== 1 ? 's' : ''}.\n`);
-    errors.forEach((msg, i) => console.log(`  Error ${i + 1}: ${msg}`));
+    console.error(`\n✘ Psych-DS validation failed: ${errors.length} error${errors.length !== 1 ? 's' : ''}, ${warnings.length} warning${warnings.length !== 1 ? 's' : ''}.\n`);
+    errors.forEach((msg, i) => console.error(`  Error ${i + 1}: ${msg}`));
   }
 
   if (verbose && warnings.length > 0) {
-    console.log();
-    warnings.forEach((msg, i) => console.log(`  Warning ${i + 1}: ${msg}`));
+    console.error();
+    warnings.forEach((msg, i) => console.warn(`  Warning ${i + 1}: ${msg}`));
   } else if (!verbose && warnings.length > 0) {
-    console.log("  (Rerun with --verbose to see warnings.)");
+    console.warn("  (Rerun with --verbose to see warnings.)");
   }
 };
 
