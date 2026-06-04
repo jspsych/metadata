@@ -31,7 +31,7 @@ The first time you run this, `npx` will download the tool automatically. After t
 
 ## Interactive walkthrough
 
-This section follows a researcher named Alex who collected data from a flanker task. Alex has two data files, `participant_01.csv` and `participant_02.csv`, saved in `~/experiments/flanker-raw/`.
+The following steps use two example data files named `participant_01.csv` and `participant_02.csv`.
 
 ### Step 1: Create a new project or update an existing one
 
@@ -43,19 +43,20 @@ This section follows a researcher named Alex who collected data from a flanker t
 
 Select **Create a new project** if this is the first time you're generating metadata for this dataset. Use **Update an existing project** if you've run the tool before and want to regenerate the metadata (for example, after collecting more data).
 
-Alex selects **Create a new project**.
-
 ---
 
 ### Step 2: Choose where to save the project
 
 ```
-? Path to the folder where the new project will be created: ~/experiments
+? Path to the folder where the new project will be created:
 ```
 
-This is the folder that will *contain* your new project. The tool will create a new subfolder inside it.
+Enter the path to an existing folder — the tool will create a new subfolder inside it for your project. **The folder you enter here must already exist.**
 
-Alex enters `~/experiments`.
+- **Windows:** `C:\Users\yourname\Documents\experiments`
+- **Mac / Linux:** `/Users/yourname/Documents/experiments` or `~/experiments`
+
+On Windows, you can copy the path directly from File Explorer's address bar. On Mac, you can drag a folder into the terminal window to paste its path. The `~` character is a shortcut for your home folder on Mac and Linux.
 
 ---
 
@@ -65,17 +66,17 @@ Alex enters `~/experiments`.
 ? Enter the project name (used as the folder name and in the metadata): flanker-study
 ```
 
-The name becomes the subfolder name and is recorded in the metadata. Use something descriptive without spaces.
+The name becomes the subfolder created inside the folder from Step 2, and is recorded in the metadata. Use something descriptive without spaces (hyphens are fine).
 
 ---
 
 ### Step 4: Point to your data
 
 ```
-? Path to your raw data folder (files will be copied, not moved): ~/experiments/flanker-raw
+? Path to your raw data folder (files will be copied, not moved):
 ```
 
-Your original files are never modified. The tool copies them into the new project.
+Enter the path to the folder containing your jsPsych data files. Use the same path format as Step 2 — the full path to an existing folder on your computer. Your original files are never modified; the tool copies them into the new project.
 
 ---
 
@@ -104,14 +105,14 @@ If your files don't already follow this pattern, the tool will tell you and ask 
   Other (custom keyword)
 ```
 
-Choose the keyword that best describes what your filename refers to. Alex's files are named by participant, so she selects **subject**:
+Choose the keyword that best describes what your filenames refer to. Since these files are named by participant, select **subject**:
 
 ```
     participant_01.csv → subject-participant01_data.csv
     participant_02.csv → subject-participant02_data.csv
 ```
 
-The part after the hyphen is your original filename (with hyphens and underscores removed, since Psych-DS values don't allow them).
+The part after the hyphen is your original filename with hyphens and underscores removed (Psych-DS values don't allow them).
 
 > **If you prefer, rename your files before running the tool.** A compliant name looks like `subject-01_data.csv` — a keyword, a hyphen, a value, then `_data.csv`. Files that already follow this pattern are used as-is, with no prompt.
 
@@ -125,9 +126,9 @@ The part after the hyphen is your original filename (with hyphens and underscore
   Use a custom metadata file
 ```
 
-The tool generates metadata automatically from your data files. If you want to add author names, a study description, or override variable descriptions, choose **Use a custom metadata file** and provide a path to a `.json` file. See [metadata-options.md](metadata-options.md) for the format.
+The tool generates metadata automatically from your data files. If you want to add author names, a study description, or override variable descriptions, choose **Use a custom metadata file** and provide a path to a `.json` file. See [Metadata Options](metadata-options.md) for the format.
 
-For now, Alex selects **Use defaults**. She can always edit `dataset_description.json` directly later.
+Select **Use defaults** for now — you can always edit `dataset_description.json` directly later, or re-run the CLI and provide an options file at that point.
 
 ---
 
@@ -160,7 +161,7 @@ A checkmark means your dataset is valid. Warnings are minor issues (like recomme
 
 ## What you get
 
-After running the tool, Alex's new project is at `~/experiments/flanker-study/`:
+Your new project folder will be inside the location you chose in Step 2, named after the project name from Step 3. For example, if you chose `C:\Users\yourname\Documents\experiments` as the output location and `flanker-study` as the project name, the result is at `C:\Users\yourname\Documents\experiments\flanker-study\`:
 
 ```
 flanker-study/
@@ -210,4 +211,4 @@ Open `dataset_description.json` to see what was generated. It will look somethin
 - **Re-run the CLI** any time you add new data: use **Update an existing project** and point to your project folder — it will reload your existing metadata and incorporate the new files.
 - **Share or archive your project folder** — it's a self-contained, Psych-DS compliant dataset.
 
-For automating the tool in scripts, see [cli-reference.md](cli-reference.md).
+For automating the tool in scripts, see [CLI Reference](cli-reference.md).
