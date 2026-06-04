@@ -82,32 +82,38 @@ describe("validatePsychDS", () => {
 
   test("prints ✔ line when validation passes with no warnings", async () => {
     mockValidate.mockResolvedValue(makeResult([]));
-    await validatePsychDS("/some/dataset", false);
+    const result = await validatePsychDS("/some/dataset", false);
     expect(mockValidate).toHaveBeenCalledWith(path.relative(process.cwd(), "/some/dataset"));
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (0 warnings).");
     expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] });
   });
 
   test("prints ✘ line and each error when errors are present", async () => {
     mockValidate.mockResolvedValue(makeResult([
       { severity: "error", key: "MISSING_FIELD", reason: "field is required" },
     ]));
-    await validatePsychDS("/some/dataset", false);
+    const result = await validatePsychDS("/some/dataset", false);
     expect(errorSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 1 error, 0 warnings.\n");
     expect(errorSpy).toHaveBeenCalledWith("  Error 1: MISSING_FIELD: field is required");
     expect(errorSpy).toHaveBeenCalledTimes(2);
     expect(logSpy).not.toHaveBeenCalled();
+    expect(result).toEqual({ hasErrors: true, missingRequiredFields: [], missingRecommendedFields: [] });
   });
 
-  test("prints only error lines when errors are present and verbose is true", async () => {
+  test("suppresses warning details but shows rerun hint when errors and warnings are present and verbose is false", async () => {
     mockValidate.mockResolvedValue(makeResult([
       { severity: "error", key: "MISSING_FIELD", reason: "field is required" },
+      { severity: "warning", key: "OPTIONAL_MISSING", reason: "optional field absent" },
     ]));
-    await validatePsychDS("/some/dataset", true);
-    expect(errorSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 1 error, 0 warnings.\n");
+    const result = await validatePsychDS("/some/dataset", false);
+    expect(errorSpy).toHaveBeenCalledWith("\n✘ Psych-DS validation failed: 1 error, 1 warning.\n");
     expect(errorSpy).toHaveBeenCalledWith("  Error 1: MISSING_FIELD: field is required");
     expect(errorSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalledWith("  (Rerun with --verbose to see warnings.)");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(logSpy).not.toHaveBeenCalled();
+    expect(result).toEqual({ hasErrors: true, missingRequiredFields: [], missingRecommendedFields: [] });
   });
 
   test("prints rerun hint when warnings are present and verbose is false", async () => {
