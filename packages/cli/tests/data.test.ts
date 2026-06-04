@@ -241,3 +241,150 @@ describe("preAnalyzeDirectory", () => {
     expect(await preAnalyzeDirectory(tmpDir, ["trial_index"])).not.toBeNull();
   });
 });
+
+describe("processDirectory JSON → CSV conversion", () => {
+  test("writes a converted CSV to data/ and preserves the original JSON under data/raw/", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+
+    const rows = [
+      { trial_index: 0, rt: 200, response: { Q0: "yes" } },
+      { trial_index: 1, rt: 350, tags: ["a", "b"] },
+    ];
+    const original = JSON.stringify(rows);
+    fs.writeFileSync(path.join(srcDir, "experiment.json"), original);
+
+    // mimic the CLI pre-pass: a non-compliant source name gets a resolved base
+    const normalizedBases = new Map([[path.resolve(srcDir, "experiment.json"), "subject-experiment"]]);
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir, { normalizedBases });
+
+    // converted CSV is written under the resolved Psych-DS-compliant name
+    const csvPath = path.join(dataDir, "subject-experiment_data.csv");
+    const rawPath = path.join(dataDir, "raw", "experiment.json");
+    expect(fs.existsSync(csvPath)).toBe(true);
+    expect(fs.existsSync(rawPath)).toBe(true);
+
+    // raw copy is byte-for-byte the original
+    expect(fs.readFileSync(rawPath, "utf8")).toBe(original);
+
+    // nested values are serialised as JSON, never "[object Object]"
+    const csv = fs.readFileSync(csvPath, "utf8");
+    expect(csv).not.toContain("[object Object]");
+    expect(csv).toContain('{""Q0"":""yes""}'); // escaped nested object
+    expect(csv).toContain('[""a"",""b""]');     // escaped nested array
+
+    // the original .json is not left behind in data/
+    expect(fs.existsSync(path.join(dataDir, "experiment.json"))).toBe(false);
+  });
+
+  test("does not convert or copy dataset_description.json into data/", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(srcDir, "dataset_description.json"),
+      JSON.stringify({ name: "X", "@type": "Dataset", description: { default: "d" }, variableMeasured: [] }),
+    );
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    expect(fs.existsSync(path.join(dataDir, "dataset_description.csv"))).toBe(false);
+    expect(fs.existsSync(path.join(dataDir, "raw", "dataset_description.json"))).toBe(false);
+  });
+
+  test("disambiguates a second same-named JSON file instead of overwriting or dropping it", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(path.join(srcDir, "a"), { recursive: true });
+    fs.mkdirSync(path.join(srcDir, "b"), { recursive: true });
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(path.join(srcDir, "a", "data.json"), JSON.stringify([{ trial_index: 0, rt: 1 }]));
+    fs.writeFileSync(path.join(srcDir, "b", "data.json"), JSON.stringify([{ trial_index: 0, rt: 2 }]));
+
+    // both source files resolve to the SAME base, forcing a collision in data/ and data/raw/
+    const normalizedBases = new Map([
+      [path.resolve(srcDir, "a", "data.json"), "subject-data"],
+      [path.resolve(srcDir, "b", "data.json"), "subject-data"],
+    ]);
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, srcDir, false, dataDir, { normalizedBases });
+
+    expect(total).toBe(2);
+    expect(failed).toBe(0); // both files are kept; the colliding one gets a disambiguated name
+    expect(fs.existsSync(path.join(dataDir, "subject-data_data.csv"))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, "subject-data2_data.csv"))).toBe(true);
+
+    // both raw originals are preserved distinctly (neither overwrites the other)
+    const rawDir = path.join(dataDir, "raw");
+    expect(fs.existsSync(path.join(rawDir, "data.json"))).toBe(true);
+    expect(fs.existsSync(path.join(rawDir, "data2.json"))).toBe(true);
+    const rawContents = fs.readdirSync(rawDir).map((f) => fs.readFileSync(path.join(rawDir, f), "utf8")).sort();
+    expect(rawContents).toEqual([
+      JSON.stringify([{ trial_index: 0, rt: 1 }]),
+      JSON.stringify([{ trial_index: 0, rt: 2 }]),
+    ]);
+  });
+
+  test("preserves an already-compliant CSV name and renames a non-compliant one to its resolved base", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    // subject-1_data.csv is already compliant → preserved via the fileStem fallback (no map entry needed);
+    // trial.csv is non-compliant → renamed using the resolved base from the pre-pass.
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.csv"), "trial_type,rt\njsPsych-html-keyboard-response,450");
+    fs.writeFileSync(path.join(srcDir, "trial.csv"), "trial_type,rt\njsPsych-html-keyboard-response,512");
+
+    const normalizedBases = new Map([[path.resolve(srcDir, "trial.csv"), "subject-trial"]]);
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir, { normalizedBases });
+
+    expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, "subject-trial_data.csv"))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, "trial.csv"))).toBe(false);
+  });
+
+  test("skips a non-compliant filename when no normalized base is provided (never invents one)", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(path.join(srcDir, "experiment.json"), JSON.stringify([{ trial_index: 0, rt: 1 }]));
+    fs.writeFileSync(path.join(srcDir, "trial.csv"), "trial_type,rt\njsPsych-html-keyboard-response,512");
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, srcDir, false, dataDir);
+
+    // both are non-compliant and unmapped → skipped, not written under an invalid name
+    expect(total).toBe(2);
+    expect(failed).toBe(2);
+    expect(fs.readdirSync(dataDir).filter((f) => f.endsWith(".csv"))).toHaveLength(0);
+  });
+
+  test("names extracted-array CSVs from the parent's normalized base", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    // a nested array-of-objects column triggers extraction into a separate CSV
+    const rows = [
+      { trial_index: 0, mouse_tracking: [{ x: 1, y: 2 }, { x: 3, y: 4 }] },
+      { trial_index: 1, mouse_tracking: [{ x: 5, y: 6 }] },
+    ];
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.json"), JSON.stringify(rows));
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    // value is camelCased (no hyphens) and keyed by the unofficial "measure" keyword
+    expect(fs.existsSync(path.join(dataDir, "subject-1_measure-mouseTracking_data.csv"))).toBe(true);
+  });
+});

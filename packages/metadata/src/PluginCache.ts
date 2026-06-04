@@ -191,7 +191,13 @@ export class PluginCache {
 
     let match;
     while ((match = varStartRegex.exec(block)) !== null) {
-      const description = match[1].trim().replace(/\s+/g, " ");
+      // Strip the leading "*" that JSDoc puts at the start of each continuation line
+      // before collapsing whitespace, otherwise multi-line descriptions keep stray
+      // asterisks (e.g. "The `x` and * `y` properties ...").
+      const description = match[1]
+        .replace(/^[ \t]*\*[ \t]?/gm, "")
+        .trim()
+        .replace(/\s+/g, " ");
       const varName = match[2];
 
       const braceStart = match.index + match[0].length - 1;
