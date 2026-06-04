@@ -28,6 +28,12 @@ describe("createDirectoryWithStructure", () => {
     expect(fs.statSync(dataDir).isDirectory()).toBe(true);
   });
 
+  test("creates the nested data/raw/ directory", () => {
+    const rawDir = path.join(targetDir, "data", "raw");
+    expect(fs.existsSync(rawDir)).toBe(true);
+    expect(fs.statSync(rawDir).isDirectory()).toBe(true);
+  });
+
   test("creates README.md with expected content", () => {
     const readmePath = path.join(targetDir, "README.md");
     expect(fs.existsSync(readmePath)).toBe(true);
@@ -50,6 +56,7 @@ describe("createDirectoryWithStructure", () => {
     expect(fs.existsSync(nested)).toBe(true);
     expect(fs.statSync(nested).isDirectory()).toBe(true);
     expect(fs.existsSync(path.join(nested, "data"))).toBe(true);
+    expect(fs.existsSync(path.join(nested, "data", "raw"))).toBe(true);
     expect(fs.existsSync(path.join(nested, "README.md"))).toBe(true);
     expect(fs.existsSync(path.join(nested, "CHANGES.md"))).toBe(true);
   });

@@ -4,9 +4,11 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { input, select, checkbox, Separator } from '@inquirer/prompts';
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis } from "@jspsych/metadata";
-import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory } from "./data";
+import path from 'path';
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
+import { isValidPsychDSDataFilename, toPsychDSValue, fileStem } from './utils';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -299,6 +301,92 @@ const promptUnknownDescriptions = async (metadata: JsPsychMetadata) => {
   }
 };
 
+// Official Psych-DS keywords (psychds-validator schema). Using one of these as the keyword
+// for a non-compliant filename avoids the FILENAME_UNOFFICIAL_KEYWORD_WARNING; custom
+// keywords are allowed but emit that warning.
+const PSYCH_DS_KEYWORDS: Array<{ name: string; value: string; description: string }> = [
+  { name: 'subject', value: 'subject', description: 'The participant/subject the data belongs to' },
+  { name: 'session', value: 'session', description: 'A session of data collection' },
+  { name: 'task', value: 'task', description: 'The task in which the data was collected' },
+  { name: 'condition', value: 'condition', description: 'The experimental condition' },
+  { name: 'trial', value: 'trial', description: 'The trial the data belongs to' },
+  { name: 'stimulus', value: 'stimulus', description: 'The stimulus item' },
+  { name: 'study', value: 'study', description: 'The study the data belongs to' },
+  { name: 'site', value: 'site', description: 'The site where the data was collected' },
+  { name: 'description', value: 'description', description: 'A free-form label describing the file' },
+];
+
+/**
+ * Pre-pass: resolves a Psych-DS-compliant base (the keyword-value sequence before "_data.csv")
+ * for every data file in `dataDir`. Already-compliant filenames keep their base; non-compliant
+ * ones are wrapped under a single keyword chosen via one shared prompt, with the file's current
+ * stem becoming the value. Returns a map of absolute source path → base.
+ *
+ * When `canPrompt` is false (non-interactive run), a non-compliant filename is a hard error —
+ * we never silently invent a keyword.
+ */
+async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean): Promise<Map<string, string>> {
+  const files = await enumerateDataFiles(dataDir);
+  const bases = new Map<string, string>();
+  const nonCompliant: Array<{ filePath: string; name: string }> = [];
+
+  for (const { filePath, name } of files) {
+    if (name === 'dataset_description.json') continue;
+    const ext = path.extname(name).toLowerCase();
+    if (ext !== '.json' && ext !== '.csv') continue;
+
+    const stem = fileStem(name);
+    if (isValidPsychDSDataFilename(`${stem}_data.csv`)) {
+      bases.set(path.resolve(filePath), stem);
+    } else {
+      nonCompliant.push({ filePath, name });
+    }
+  }
+
+  if (nonCompliant.length === 0) return bases;
+
+  const fileList = nonCompliant.map((f) => `    ${f.name}`).join('\n');
+
+  if (!canPrompt) {
+    console.error(
+      `\n✘ ${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
+      `([keyword-value_]+data.csv), and this is a non-interactive run:\n${fileList}\n` +
+      `  Rename them to a compliant name (e.g. subject-001_data.csv) and re-run.`
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    `\n${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
+    `([keyword-value_]+data.csv):\n${fileList}`
+  );
+
+  const CUSTOM = '__custom__';
+  let keyword = await select({
+    message: 'Choose a Psych-DS keyword to label these files (their current name becomes the value):',
+    choices: [
+      ...PSYCH_DS_KEYWORDS,
+      new Separator(),
+      { name: 'Other (custom keyword)', value: CUSTOM, description: 'Unofficial keywords are allowed but emit a validator warning.' },
+    ],
+  });
+
+  if (keyword === CUSTOM) {
+    keyword = await input({
+      message: 'Custom keyword (lowercase letters only):',
+      validate: (v) => /^[a-z]+$/.test(v) ? true : 'Keyword must be one or more lowercase letters (a–z) — no digits, spaces, or symbols.',
+    });
+  }
+
+  for (const { filePath, name } of nonCompliant) {
+    const base = `${keyword}-${toPsychDSValue(fileStem(name))}`;
+    bases.set(path.resolve(filePath), base);
+    console.log(`    ${name} → ${base}_data.csv`);
+  }
+
+  return bases;
+}
+
 // can seperate the process argv's out into seperate function
 const main = async () => {
   const verbose = argv.verbose ? argv.verbose : false;
@@ -335,7 +423,19 @@ const main = async () => {
     dataDir = await promptDataDir();
   }
 
+  const isNonInteractive = !!(
+    argv['psych-ds-dir'] && await validateDirectory(argv['psych-ds-dir']) &&
+    argv['data-dir'] && await validateDirectory(argv['data-dir']) &&
+    argv['metadata-options'] && validateJson(argv['metadata-options'])
+  );
+
   if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
+
+  // Pre-pass: resolve Psych-DS-compliant output names, prompting once for any non-compliant
+  // filenames. Without an interactive terminal we cannot prompt, so this fails rather than
+  // inventing a keyword.
+  const canPrompt = !isNonInteractive && !!process.stdin.isTTY && !!process.stdout.isTTY;
+  const normalizedBases = await resolveFilenameNormalization(dataDir, canPrompt);
 
   // Pre-flight: check whether default join key (trial_index) is unique; prompt if not
   const initialKeys = ['trial_index'];
@@ -347,20 +447,14 @@ const main = async () => {
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
   // user, so suppress the library's per-file warning to avoid repeating it.
-  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true });
-  
+  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases });
+
   // check if it's a valid path and then prompt the options
   if (argv['metadata-options'] && validateJson(argv['metadata-options'])){
     if (verbose) console.log("\n\n-------------------------- Reading and writing metadata-option --------------------------n\n");
     await processOptions(metadata, argv['metadata-options'], verbose);
   }
   else await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
-  
-  const isNonInteractive = !!(
-    argv['psych-ds-dir'] && await validateDirectory(argv['psych-ds-dir']) &&
-    argv['data-dir'] && await validateDirectory(argv['data-dir']) &&
-    argv['metadata-options'] && validateJson(argv['metadata-options'])
-  );
 
   if (!isNonInteractive) await promptUnknownDescriptions(metadata);
 
