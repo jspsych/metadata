@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["jest", "node"]
+  },
+  "include": ["src", "tests"]
+}
