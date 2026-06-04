@@ -104,6 +104,20 @@ describe("validatePsychDS", () => {
     relativeSpy.mockRestore();
   });
 
+  test("patches platform path.join to deduplicate forward slashes", async () => {
+    // The validator's platform shim fallback produces "//file" for path.join("/", "file"),
+    // breaking exact-path checks like file.path === "/dataset_description.json".
+    // Verify the patch makes path.join("/", "file") === "/file".
+    mockValidate.mockResolvedValue(makeResult([]));
+    await validatePsychDS("/some/dataset", false);
+    const validatorMain = require.resolve("psychds-validator");
+    const platformPath = path.join(path.dirname(validatorMain), "utils", "platform.js");
+    const platform = require(platformPath);
+    expect(platform.path.join("/", "dataset_description.json")).toBe("/dataset_description.json");
+    expect(platform.path.join("/", "data")).toBe("/data");
+    expect(platform.path.join("/data", "file.csv")).toBe("/data/file.csv");
+  });
+
   test("prints ✘ line and each error when errors are present", async () => {
     mockValidate.mockResolvedValue(makeResult([
       { severity: "error", key: "MISSING_FIELD", reason: "field is required" },

@@ -26,6 +26,23 @@ export function parseMissingFields(issues: Map<string, any>, key: string): strin
 }
 
 export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<PsychDSValidationResult> => {
+  // psychds-validator's platform shim uses a POSIX fallback for path.join that calls
+  // Array.join("/"), so path.join("/", "file") produces "//file". The validator matches
+  // files by exact path (e.g. file.path === "/dataset_description.json"), so the double
+  // slash breaks all file lookups. Patch the exported path object to deduplicate consecutive
+  // forward slashes. Reaches into an internal module path; guarded by try/catch so
+  // validation still runs (with degraded path matching) if the path ever changes.
+  try {
+    // psychds-validator's exports field blocks subpath imports, so we resolve the main
+    // CJS entry point and navigate to platform.js from there. require() with an absolute
+    // path hits the module cache, so we get the same object instance that deno.js holds.
+    const validatorMain = require.resolve("psychds-validator");
+    const platformPath = path.join(path.dirname(validatorMain), "utils", "platform.js");
+    const platform = require(platformPath) as any;
+    platform.path.join = (...parts: string[]) =>
+      (parts as string[]).join('/').replace(/\/+/g, '/') || '/';
+  } catch { /* ignore */ }
+
   let result;
   try {
     result = await validate(path.relative(process.cwd(), datasetPath).replace(/\\/g, '/'));
