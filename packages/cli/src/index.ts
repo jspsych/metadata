@@ -401,7 +401,7 @@ const main = async () => {
       new_project = false;
       await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
       // project_path is argv['psych-ds-dir'] (a string) inside this branch — no typeof guard needed here.
-      await validatePsychDS(project_path, verbose);
+      await validatePsychDS(project_path, verbose); // informational only — result not acted on here
       if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
@@ -461,7 +461,37 @@ const main = async () => {
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
-  if (typeof project_path === 'string') await validatePsychDS(project_path, verbose);
+
+  if (typeof project_path === 'string') {
+    const validation = await validatePsychDS(project_path, verbose);
+
+    if (validation.missingRequiredFields.length > 0) {
+      if (!isNonInteractive) {
+        console.log('\nSome required fields are missing. Please provide values:');
+        for (const field of validation.missingRequiredFields) {
+          const value = await input({ message: `Value for required field "${field}":` });
+          if (value.trim()) {
+            metadata.setMetadataField(field, value.trim());
+          } else {
+            console.warn(`  Skipped "${field}" — this field is still required. Validation may still fail.`);
+          }
+        }
+        const updatedMetadata = JSON.stringify(metadata.getMetadata(), null, 2);
+        await saveTextToPath(updatedMetadata, `${project_path}/dataset_description.json`);
+        const revalidation = await validatePsychDS(project_path, verbose);
+        if (revalidation.hasErrors) process.exit(1);
+        if (revalidation.missingRecommendedFields.length > 0) {
+          console.log(`\nConsider adding these recommended fields to your metadata: ${revalidation.missingRecommendedFields.join(', ')}`);
+        }
+      } else {
+        process.exit(1);
+      }
+    } else if (validation.hasErrors) {
+      process.exit(1);
+    } else if (validation.missingRecommendedFields.length > 0) {
+      console.log(`\nConsider adding these recommended fields to your metadata: ${validation.missingRecommendedFields.join(', ')}`);
+    }
+  }
 };
 
 main();

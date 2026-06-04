@@ -1,7 +1,57 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { validateDirectory, validateJson } from "../src/validatefunctions";
+import { validateDirectory, validateJson, parseMissingFields } from "../src/validatefunctions";
+
+function makeIssues(key: string, files: Array<{ evidence: string }>): Map<string, any> {
+  const filesMap = new Map(files.map((f, i) => [`/path${i}`, f]));
+  return new Map([[key, { files: filesMap }]]);
+}
+
+describe("parseMissingFields", () => {
+  test("returns empty array when key is not in issues", () => {
+    expect(parseMissingFields(new Map(), "JSON_KEY_REQUIRED")).toEqual([]);
+  });
+
+  test("parses a single missing field from one file", () => {
+    const issues = makeIssues("JSON_KEY_REQUIRED", [
+      { evidence: "metadata object missing fields: [name] as per ..." },
+    ]);
+    expect(parseMissingFields(issues, "JSON_KEY_REQUIRED")).toEqual(["name"]);
+  });
+
+  test("parses multiple missing fields from one file", () => {
+    const issues = makeIssues("JSON_KEY_REQUIRED", [
+      { evidence: "metadata object missing fields: [name,description,author] as per ..." },
+    ]);
+    expect(parseMissingFields(issues, "JSON_KEY_REQUIRED")).toEqual(["name", "description", "author"]);
+  });
+
+  test("unions fields across multiple files and deduplicates", () => {
+    const issues = makeIssues("JSON_KEY_REQUIRED", [
+      { evidence: "metadata object missing fields: [name,description] as per ..." },
+      { evidence: "metadata object missing fields: [description,author] as per ..." },
+    ]);
+    expect(parseMissingFields(issues, "JSON_KEY_REQUIRED")).toEqual(["name", "description", "author"]);
+  });
+
+  test("returns empty array and warns when evidence is non-empty but unparseable", () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const issues = makeIssues("JSON_KEY_REQUIRED", [{ evidence: "unexpected format" }]);
+    const result = parseMissingFields(issues, "JSON_KEY_REQUIRED");
+    expect(result).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("could not parse missing fields"));
+    warnSpy.mockRestore();
+  });
+
+  test("returns empty array silently when evidence is empty", () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const issues = makeIssues("JSON_KEY_REQUIRED", [{ evidence: "" }]);
+    expect(parseMissingFields(issues, "JSON_KEY_REQUIRED")).toEqual([]);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+});
 
 // Each test suite gets its own temp directory, cleaned up after all tests in the suite.
 describe("validateDirectory", () => {

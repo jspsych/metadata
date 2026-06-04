@@ -3,13 +3,35 @@ import path from "path";
 import { expandHomeDir } from "./utils";
 import { validate } from "psychds-validator";
 
-export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<void> => {
+export interface PsychDSValidationResult {
+  hasErrors: boolean;
+  missingRequiredFields: string[];
+  missingRecommendedFields: string[];
+}
+
+export function parseMissingFields(issues: Map<string, any>, key: string): string[] {
+  const issue = issues.get(key);
+  if (!issue) return [];
+  const fields = new Set<string>();
+  for (const file of issue.files.values()) {
+    const evidence: string = (file as any)?.evidence ?? '';
+    const match = evidence.match(/\[([^\]]+)\]/);
+    if (match) {
+      match[1].split(',').map((f: string) => f.trim()).filter(Boolean).forEach(f => fields.add(f));
+    } else if (evidence) {
+      console.warn(`Warning: could not parse missing fields from validator evidence: ${evidence}`);
+    }
+  }
+  return [...fields];
+}
+
+export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<PsychDSValidationResult> => {
   let result;
   try {
     result = await validate(path.relative(process.cwd(), datasetPath));
   } catch (err) {
     console.warn(`\nWarning: Psych-DS validation could not run: ${err instanceof Error ? err.message : err}`);
-    return;
+    return { hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] };
   }
 
   const errors: string[] = [];
@@ -33,6 +55,12 @@ export const validatePsychDS = async (datasetPath: string, verbose: boolean): Pr
   } else if (!verbose && warnings.length > 0) {
     console.log("  (Rerun with --verbose to see warnings.)");
   }
+
+  return {
+    hasErrors: errors.length > 0,
+    missingRequiredFields: parseMissingFields(result.issues, 'JSON_KEY_REQUIRED'),
+    missingRecommendedFields: parseMissingFields(result.issues, 'JSON_KEY_RECOMMENDED'),
+  };
 };
 
 // Validating if input is a directory
