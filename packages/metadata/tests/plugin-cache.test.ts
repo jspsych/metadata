@@ -49,6 +49,24 @@ const info = <const>{
 };
 `;
 
+// Extension source shaped like @jspsych/extension-webgazer: an extension (not a plugin)
+// whose data descriptions span multiple JSDoc lines with leading "*" continuation markers.
+const WEBGAZER_EXTENSION_SOURCE = `
+const info = <const>{
+  name: "webgazer",
+  parameters: {},
+  data: {
+    /** An array of objects containing gaze data for the trial. Each object has an \`x\`, a \`y\`, and a \`t\` property. The \`x\` and
+     * \`y\` properties specify the gaze location in pixels and \`t\` specifies the time in milliseconds since the start of the trial. */
+    webgazer_data: {
+      type: ParameterType.INT,
+      array: true,
+    },
+  },
+  citations: '__CITATIONS__',
+};
+`;
+
 function makeFetch(source: string, status = 200) {
   return jest.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
@@ -119,6 +137,25 @@ describe("PluginCache parsing fixes", () => {
     expect(viewingTime).toBeDefined();
     expect(viewingTime.description).not.toBe("unknown");
     expect(viewingTime.description).toMatch(/viewing the page/i);
+  });
+
+  test("webgazer-shaped source: multi-line JSDoc description is extracted without stray asterisks", async () => {
+    // fetch is mocked, so the plugin-vs-extension URL is irrelevant here; what this guards
+    // is that a webgazer-style multi-line JSDoc block parses cleanly (issue #19).
+    (global as any).fetch = makeFetch(WEBGAZER_EXTENSION_SOURCE);
+    const meta = new JsPsychMetadata();
+    await meta.generate(
+      JSON.stringify([{ trial_type: "webgazer", trial_index: 0, time_elapsed: 100, webgazer_data: [] }])
+    );
+
+    const variableMeasured = meta.getMetadata()["variableMeasured"] as any[];
+    const v = variableMeasured.find((e) => e.name === "webgazer_data");
+    expect(v).toBeDefined();
+    expect(v.description).not.toBe("unknown");
+    expect(v.description).toMatch(/array of objects containing gaze data/i);
+    // The continuation-line "*" must not survive into the joined description.
+    expect(v.description).not.toMatch(/\*/);
+    expect(v.description).toMatch(/the `x` and `y` properties/i);
   });
 
   test("non-ok HTTP response: falls back to unknown description without throwing", async () => {
