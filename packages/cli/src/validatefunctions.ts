@@ -28,7 +28,7 @@ export function parseMissingFields(issues: Map<string, any>, key: string): strin
 export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<PsychDSValidationResult> => {
   let result;
   try {
-    result = await validate(path.relative(process.cwd(), datasetPath));
+    result = await validate(path.relative(process.cwd(), datasetPath).replace(/\\/g, '/'));
   } catch (err) {
     console.warn(`\nWarning: Psych-DS validation could not run: ${err instanceof Error ? err.message : err}`);
     return { hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] };

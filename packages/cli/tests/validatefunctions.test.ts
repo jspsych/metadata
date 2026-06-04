@@ -83,7 +83,7 @@ describe("validatePsychDS", () => {
   test("prints ✔ line when validation passes with no warnings", async () => {
     mockValidate.mockResolvedValue(makeResult([]));
     const result = await validatePsychDS("/some/dataset", false);
-    expect(mockValidate).toHaveBeenCalledWith(path.relative(process.cwd(), "/some/dataset"));
+    expect(mockValidate).toHaveBeenCalledWith(path.relative(process.cwd(), "/some/dataset").replace(/\\/g, '/'));
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (0 warnings).");
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).not.toHaveBeenCalled();
