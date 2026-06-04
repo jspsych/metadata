@@ -83,12 +83,25 @@ describe("validatePsychDS", () => {
   test("prints ✔ line when validation passes with no warnings", async () => {
     mockValidate.mockResolvedValue(makeResult([]));
     const result = await validatePsychDS("/some/dataset", false);
+    // On POSIX the relative path already uses forward slashes, so normalization is a no-op
+    // and must leave the path untouched (asserted against the un-normalized relative path).
     expect(mockValidate).toHaveBeenCalledWith(path.relative(process.cwd(), "/some/dataset"));
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (0 warnings).");
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
     expect(result).toEqual({ hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] });
+  });
+
+  test("normalizes Windows backslash separators to forward slashes before validating", async () => {
+    // Simulate path.relative returning a Windows-style path so the fix is exercised on any host OS.
+    const relativeSpy = jest
+      .spyOn(path, "relative")
+      .mockReturnValue("..\\TestingPsychDSOutput\\testDocs\\testProject");
+    mockValidate.mockResolvedValue(makeResult([]));
+    await validatePsychDS("/some/dataset", false);
+    expect(mockValidate).toHaveBeenCalledWith("../TestingPsychDSOutput/testDocs/testProject");
+    relativeSpy.mockRestore();
   });
 
   test("prints ✘ line and each error when errors are present", async () => {
