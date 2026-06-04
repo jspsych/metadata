@@ -4,7 +4,9 @@ This guide walks you through using the jsPsych Metadata CLI to turn your raw exp
 
 ## What is Psych-DS?
 
-[Psych-DS](https://psych-ds.github.io/) is a community standard for organizing and documenting psychology datasets. A Psych-DS compliant dataset has a predictable folder structure and a machine-readable description file. This makes your data easier to share, archive, and reuse — by collaborators, reviewers, or your future self.
+[Psych-DS](https://psych-ds.github.io/) is a community standard for organizing and documenting psychology datasets. A Psych-DS compliant dataset has a predictable folder structure and a machine-readable description file (`dataset_description.json`) that travels with the data, making it easier to share, archive, and reuse — by collaborators, reviewers, or your future self.
+
+If you'd like more background before diving in, see [What is Psych-DS?](what-is-psych-ds.md).
 
 The Metadata CLI automates the most tedious part: generating the `dataset_description.json` by reading your jsPsych data files and looking up what each variable means.
 
