@@ -86,6 +86,8 @@ describe("validatePsychDS", () => {
     expect(mockValidate).toHaveBeenCalledWith(path.relative(process.cwd(), "/some/dataset"));
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (0 warnings).");
     expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
     expect(result).toEqual({ hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] });
   });
 
@@ -120,11 +122,12 @@ describe("validatePsychDS", () => {
     mockValidate.mockResolvedValue(makeResult([
       { severity: "warning", key: "OPTIONAL_MISSING", reason: "optional field absent" },
     ]));
-    await validatePsychDS("/some/dataset", false);
+    const result = await validatePsychDS("/some/dataset", false);
     expect(logSpy).toHaveBeenCalledWith("\n✔ Psych-DS validation passed (1 warning).");
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith("  (Rerun with --verbose to see warnings.)");
     expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] });
   });
 
   test("prints each warning when warnings are present and verbose is true", async () => {
