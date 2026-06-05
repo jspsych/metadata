@@ -16,6 +16,44 @@ export interface GenerateOptions {
   normalizedBases?: Map<string, string>;
 }
 
+async function collectDataFiles(
+  directoryPath: string
+): Promise<{ files: Array<{ filePath: string; dirPath: string; name: string }>; dirErrors: number } | null> {
+  let items: fs.Dirent[];
+  try {
+    items = await fs.promises.readdir(directoryPath, { withFileTypes: true });
+  } catch (err) {
+    console.error(`Error reading directory ${directoryPath}:`, err);
+    return null;
+  }
+
+  const files: Array<{ filePath: string; dirPath: string; name: string }> = [];
+  let dirErrors = 0;
+
+  for (const item of items) {
+    if (item.isDirectory()) {
+      const subPath = path.join(directoryPath, item.name);
+      try {
+        const subItems = await fs.promises.readdir(subPath, { withFileTypes: true });
+        for (const subItem of subItems) {
+          if (subItem.isDirectory()) {
+            console.warn("Can only read subdirectories one level deep:", directoryPath);
+          } else {
+            files.push({ filePath: path.join(subPath, subItem.name), dirPath: subPath, name: subItem.name });
+          }
+        }
+      } catch (err) {
+        console.error(`Error reading directory ${subPath}:`, err);
+        dirErrors += 1;
+      }
+    } else {
+      files.push({ filePath: path.join(directoryPath, item.name), dirPath: directoryPath, name: item.name });
+    }
+  }
+
+  return { files, dirErrors };
+}
+
 /**
  * Reads all data files (JSON or CSV, not dataset_description.json) from a directory,
  * runs a join-key uniqueness analysis on each, and returns the worst-case result
@@ -28,32 +66,11 @@ export async function preAnalyzeDirectory(
 ): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null> {
   directoryPath = expandHomeDir(directoryPath);
 
-  let items: fs.Dirent[];
-  try {
-    items = await fs.promises.readdir(directoryPath, { withFileTypes: true });
-  } catch {
-    return null;
-  }
+  const collected = await collectDataFiles(directoryPath);
+  if (!collected) return null;
+  const { files: filePaths } = collected;
 
   let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null = null;
-
-  // Collect all candidate file paths at the top level and one subdirectory deep,
-  // matching the traversal depth of processDirectory.
-  const filePaths: Array<{ filePath: string; name: string }> = [];
-  for (const item of items) {
-    if (item.isDirectory()) {
-      try {
-        const subItems = await fs.promises.readdir(path.join(directoryPath, item.name), { withFileTypes: true });
-        for (const subItem of subItems) {
-          if (!subItem.isDirectory()) {
-            filePaths.push({ filePath: path.join(directoryPath, item.name, subItem.name), name: subItem.name });
-          }
-        }
-      } catch { continue; }
-    } else {
-      filePaths.push({ filePath: path.join(directoryPath, item.name), name: item.name });
-    }
-  }
 
   for (const { filePath, name } of filePaths) {
     if (name === 'dataset_description.json') continue;
@@ -92,29 +109,8 @@ export async function preAnalyzeDirectory(
  */
 export async function enumerateDataFiles(directoryPath: string): Promise<Array<{ filePath: string; name: string }>> {
   directoryPath = expandHomeDir(directoryPath);
-  const out: Array<{ filePath: string; name: string }> = [];
-
-  let items: fs.Dirent[];
-  try {
-    items = await fs.promises.readdir(directoryPath, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-
-  for (const item of items) {
-    if (item.isDirectory()) {
-      try {
-        const subItems = await fs.promises.readdir(path.join(directoryPath, item.name), { withFileTypes: true });
-        for (const subItem of subItems) {
-          if (!subItem.isDirectory()) out.push({ filePath: path.join(directoryPath, item.name, subItem.name), name: subItem.name });
-        }
-      } catch { continue; }
-    } else {
-      out.push({ filePath: path.join(directoryPath, item.name), name: item.name });
-    }
-  }
-
-  return out;
+  const collected = await collectDataFiles(directoryPath);
+  return collected ? collected.files : [];
 }
 
 // creating path -> handles the absolute vs non-absolute paths
@@ -259,39 +255,25 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
   const usedArrayFilenames = new Set<string>();
   const usedRawFilenames = new Set<string>();
 
-  const processDirectoryRecursive = async (currentPath: string, level: number) => {
-    if (level > 1){ 
-      console.warn("Can only read subdirectories one level deep:", directoryPath);
-      return;
+  const collected = await collectDataFiles(directoryPath);
+  if (collected) {
+    const { files, dirErrors } = collected;
+    failed += dirErrors;
+
+    // dataset_description.json must be processed first so existing metadata loads before data files
+    files.sort((a, b) => {
+      if (a.name === 'dataset_description.json') return -1;
+      if (b.name === 'dataset_description.json') return 1;
+      return 0;
+    });
+
+    for (const { dirPath, name } of files) {
+      total += 1;
+      if (!await processFile(metadata, dirPath, name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1;
     }
-
-    try {
-      const items = await fs.promises.readdir(currentPath, { withFileTypes: true });
-
-      // Sort files to process 'dataset_description.json' first
-      items.sort((itemA, itemB) => {
-        if (itemA.name === 'dataset_description.json') return -1;
-        if (itemB.name === 'dataset_description.json') return 1;
-        return 0;
-      });
-
-      for (const item of items) {
-        const itemPath = path.join(currentPath, item.name);
-        if (item.isDirectory()) {
-          await processDirectoryRecursive(itemPath, level + 1);
-        } else {
-          total += 1;
-          if (!await processFile(metadata, currentPath, item.name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1; // returns false if failed
-        }
-      }
-
-      return true; // might not work when doesn't have a csv/json
-    } catch (err) {
-      console.error(`Error reading directory ${currentPath}:`, err);
-      failed += 1;    }
-  };
-
-  await processDirectoryRecursive(directoryPath, 0);
+  } else {
+    failed += 1;
+  }
 
   if (failed === 0) console.log(`✔ Reading data files was successful with ${total} files read.`);
   else if (failed !== total) console.log(`? Data files was partially successful with ${(total - failed)}/${total} files read.`);
