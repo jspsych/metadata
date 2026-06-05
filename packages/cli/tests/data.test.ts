@@ -145,8 +145,13 @@ describe("processDirectory", () => {
       await processDirectory(metadata, tmpDir);
 
       // The file one level deep is still read; only the doubly-nested directory triggers the warning.
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn).toHaveBeenCalledWith("Can only read subdirectories one level deep:", tmpDir);
+      // Filter to the depth warning specifically: generate() may emit unrelated warnings (e.g. a
+      // plugin-source fetch 404), and this test's intent is only that the depth warning fires once.
+      const deepDirCalls = warn.mock.calls.filter(
+        (args) => args[0] === "Can only read subdirectories one level deep:",
+      );
+      expect(deepDirCalls).toHaveLength(1);
+      expect(deepDirCalls[0][1]).toBe(tmpDir);
     } finally {
       warn.mockRestore();
     }
