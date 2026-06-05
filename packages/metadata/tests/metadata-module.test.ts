@@ -355,4 +355,55 @@ describe("JsPsychMetadata", () => {
     trialType["levels"] = [100];
     expect(jsPsychMetadata.getVariable("trial_type")).toStrictEqual(trialType);
   });
+
+  test("#getAuthorList returns empty array when no authors have been added", () => {
+    expect(jsPsychMetadata.getAuthorList()).toStrictEqual([]);
+  });
+
+  test("#getAuthorList returns all added authors", () => {
+    jsPsychMetadata.setAuthor({ name: "Alice" });
+    jsPsychMetadata.setAuthor({ name: "Bob", affiliation: "UW" });
+
+    const list = jsPsychMetadata.getAuthorList();
+    expect(list).toHaveLength(2);
+    expect(list).toContainEqual("Alice");
+    expect(list).toContainEqual({ name: "Bob", affiliation: "UW" });
+  });
+
+  test("#deleteAuthor removes the named author and leaves others intact", () => {
+    jsPsychMetadata.setAuthor({ name: "Alice" });
+    jsPsychMetadata.setAuthor({ name: "Bob" });
+
+    jsPsychMetadata.deleteAuthor("Alice");
+
+    const list = jsPsychMetadata.getAuthorList();
+    expect(list).toHaveLength(1);
+    expect(list).toContainEqual("Bob");
+    expect(list.some((a) => a === "Alice" || (typeof a === "object" && a.name === "Alice"))).toBe(false);
+  });
+
+  test("#getVariableNames returns the names of all current variables", () => {
+    const names = jsPsychMetadata.getVariableNames();
+    expect(names).toContain("trial_type");
+    expect(names).toContain("trial_index");
+    expect(names).toContain("time_elapsed");
+
+    jsPsychMetadata.setVariable({ name: "custom_score", value: "number" });
+    expect(jsPsychMetadata.getVariableNames()).toContain("custom_score");
+
+    jsPsychMetadata.deleteVariable("custom_score");
+    expect(jsPsychMetadata.getVariableNames()).not.toContain("custom_score");
+  });
+
+  test("#getVariableList returns all variable objects including defaults", () => {
+    const list = jsPsychMetadata.getVariableList();
+    const names = list.map((v: any) => v.name);
+    expect(names).toContain("trial_type");
+    expect(names).toContain("trial_index");
+    expect(names).toContain("time_elapsed");
+
+    jsPsychMetadata.setVariable({ name: "rt", value: "number", description: "Reaction time in ms" });
+    const updated = jsPsychMetadata.getVariableList();
+    expect(updated.some((v: any) => v.name === "rt" && v.value === "number")).toBe(true);
+  });
 });
