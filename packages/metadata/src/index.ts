@@ -613,14 +613,20 @@ export default class JsPsychMetadata {
    * @param {*} type - The type of the datapoint
    */
   private updateFields(variable, value, type) {
+    // getVariable returns this.variables[name] || {}, so always an object — "x" in {} is safe.
+    // The returned value is a live reference to the stored object; mutations (delete below) take
+    // effect immediately. If getVariable is ever changed to return a defensive copy, the delete
+    // calls must be replaced with updateVariable calls.
     const existing = this.getVariable(variable) as VariableFields;
 
     if (type === "number") {
-      if (existing.levels) {
+      if (Array.isArray(existing.levels)) {
         // Non-numeric values seen before — column is mixed; treat as categorical.
+        // mixedColumns is instance-scoped (not per-generate-call) because generate() accumulates
+        // state; the warning fires at most once per column per instance lifetime.
         if (!this.mixedColumns.has(variable)) {
           this.mixedColumns.add(variable);
-          console.warn(`Warning: variable "${variable}" has mixed numeric and non-numeric values; treating as categorical.`);
+          console.warn(`Variable "${variable}" has mixed numeric and non-numeric values; treating as categorical.`);
         }
         this.updateVariable(variable, "levels", String(value));
         return;
@@ -635,16 +641,17 @@ export default class JsPsychMetadata {
         // Numeric values seen before — column is mixed; downgrade to categorical.
         if (!this.mixedColumns.has(variable)) {
           this.mixedColumns.add(variable);
-          console.warn(`Warning: variable "${variable}" has mixed numeric and non-numeric values; treating as categorical.`);
+          console.warn(`Variable "${variable}" has mixed numeric and non-numeric values; treating as categorical.`);
         }
         // Preserve boundary values as string levels before discarding the numeric fields,
         // so numeric values processed before the mix was detected are not silently lost.
+        // Only the min and max are recoverable — intermediate values between them are not.
         if ("minValue" in existing) this.updateVariable(variable, "levels", String(existing.minValue));
         if ("maxValue" in existing && existing.maxValue !== existing.minValue) {
           this.updateVariable(variable, "levels", String(existing.maxValue));
         }
-        delete existing["minValue"];
-        delete existing["maxValue"];
+        delete existing.minValue;
+        delete existing.maxValue;
         this.updateVariable(variable, "value", "string");
       }
       this.updateVariable(variable, "levels", value);
