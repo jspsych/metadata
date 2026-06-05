@@ -16,14 +16,22 @@ export interface GenerateOptions {
   normalizedBases?: Map<string, string>;
 }
 
+/**
+ * Walks `directoryPath` at the top level and one subdirectory deep, returning every
+ * non-directory file with its path. Diagnostics (the "one level deep" warning and
+ * directory-read errors) are only emitted when `warn` is true, so the silent pre-passes
+ * (`enumerateDataFiles`, `preAnalyzeDirectory`) don't duplicate warnings that
+ * `processDirectory` already surfaces on the same directory in the same run.
+ */
 async function collectDataFiles(
-  directoryPath: string
+  directoryPath: string,
+  { warn = false }: { warn?: boolean } = {}
 ): Promise<{ files: Array<{ filePath: string; dirPath: string; name: string }>; dirErrors: number } | null> {
   let items: fs.Dirent[];
   try {
     items = await fs.promises.readdir(directoryPath, { withFileTypes: true });
   } catch (err) {
-    console.error(`Error reading directory ${directoryPath}:`, err);
+    if (warn) console.error(`Error reading directory ${directoryPath}:`, err);
     return null;
   }
 
@@ -37,13 +45,13 @@ async function collectDataFiles(
         const subItems = await fs.promises.readdir(subPath, { withFileTypes: true });
         for (const subItem of subItems) {
           if (subItem.isDirectory()) {
-            console.warn("Can only read subdirectories one level deep:", directoryPath);
+            if (warn) console.warn("Can only read subdirectories one level deep:", directoryPath);
           } else {
             files.push({ filePath: path.join(subPath, subItem.name), dirPath: subPath, name: subItem.name });
           }
         }
       } catch (err) {
-        console.error(`Error reading directory ${subPath}:`, err);
+        if (warn) console.error(`Error reading directory ${subPath}:`, err);
         dirErrors += 1;
       }
     } else {
@@ -255,7 +263,7 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
   const usedArrayFilenames = new Set<string>();
   const usedRawFilenames = new Set<string>();
 
-  const collected = await collectDataFiles(directoryPath);
+  const collected = await collectDataFiles(directoryPath, { warn: true });
   if (collected) {
     const { files, dirErrors } = collected;
     failed += dirErrors;

@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import JsPsychMetadata from "@jspsych/metadata";
-import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory } from "../src/data";
+import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, enumerateDataFiles } from "../src/data";
 
 // Each describe block gets its own temp directory.
 let tmpDir: string;
@@ -132,6 +132,42 @@ describe("processDirectory", () => {
 
     expect(total).toBe(1);
     expect(failed).toBe(0);
+  });
+
+  test("warns once about a nested directory two levels deep", async () => {
+    const subDir = path.join(tmpDir, "sub");
+    fs.mkdirSync(path.join(subDir, "deeper"), { recursive: true });
+    fs.writeFileSync(path.join(subDir, "trial.csv"), "trial_type,rt\njsPsych-html-keyboard-response,300");
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const metadata = new JsPsychMetadata();
+      await processDirectory(metadata, tmpDir);
+
+      // The file one level deep is still read; only the doubly-nested directory triggers the warning.
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith("Can only read subdirectories one level deep:", tmpDir);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("silent pre-passes (enumerateDataFiles) do not emit the deep-directory warning", async () => {
+    const subDir = path.join(tmpDir, "sub");
+    fs.mkdirSync(path.join(subDir, "deeper"), { recursive: true });
+    fs.writeFileSync(path.join(subDir, "trial.csv"), "trial_type,rt\njsPsych-html-keyboard-response,300");
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const files = await enumerateDataFiles(tmpDir);
+
+      // Same one-level-deep traversal, but the pre-pass stays quiet so processDirectory's
+      // warning isn't duplicated when both run on the same directory in one command.
+      expect(files.map((f) => f.name)).toEqual(["trial.csv"]);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   test("skips dataset_description.json (loads it as existing metadata instead)", async () => {
