@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "patch-package",
     "test": "jest",
     "build": "npm run build --workspaces --platform=node",
     "changeset": "changeset",
@@ -28,7 +29,8 @@
   "devDependencies": {
     "@changesets/cli": "^2.27.7",
     "esbuild": "0.23.0",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "patch-package": "^8.0.1"
   },
   "dependencies": {
     "jsdoc-parse": "^6.2.1"
