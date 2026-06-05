@@ -238,3 +238,120 @@ describe("JsPsychMetadata", () => {
     expect(jsPsychMetadata.getVariable("trial_type")).toStrictEqual(trialType);
   });
 });
+
+describe("mixed-type column handling (#71)", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  test("numbers-then-string: column is categorical with no min/max and value:string", async () => {
+    // Repro from the issue: block_number has numeric rows 1–4 and a string "Practice".
+    const csv = [
+      "trial_type,block_number",
+      "html-keyboard-response,1",
+      "html-keyboard-response,Practice",
+      "html-keyboard-response,2",
+      "html-keyboard-response,3",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const col = variableMeasured.find((v) => v.name === "block_number");
+
+    expect(col).toBeDefined();
+    expect(col.value).toBe("string");
+    expect(col.levels).toContain("Practice");
+    expect(col.levels).toContain("1");
+    expect(col.levels).toContain("2");
+    expect(col.levels).toContain("3");
+    expect(col.minValue).toBeUndefined();
+    expect(col.maxValue).toBeUndefined();
+  });
+
+  test("string-then-numbers: column is categorical with no min/max", async () => {
+    const csv = [
+      "trial_type,block_number",
+      "html-keyboard-response,Practice",
+      "html-keyboard-response,1",
+      "html-keyboard-response,2",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const col = variableMeasured.find((v) => v.name === "block_number");
+
+    expect(col).toBeDefined();
+    expect(col.value).toBe("string");
+    expect(col.levels).toContain("Practice");
+    expect(col.levels).toContain("1");
+    expect(col.levels).toContain("2");
+    expect(col.minValue).toBeUndefined();
+    expect(col.maxValue).toBeUndefined();
+  });
+
+  test("purely numeric column is unaffected: still has min/max and no levels", async () => {
+    const csv = [
+      "trial_type,rt",
+      "html-keyboard-response,450",
+      "html-keyboard-response,512",
+      "html-keyboard-response,389",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const col = variableMeasured.find((v) => v.name === "rt");
+
+    expect(col).toBeDefined();
+    expect(col.value).toBe("number");
+    expect(col.minValue).toBe(389);
+    expect(col.maxValue).toBe(512);
+    expect(col.levels).toBeUndefined();
+  });
+
+  test("purely string column is unaffected: still has levels and no min/max", async () => {
+    const csv = [
+      "trial_type,response",
+      "html-keyboard-response,f",
+      "html-keyboard-response,j",
+      "html-keyboard-response,f",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const col = variableMeasured.find((v) => v.name === "response");
+
+    expect(col).toBeDefined();
+    expect(col.value).toBe("string");
+    expect(col.levels).toContain("f");
+    expect(col.levels).toContain("j");
+    expect(col.minValue).toBeUndefined();
+    expect(col.maxValue).toBeUndefined();
+  });
+
+  test("mixed-type warning is emitted exactly once per column", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const csv = [
+      "trial_type,block_number",
+      "html-keyboard-response,1",
+      "html-keyboard-response,Practice",
+      "html-keyboard-response,2",
+      "html-keyboard-response,Test",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const mixedWarnings = warnSpy.mock.calls.filter((args) =>
+      typeof args[0] === "string" && args[0].includes("mixed numeric and non-numeric")
+    );
+    expect(mixedWarnings).toHaveLength(1);
+
+    warnSpy.mockRestore();
+  });
+});
