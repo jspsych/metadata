@@ -1,0 +1,6 @@
+trial_type,trial_index,time_elapsed,stimulus,response,rt,correct
+html-keyboard-response,0,812,+,null,null,null
+html-keyboard-response,1,2341,"<p>Press F for cat, J for dog</p>",f,1529,true
+html-keyboard-response,2,3890,"<p>Press F for cat, J for dog</p>",j,1549,false
+html-keyboard-response,3,5201,"<p>Press F for cat, J for dog</p>",f,1311,true
+survey-text,4,8762,null,"{""Q0"": ""blue"", ""Q1"": ""medium""}",3561,null

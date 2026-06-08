@@ -1,0 +1,7 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "schemaVersion": "Psych-DS 0.4.0",
+  "name": "smoke-test-2",
+  "description": "Synthetic test dataset for frontend Data step testing. Contains CSV, JSON, a merged multi-subject file (triggers join key UI), and a skipped .txt file."
+}

@@ -1,0 +1,11 @@
+[
+  {"trial_type": "survey-multi-choice", "trial_index": 0, "subject": "s01", "time_elapsed": 1023, "stimulus": "Which colours do you like?", "response": [2, 5, 7], "rt": 1023},
+  {"trial_type": "survey-multi-choice", "trial_index": 1, "subject": "s01", "time_elapsed": 2187, "stimulus": "Which shapes do you prefer?", "response": [1, 3], "rt": 1164},
+  {"trial_type": "survey-multi-choice", "trial_index": 2, "subject": "s01", "time_elapsed": 3401, "stimulus": "Which sounds are pleasant?", "response": [4, 6, 8], "rt": 1214},
+  {"trial_type": "survey-multi-choice", "trial_index": 0, "subject": "s02", "time_elapsed": 1187, "stimulus": "Which colours do you like?", "response": [1, 3], "rt": 1187},
+  {"trial_type": "survey-multi-choice", "trial_index": 1, "subject": "s02", "time_elapsed": 2634, "stimulus": "Which shapes do you prefer?", "response": [2, 5, 7], "rt": 1447},
+  {"trial_type": "survey-multi-choice", "trial_index": 2, "subject": "s02", "time_elapsed": 3912, "stimulus": "Which sounds are pleasant?", "response": [3, 8], "rt": 1278},
+  {"trial_type": "survey-multi-choice", "trial_index": 0, "subject": "s03", "time_elapsed": 998,  "stimulus": "Which colours do you like?", "response": [5, 7], "rt": 998},
+  {"trial_type": "survey-multi-choice", "trial_index": 1, "subject": "s03", "time_elapsed": 2201, "stimulus": "Which shapes do you prefer?", "response": [1, 4, 6], "rt": 1203},
+  {"trial_type": "survey-multi-choice", "trial_index": 2, "subject": "s03", "time_elapsed": 3489, "stimulus": "Which sounds are pleasant?", "response": [2, 5], "rt": 1288}
+]

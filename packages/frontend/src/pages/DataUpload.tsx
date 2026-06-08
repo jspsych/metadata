@@ -1,16 +1,406 @@
-import JsPsychMetadata from '@jspsych/metadata';
+import { useState, useRef, useEffect } from 'react';
+import JsPsychMetadata, { analyzeJoinKeys } from '@jspsych/metadata';
+import styles from './DataUpload.module.css';
+
+type JoinKeyCandidate = { column: string; makesUnique: boolean };
+
+export type FileStatus = {
+  name: string;
+  status: 'pending' | 'loading' | 'success' | 'skipped' | 'error';
+  detail?: string;
+};
+
+export type DataSession = {
+  files: File[];
+  fileTexts: Map<string, { content: string; type: string }>;
+  joinKeyCandidates: JoinKeyCandidate[];
+  joinKeyProblemFile: string;
+  selectedKeys: string[];
+  fileStatuses: FileStatus[];
+};
+
+export const emptyDataSession: DataSession = {
+  files: [],
+  fileTexts: new Map(),
+  joinKeyCandidates: [],
+  joinKeyProblemFile: '',
+  selectedKeys: ['trial_index'],
+  fileStatuses: [],
+};
 
 interface DataUploadProps {
   jsPsychMetadata: JsPsychMetadata;
+  dataProcessed: boolean;
   onComplete: () => void;
+  session: DataSession;
+  onSessionChange: (s: DataSession) => void;
 }
 
-const DataUpload: React.FC<DataUploadProps> = ({ onComplete }) => {
+type Phase = 'hasData' | 'idle' | 'ready' | 'preflight' | 'joinKeys' | 'processing' | 'done';
+
+const readFileAsText = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+
+const DataUpload: React.FC<DataUploadProps> = ({
+  jsPsychMetadata,
+  dataProcessed,
+  onComplete,
+  session,
+  onSessionChange,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [phase, setPhase] = useState<Phase>(dataProcessed ? 'hasData' : 'idle');
+  const [files, setFiles] = useState<File[]>(session.files);
+  const [fileTexts, setFileTexts] = useState(session.fileTexts);
+  const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
+  const [joinKeyCandidates, setJoinKeyCandidates] = useState<JoinKeyCandidate[]>(session.joinKeyCandidates);
+  const [joinKeyProblemFile, setJoinKeyProblemFile] = useState(session.joinKeyProblemFile);
+  const [committedKeys, setCommittedKeys] = useState<string[]>(session.selectedKeys);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(session.selectedKeys);
+  const [proceedAnyway, setProceedAnyway] = useState(false);
+  const [joinKeyReturnPhase, setJoinKeyReturnPhase] = useState<Phase>('ready');
+  const [showJoinKeyHelp, setShowJoinKeyHelp] = useState(false);
+
+  // Keep parent session in sync
+  const onSessionChangeRef = useRef(onSessionChange);
+  onSessionChangeRef.current = onSessionChange;
+  useEffect(() => {
+    onSessionChangeRef.current({
+      files, fileTexts, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
+    });
+  }, [files, fileTexts, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
+
+  useEffect(() => {
+    if (inputRef.current) (inputRef.current as any).webkitdirectory = true;
+  }, []);
+
+  const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const picked = [...e.target.files].filter(f => !f.name.startsWith('.'));
+    setFiles(picked);
+    setPhase('ready');
+    setFileStatuses([]);
+  };
+
+  const handleProcess = async () => {
+    setPhase('preflight');
+
+    const textMap = new Map<string, { content: string; type: string }>();
+    for (const file of files) {
+      const type = file.name.split('.').pop()?.toLowerCase() || '';
+      const content = await readFileAsText(file);
+      textMap.set(file.name, { content, type });
+    }
+    setFileTexts(textMap);
+
+    // Pre-flight: check join key uniqueness on first parseable JSON data file
+    for (const [name, { content, type }] of textMap) {
+      if (type !== 'json' || name === 'dataset_description.json') continue;
+      try {
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed) || parsed.length === 0) continue;
+        const analysis = analyzeJoinKeys(parsed, ['trial_index']);
+        if (!analysis.isUnique) {
+          setJoinKeyProblemFile(name);
+          setJoinKeyCandidates(analysis.candidates);
+          setJoinKeyReturnPhase('ready');
+          setPhase('joinKeys');
+          return;
+        }
+        break;
+      } catch {
+        continue;
+      }
+    }
+
+    await runGenerate(textMap, ['trial_index'], true);
+  };
+
+  const handleJoinKeyApply = async () => {
+    const keys = proceedAnyway ? ['trial_index'] : selectedKeys;
+    setCommittedKeys(keys);
+    await runGenerate(fileTexts, keys, proceedAnyway);
+  };
+
+  const toggleKey = (col: string) => {
+    setSelectedKeys(prev =>
+      prev.includes(col) ? prev.filter(k => k !== col) : [...prev, col]
+    );
+  };
+
+  const runGenerate = async (
+    textMap: Map<string, { content: string; type: string }>,
+    joinKeys: string[],
+    suppressWarning: boolean
+  ) => {
+    setPhase('processing');
+    const initial: FileStatus[] = files.map(f => ({ name: f.name, status: 'pending' }));
+    setFileStatuses(initial);
+
+    const update = (i: number, patch: Partial<FileStatus>) =>
+      setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s));
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const entry = textMap.get(file.name);
+      if (!entry) continue;
+      const { content, type } = entry;
+
+      update(i, { status: 'loading' });
+
+      if (file.name === 'dataset_description.json') {
+        update(i, { status: 'skipped', detail: 'existing metadata file' });
+        continue;
+      }
+
+      if (type !== 'json' && type !== 'csv') {
+        update(i, { status: 'skipped', detail: 'unsupported file type' });
+        continue;
+      }
+
+      try {
+        await jsPsychMetadata.generate(content, {}, type as 'json' | 'csv', {
+          arrayJoinKeys: joinKeys,
+          suppressJoinKeyWarning: suppressWarning,
+        });
+        update(i, { status: 'success' });
+      } catch (e) {
+        update(i, { status: 'error', detail: String(e) });
+      }
+    }
+
+    setPhase('done');
+  };
+
+  const statusIcon = (s: FileStatus['status']) => {
+    if (s === 'success')  return <span className={styles.iconSuccess}>✓</span>;
+    if (s === 'error')    return <span className={styles.iconError}>✗</span>;
+    if (s === 'skipped')  return <span className={styles.iconSkipped}>—</span>;
+    if (s === 'loading')  return <span className={styles.iconLoading}>○</span>;
+    return <span className={styles.iconPending}>·</span>;
+  };
+
+  // Drop into join key chooser, preserving the previously chosen keys
+  const enterReConfigureJoinKeys = (returnTo: Phase) => {
+    setProceedAnyway(false);
+    setJoinKeyReturnPhase(returnTo);
+    setPhase('joinKeys');
+  };
+
+  // Already-processed summary shown when navigating back to this step
+  if (phase === 'hasData') {
+    const varCount = jsPsychMetadata.getVariableNames().length;
+    return (
+      <div className={styles.page}>
+        <h2 className={styles.heading}>Data</h2>
+        <div className={styles.hasDataBanner}>
+          <span className={styles.iconSuccess}>✓</span>
+          <div>
+            <strong>Data already processed</strong>
+            <p className={styles.hasDataSub}>
+              {varCount} variable{varCount !== 1 ? 's' : ''} generated.
+            </p>
+          </div>
+        </div>
+
+        {fileStatuses.length > 0 && (
+          <ul className={styles.statusList}>
+            {fileStatuses.map((s, i) => (
+              <li key={i} className={styles.statusItem}>
+                {statusIcon(s.status)}
+                <span className={styles.statusName}>{s.name}</span>
+                {s.detail && <span className={styles.statusDetail}>{s.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className={styles.doneActions}>
+          <button className={styles.continueBtn} onClick={onComplete}>
+            Continue →
+          </button>
+          {joinKeyCandidates.length > 0 && fileTexts.size > 0 && (
+            <button className={styles.reConfigureBtn} onClick={() => enterReConfigureJoinKeys('hasData')}>
+              Re-configure join keys
+            </button>
+          )}
+        </div>
+
+        <div className={styles.additionalDivider}>Upload additional files</div>
+        <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+          Choose folder
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleFolderChange}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h2>Data</h2>
-      <p>Coming soon — upload data folder, processing status, join key chooser.</p>
-      <button onClick={onComplete}>Continue</button>
+    <div className={styles.page}>
+      <h2 className={styles.heading}>Data</h2>
+      <p className={styles.description}>
+        Select your data folder. CSV and JSON files will be processed; other file types are skipped.
+      </p>
+
+      {/* Folder picker */}
+      <div className={styles.pickerRow}>
+        <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+          {files.length > 0 ? 'Change folder' : 'Choose folder'}
+        </button>
+        {files.length > 0 && (
+          <span className={styles.folderName}>
+            {files[0].webkitRelativePath.split('/')[0]} ({files.length} file{files.length !== 1 ? 's' : ''})
+          </span>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleFolderChange}
+        />
+      </div>
+
+      {/* File list (before processing) */}
+      {phase === 'ready' && (
+        <>
+          <ul className={styles.fileList}>
+            {files.map(f => (
+              <li key={f.name} className={styles.fileItem}>
+                <span className={styles.iconPending}>·</span>
+                <span>{f.webkitRelativePath || f.name}</span>
+              </li>
+            ))}
+          </ul>
+          <button className={styles.processBtn} onClick={handleProcess}>
+            Process files
+          </button>
+        </>
+      )}
+
+      {/* Pre-flight spinner */}
+      {phase === 'preflight' && (
+        <p className={styles.preflight}>Reading files…</p>
+      )}
+
+      {/* Join key chooser */}
+      {phase === 'joinKeys' && (
+        <div className={styles.joinKeySection}>
+          <div className={styles.joinKeyWarning}>
+            <span className={styles.warnIcon}>⚠</span>
+            <div>
+              <strong>trial_index is not unique in {joinKeyProblemFile}</strong>
+              <p className={styles.joinKeyExplainer}>
+                Your data contains nested arrays that need a unique row identifier to extract correctly.
+                Select additional columns below to make each row uniquely identifiable.
+              </p>
+            </div>
+          </div>
+
+          <button
+            className={styles.helpToggle}
+            onClick={() => setShowJoinKeyHelp(p => !p)}
+            aria-expanded={showJoinKeyHelp}
+          >
+            What is a join key? {showJoinKeyHelp ? '▲' : '▼'}
+          </button>
+          {showJoinKeyHelp && (
+            <div className={styles.helpText}>
+              <p>
+                jsPsych experiments sometimes produce <strong>nested data</strong> — for example,
+                a survey trial might contain multiple responses stored as an array inside a single row.
+                To save this as a flat table (CSV), each nested item needs to be matched back to
+                its parent row.
+              </p>
+              <p>
+                A <strong>join key</strong> is a column (or combination of columns) whose values
+                are unique for every row, so that nested items can be correctly linked.{' '}
+                <code>trial_index</code> works fine in single-participant files, but if you merged
+                data from multiple participants, each participant resets <code>trial_index</code>{' '}
+                to 0 — making it non-unique. Adding a column like <code>subject</code> restores
+                uniqueness.
+              </p>
+            </div>
+          )}
+
+          <ul className={styles.candidateList}>
+            <li className={styles.candidateItem}>
+              <input type="checkbox" checked disabled readOnly />
+              <span>trial_index</span>
+              <span className={styles.candidateTag}>default</span>
+            </li>
+            {joinKeyCandidates.map(({ column, makesUnique }) => (
+              <li key={column} className={styles.candidateItem}>
+                <input
+                  type="checkbox"
+                  checked={selectedKeys.includes(column)}
+                  disabled={proceedAnyway}
+                  onChange={() => toggleKey(column)}
+                />
+                <span>{column}</span>
+                {makesUnique && <span className={styles.candidateTag}>sufficient alone</span>}
+              </li>
+            ))}
+            <li className={styles.candidateItem}>
+              <input
+                type="checkbox"
+                checked={proceedAnyway}
+                onChange={() => { setProceedAnyway(p => !p); setSelectedKeys(['trial_index']); }}
+              />
+              <span className={styles.proceedLabel}>
+                Proceed anyway — extracted CSVs may have duplicate rows
+              </span>
+            </li>
+          </ul>
+
+          <div className={styles.joinKeyActions}>
+            <button className={styles.processBtn} onClick={handleJoinKeyApply}>
+              Apply and process files
+            </button>
+            <button className={styles.cancelBtn} onClick={() => { setSelectedKeys(committedKeys); setProceedAnyway(false); setPhase(joinKeyReturnPhase); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Per-file status (processing + done) */}
+      {(phase === 'processing' || phase === 'done') && (
+        <ul className={styles.statusList}>
+          {fileStatuses.map((s, i) => (
+            <li key={i} className={styles.statusItem}>
+              {statusIcon(s.status)}
+              <span className={styles.statusName}>{s.name}</span>
+              {s.detail && <span className={styles.statusDetail}>{s.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {phase === 'done' && (
+        <div className={styles.doneActions}>
+          <button className={styles.continueBtn} onClick={onComplete}>
+            Continue →
+          </button>
+          {joinKeyCandidates.length > 0 && (
+            <button className={styles.reConfigureBtn} onClick={() => enterReConfigureJoinKeys('done')}>
+              Re-configure join keys
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

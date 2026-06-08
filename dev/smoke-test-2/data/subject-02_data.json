@@ -1,0 +1,7 @@
+[
+  {"trial_type": "html-keyboard-response", "trial_index": 0, "time_elapsed": 754, "stimulus": "+", "response": null, "rt": null, "correct": null},
+  {"trial_type": "html-keyboard-response", "trial_index": 1, "time_elapsed": 2198, "stimulus": "<p>Press F for cat, J for dog</p>", "response": "j", "rt": 1444, "correct": false},
+  {"trial_type": "html-keyboard-response", "trial_index": 2, "time_elapsed": 3602, "stimulus": "<p>Press F for cat, J for dog</p>", "response": "f", "rt": 1404, "correct": true},
+  {"trial_type": "html-keyboard-response", "trial_index": 3, "time_elapsed": 4891, "stimulus": "<p>Press F for cat, J for dog</p>", "response": "f", "rt": 1289, "correct": true},
+  {"trial_type": "survey-text", "trial_index": 4, "time_elapsed": 8103, "stimulus": null, "response": {"Q0": "green", "Q1": "large"}, "rt": 3212, "correct": null}
+]

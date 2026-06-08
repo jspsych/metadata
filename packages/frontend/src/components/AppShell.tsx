@@ -2,7 +2,7 @@ import { useState } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import Sidebar from './Sidebar';
 import ProjectInfo from '../pages/ProjectInfo';
-import DataUpload from '../pages/DataUpload';
+import DataUpload, { DataSession, emptyDataSession } from '../pages/DataUpload';
 import Variables from '../pages/Variables';
 import Authors from '../pages/Authors';
 import Review from '../pages/Review';
@@ -27,6 +27,8 @@ interface AppShellProps {
 const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFile, onStartOver }) => {
   const [currentStep, setCurrentStep] = useState<StepId>('projectInfo');
   const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
+  const [dataProcessed, setDataProcessed] = useState(false);
+  const [dataSession, setDataSession] = useState<DataSession>(emptyDataSession);
 
   const completeStep = (stepId: StepId) => {
     setCompletedSteps(prev => {
@@ -55,7 +57,15 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
           />
         );
       case 'data':
-        return <DataUpload jsPsychMetadata={jsPsychMetadata} onComplete={() => completeStep('data')} />;
+        return (
+          <DataUpload
+            jsPsychMetadata={jsPsychMetadata}
+            dataProcessed={dataProcessed}
+            onComplete={() => { setDataProcessed(true); completeStep('data'); }}
+            session={dataSession}
+            onSessionChange={setDataSession}
+          />
+        );
       case 'variables':
         return <Variables jsPsychMetadata={jsPsychMetadata} onComplete={() => completeStep('variables')} />;
       case 'authors':
