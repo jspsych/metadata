@@ -1,0 +1,289 @@
+.page {
+  max-width: 680px;
+}
+
+.heading {
+  margin: 0 0 1.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.count {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 0.1em 0.55em;
+}
+
+/* Sections */
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.sectionProgress {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.sectionCount {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+/* Variable list */
+
+.list {
+  list-style: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #2e2e2e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.row {
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowUnknown {
+  border-left: 3px solid rgba(255, 180, 0, 0.45);
+}
+
+.rowKnown {
+  border-left: 3px solid transparent;
+}
+
+/* Row header (the clickable accordion trigger) */
+
+.rowHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  gap: 0.75rem;
+}
+
+.rowHeader:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rowName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+}
+
+.rowRight {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.typeBadge {
+  font-size: 0.73rem;
+  padding: 0.15em 0.5em;
+  border-radius: 4px;
+  background: rgba(100, 108, 255, 0.15);
+  color: rgba(160, 165, 255, 0.9);
+  border: 1px solid rgba(100, 108, 255, 0.2);
+}
+
+.typeBadgeUnknown {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.warnBadge {
+  font-size: 0.72rem;
+  color: rgba(255, 180, 0, 0.85);
+  white-space: nowrap;
+}
+
+.doneBadge {
+  font-size: 0.72rem;
+  color: rgba(76, 175, 80, 0.85);
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.3);
+  width: 12px;
+  text-align: center;
+}
+
+/* Expanded body */
+
+.rowBody {
+  padding: 0 0.9rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: rgba(255, 255, 255, 0.015);
+  border-top: 1px solid #2a2a2a;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.textarea {
+  background: #1e1e1e;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.textarea::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+/* jsPsych hint descriptions */
+
+.hints {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.45rem 0.65rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0 4px 4px 0;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.79rem;
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.5;
+}
+
+.hintKey {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Type select */
+
+.select {
+  background: #1e1e1e;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  cursor: pointer;
+  width: fit-content;
+  min-width: 120px;
+  transition: border-color 0.15s;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+/* Levels */
+
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.level {
+  font-size: 0.78rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.15em 0.5em;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+/* Range */
+
+.rangeText {
+  font-size: 0.88rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Continue */
+
+.continueBtn {
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6em 1.6em;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.continueBtn:hover {
+  background-color: #535bf2;
+}
