@@ -1,4 +1,4 @@
-import { parse } from 'csv-parse';
+import { parse } from 'csv-parse/browser/esm';
 
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
@@ -185,7 +185,7 @@ export function analyzeJoinKeys(
   };
 }
 
-export async function parseCSV(input) {''
+export async function parseCSV(input) {
   if (!parse) {
     throw new Error('Parser module not loaded');
   }
