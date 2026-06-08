@@ -1,4 +1,4 @@
-import { parse } from 'csv-parse/browser/esm';
+import { parse } from 'csv-parse';
 
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
