@@ -496,9 +496,16 @@ export default class JsPsychMetadata {
 
       // handling type conversion from csv by converting back into number, should think about booleans as well
       if (type === "string") {
-        if (!isNaN(Number(value))) {
+        // Number("") and Number(" ") are both 0, so a whitespace-only string would otherwise be
+        // misdetected as numeric. Require non-empty trimmed content, and use Number (not parseFloat)
+        // for the conversion so the numeric test and the stored value never disagree — parseFloat(" ")
+        // is NaN, which previously leaked through as NaN min/max (serialized as null) for string columns.
+        const asNumber = Number(value);
+        // Number.isFinite (not !isNaN) also rejects "Infinity"/"-Infinity", which would otherwise
+        // serialize to null min/max. The trim guard is still needed because Number(" ") is 0 (finite).
+        if (value.trim() !== "" && Number.isFinite(asNumber)) {
           type = "number";
-          value = parseFloat(value);
+          value = asNumber;
         } else if (value.toLowerCase() === "true" || value.toLowerCase() === "false") {
           type = "boolean";
           value = (value.toLowerCase() === "true");

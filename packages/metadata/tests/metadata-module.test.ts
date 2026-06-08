@@ -1,5 +1,52 @@
 import JsPsychMetadata from "../src/index";
 
+// Regression for #70: a whitespace-only cell (e.g. a single space) must not be misdetected as
+// numeric. Number(" ") === 0 passes the old isNaN(Number(value)) check, but parseFloat(" ") is NaN,
+// which leaked through as NaN min/max (serialized to null) on otherwise-categorical string columns.
+describe("whitespace-only values are not treated as numeric (#70)", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  test("a string column with a whitespace-only cell stays categorical with no NaN/null min/max", async () => {
+    const csv = [
+      "trial_type,response",
+      "html-keyboard-response,Enter",
+      "html-keyboard-response, ", // single-space response
+      "html-keyboard-response,p",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const response = variableMeasured.find((v) => v.name === "response");
+
+    expect(response.value).toBe("string");
+    expect(response).not.toHaveProperty("minValue");
+    expect(response).not.toHaveProperty("maxValue");
+    // The whitespace cell is recorded as a level, not silently turned into a NaN number.
+    expect(response.levels).toEqual(expect.arrayContaining(["Enter", "p", " "]));
+  });
+
+  test("genuinely numeric string columns are still coerced to numbers", async () => {
+    const csv = [
+      "trial_type,rt",
+      "html-keyboard-response,450",
+      "html-keyboard-response,512",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const rt = (jsPsychMetadata.getMetadata()["variableMeasured"] as any[]).find((v) => v.name === "rt");
+    expect(rt.value).toBe("number");
+    expect(rt.minValue).toBe(450);
+    expect(rt.maxValue).toBe(512);
+    expect(rt).not.toHaveProperty("levels");
+  });
+});
+
 describe("always-empty columns in variableMeasured", () => {
   let jsPsychMetadata: JsPsychMetadata;
 
