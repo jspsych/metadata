@@ -111,6 +111,114 @@ describe("Nested JSON column handling", () => {
     });
   });
 
+  // ─── Case 1b: deeply nested JSON objects (>2 levels) ─────────────────────────
+
+  describe("deeply nested JSON object columns", () => {
+    test("objects more than one level deep are fully expanded with dotted names", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { Q0: { score: 4, meta: { valid: true } } } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      const names = meta.getVariableNames();
+      expect(names).toContain("response.Q0.score");
+      expect(names).toContain("response.Q0.meta.valid");
+    });
+
+    test("intermediate object nodes are registered with value: 'object' and no levels", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { Q0: { score: 4, meta: { valid: true } } } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      for (const node of ["response", "response.Q0", "response.Q0.meta"]) {
+        const v = meta.getVariable(node) as any;
+        expect(v.value).toBe("object");
+        expect(v.levels).toBeUndefined();
+      }
+    });
+
+    test("deep numeric leaves still track minValue and maxValue", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { Q0: { score: 2 } } },
+        { ...BASE, trial_index: 1, time_elapsed: 200, response: { Q0: { score: 9 } } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      const v = meta.getVariable("response.Q0.score") as any;
+      expect(v.value).toBe("number");
+      expect(v.minValue).toBe(2);
+      expect(v.maxValue).toBe(9);
+    });
+
+    test("deep string leaves still accumulate levels", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { Q0: { label: "yes" } } },
+        { ...BASE, trial_index: 1, time_elapsed: 200, response: { Q0: { label: "no" } } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      const v = meta.getVariable("response.Q0.label") as any;
+      expect(v.value).toBe("string");
+      expect(v.levels).toContain("yes");
+      expect(v.levels).toContain("no");
+    });
+
+    test("arrays nested inside objects are typed as 'array', not 'object'", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { Q0: { points: [1, 2, 3] } } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      const v = meta.getVariable("response.Q0.points") as any;
+      expect(v.value).toBe("array");
+      expect(v.levels).toBeUndefined();
+    });
+
+    test("nested arrays-of-objects are extracted to a CSV keyed by their dotted name", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { samples: [{ x: 1, y: 2 }, { x: 3, y: 4 }] } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      const extracted = meta.getExtractedArrays();
+      expect(extracted.has("response.samples")).toBe(true);
+      const rows = extracted.get("response.samples")!;
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 1, y: 2 });
+      expect(rows[1]).toMatchObject({ trial_index: 0, element_index: 1, x: 3, y: 4 });
+    });
+
+    test("nested arrays of primitives are typed 'array' but not extracted", async () => {
+      const data = JSON.stringify([
+        { ...BASE, response: { Q0: { points: [1, 2, 3] } } },
+      ]);
+      const meta = new JsPsychMetadata();
+      await meta.generate(data);
+
+      expect(meta.getExtractedArrays().has("response.Q0.points")).toBe(false);
+    });
+
+    test("CSV input: deeply nested JSON object string is detected and expanded", async () => {
+      const csv = [
+        "trial_type,trial_index,time_elapsed,response",
+        'mock-plugin,0,100,"{""Q0"":{""score"":4,""meta"":{""valid"":true}}}"',
+      ].join("\n");
+      const meta = new JsPsychMetadata();
+      await meta.generate(csv, {}, "csv");
+
+      const names = meta.getVariableNames();
+      expect(names).toContain("response.Q0.score");
+      expect(names).toContain("response.Q0.meta.valid");
+    });
+  });
+
   // ─── Case 2: JSON arrays of objects ─────────────────────────────────────────
 
   describe("JSON array-of-objects columns", () => {
