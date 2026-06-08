@@ -1,0 +1,162 @@
+.page {
+  max-width: 560px;
+}
+
+.heading {
+  margin: 0 0 1.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.loadedBanner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.25);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  margin: 0 0 1.5rem;
+}
+
+.loadedBanner code {
+  font-size: 0.8rem;
+  color: #6fcf72;
+}
+
+.loading {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  padding: 2rem 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.required {
+  color: #ff8080;
+  margin-left: 2px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  background-color: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-radius: 7px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.88);
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Optional fields */
+
+.optionalSection {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #333;
+  padding-top: 0.25rem;
+}
+
+.optionalToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 0.6rem 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.optionalToggle:hover {
+  color: rgba(255, 255, 255, 0.88);
+  border-color: transparent;
+}
+
+.chevron {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.optionalFields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 0.75rem;
+}
+
+/* Error + Continue */
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ff8080;
+}
+
+.continueBtn {
+  align-self: flex-start;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6em 1.6em;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.continueBtn:hover {
+  background-color: #535bf2;
+  border-color: transparent;
+}
