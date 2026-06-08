@@ -17,9 +17,15 @@ html, body {
 /* APp Page */
 .appPage {
   background-color: #3e3e3e;
+  color: rgba(255, 255, 255, 0.87);
   border: none;
   width: 100vw;
   height: 100vh;
+}
+
+.appPage button {
+  background-color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.87);
 }
 
 /* src/components/EditPopup.css */
@@ -152,6 +158,17 @@ html, body {
 /* Metadata options */
 .optionsButton {
   margin: 10px;
+  background-color: #646cff;
+  color: white;
+  padding: 0.6em 1.5em;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.optionsButton:hover {
+  background-color: #535bf2;
 }
 
 /* DataFormPage */
@@ -211,6 +228,38 @@ html, body {
   height: 22px;
   border-radius: 5px;
   background: none;
+}
+
+/* Upload flow action buttons */
+
+.upload-continue {
+  background-color: #646cff;
+  color: white;
+  padding: 0.7em 2.2em;
+  font-size: 1.05em;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.upload-continue:hover {
+  background-color: #535bf2;
+}
+
+.upload-back {
+  background-color: #4a4a4a;
+  color: rgba(255, 255, 255, 0.87);
+  padding: 0.7em 2.2em;
+  font-size: 1.05em;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.upload-back:hover {
+  background-color: #5a5a5a;
 }
 
 /* Button Container */
