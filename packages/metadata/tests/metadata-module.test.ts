@@ -207,6 +207,124 @@ describe("variableMeasured completeness for CSV input", () => {
   });
 });
 
+describe("JsPsychMetadata field operations", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  test("#containsMetadataField returns true for a field set in the constructor", () => {
+    expect(jsPsychMetadata.containsMetadataField("name")).toBe(true);
+  });
+
+  test("#containsMetadataField returns false for a field that was never set", () => {
+    expect(jsPsychMetadata.containsMetadataField("nonexistent")).toBe(false);
+  });
+
+  test("#deleteMetadataField removes a field that was set", () => {
+    jsPsychMetadata.setMetadataField("citations", 42);
+    expect(jsPsychMetadata.containsMetadataField("citations")).toBe(true);
+    jsPsychMetadata.deleteMetadataField("citations");
+    expect(jsPsychMetadata.containsMetadataField("citations")).toBe(false);
+  });
+
+  test("#getUserMetadataFields returns user-set fields and excludes schema/type/author/variableMeasured", () => {
+    jsPsychMetadata.setMetadataField("name", "My Study");
+    jsPsychMetadata.setMetadataField("description", "A test study");
+
+    const fields = jsPsychMetadata.getUserMetadataFields();
+
+    expect(fields["name"]).toBe("My Study");
+    expect(fields["description"]).toBe("A test study");
+    expect(fields["schemaVersion"]).toBeUndefined();
+    expect(fields["@type"]).toBeUndefined();
+    expect(fields["@context"]).toBeUndefined();
+    expect(fields["author"]).toBeUndefined();
+    expect(fields["variableMeasured"]).toBeUndefined();
+  });
+
+  test("#containsVariable returns true for a default variable and false for one never set", () => {
+    expect(jsPsychMetadata.containsVariable("trial_type")).toBe(true);
+    expect(jsPsychMetadata.containsVariable("custom_col")).toBe(false);
+    jsPsychMetadata.setVariable({ name: "custom_col", value: "string" });
+    expect(jsPsychMetadata.containsVariable("custom_col")).toBe(true);
+  });
+});
+
+describe("JsPsychMetadata#loadMetadata", () => {
+  test("round-trips top-level metadata fields", () => {
+    const source = new JsPsychMetadata();
+    source.setMetadataField("name", "Flanker Study");
+    source.setMetadataField("description", "A test of selective attention");
+
+    const loaded = new JsPsychMetadata();
+    loaded.loadMetadata(JSON.stringify(source.getMetadata()));
+
+    expect(loaded.getMetadataField("name")).toBe("Flanker Study");
+    expect(loaded.getMetadataField("description")).toBe("A test of selective attention");
+  });
+
+  test("round-trips authors", () => {
+    const source = new JsPsychMetadata();
+    source.setAuthor({ name: "Hannah", url: "https://example.com" });
+
+    const loaded = new JsPsychMetadata();
+    loaded.loadMetadata(JSON.stringify(source.getMetadata()));
+
+    expect(loaded.getAuthor("Hannah")).toStrictEqual({ name: "Hannah", url: "https://example.com" });
+  });
+
+  test("round-trips variables", () => {
+    const source = new JsPsychMetadata();
+    source.setVariable({ name: "congruency", value: "string", description: "Congruent or incongruent trial" });
+
+    const loaded = new JsPsychMetadata();
+    loaded.loadMetadata(JSON.stringify(source.getMetadata()));
+
+    expect(loaded.containsVariable("congruency")).toBe(true);
+    expect(loaded.getVariable("congruency")).toMatchObject({ name: "congruency", description: "Congruent or incongruent trial" });
+  });
+});
+
+describe("JsPsychMetadata#updateMetadata", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  test("sets arbitrary top-level fields", async () => {
+    await jsPsychMetadata.updateMetadata({ name: "My Study", description: "Updated" });
+    expect(jsPsychMetadata.getMetadataField("name")).toBe("My Study");
+    expect(jsPsychMetadata.getMetadataField("description")).toBe("Updated");
+  });
+
+  test("sets authors via the author key", async () => {
+    await jsPsychMetadata.updateMetadata({ author: { researcher: { name: "Hannah", affiliation: "UW" } } });
+    expect(jsPsychMetadata.getAuthor("Hannah")).toMatchObject({ name: "Hannah", affiliation: "UW" });
+  });
+
+  test("updates an existing variable's fields via the variables key", async () => {
+    jsPsychMetadata.setVariable({ name: "correct", value: "string", description: "unknown" });
+
+    await jsPsychMetadata.updateMetadata({ variables: { correct: { value: "boolean" } } });
+
+    const variable = jsPsychMetadata.getVariable("correct") as any;
+    expect(variable.value).toBe("boolean");
+  });
+
+  test("warns and skips when the variables key targets a variable that does not exist", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await jsPsychMetadata.updateMetadata({ variables: { nonexistent: { description: "ghost" } } });
+      expect(warn).toHaveBeenCalledWith("Metadata does not contain variable:", "nonexistent");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
 // missing displaying data modules tests
 describe("JsPsychMetadata", () => {
   let jsPsychMetadata: JsPsychMetadata;
@@ -283,6 +401,57 @@ describe("JsPsychMetadata", () => {
     jsPsychMetadata.updateVariable("trial_type", "levels", 100);
     trialType["levels"] = [100];
     expect(jsPsychMetadata.getVariable("trial_type")).toStrictEqual(trialType);
+  });
+
+  test("#getAuthorList returns empty array when no authors have been added", () => {
+    expect(jsPsychMetadata.getAuthorList()).toStrictEqual([]);
+  });
+
+  test("#getAuthorList returns all added authors", () => {
+    jsPsychMetadata.setAuthor({ name: "Alice" });
+    jsPsychMetadata.setAuthor({ name: "Bob", affiliation: "UW" });
+
+    const list = jsPsychMetadata.getAuthorList();
+    expect(list).toHaveLength(2);
+    expect(list).toContainEqual("Alice");
+    expect(list).toContainEqual({ name: "Bob", affiliation: "UW" });
+  });
+
+  test("#deleteAuthor removes the named author and leaves others intact", () => {
+    jsPsychMetadata.setAuthor({ name: "Alice" });
+    jsPsychMetadata.setAuthor({ name: "Bob" });
+
+    jsPsychMetadata.deleteAuthor("Alice");
+
+    const list = jsPsychMetadata.getAuthorList();
+    expect(list).toHaveLength(1);
+    expect(list).toContainEqual("Bob");
+    expect(list.some((a) => a === "Alice" || (typeof a === "object" && a.name === "Alice"))).toBe(false);
+  });
+
+  test("#getVariableNames returns the names of all current variables", () => {
+    const names = jsPsychMetadata.getVariableNames();
+    expect(names).toContain("trial_type");
+    expect(names).toContain("trial_index");
+    expect(names).toContain("time_elapsed");
+
+    jsPsychMetadata.setVariable({ name: "custom_score", value: "number" });
+    expect(jsPsychMetadata.getVariableNames()).toContain("custom_score");
+
+    jsPsychMetadata.deleteVariable("custom_score");
+    expect(jsPsychMetadata.getVariableNames()).not.toContain("custom_score");
+  });
+
+  test("#getVariableList returns all variable objects including defaults", () => {
+    const list = jsPsychMetadata.getVariableList();
+    const names = list.map((v: any) => v.name);
+    expect(names).toContain("trial_type");
+    expect(names).toContain("trial_index");
+    expect(names).toContain("time_elapsed");
+
+    jsPsychMetadata.setVariable({ name: "rt", value: "number", description: "Reaction time in ms" });
+    const updated = jsPsychMetadata.getVariableList();
+    expect(updated.some((v: any) => v.name === "rt" && v.value === "number")).toBe(true);
   });
 });
 
