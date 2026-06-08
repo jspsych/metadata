@@ -548,3 +548,120 @@ describe("generate() arrayJoinKeys option", () => {
     warnSpy.mockRestore();
   });
 });
+
+// ─── plain-object sidecar extraction (Option C, recursive) ───────────────────
+// A plain (non-array) object column is expanded into dotted variableMeasured names.
+// getExtractedObjects() returns one row per trial whose columns are exactly those dotted
+// descendant names, so the CLI can write a sidecar CSV that makes them real columns.
+// Reuses the same arrayJoinKeys as array extraction — no object-specific join logic.
+
+describe("plain-object column extraction (getExtractedObjects)", () => {
+  const mockFetch3 = jest.fn().mockResolvedValue({ text: () => Promise.resolve("") });
+  beforeEach(() => { (global as any).fetch = mockFetch3; mockFetch3.mockClear(); });
+
+  const surveyData = JSON.stringify([
+    { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, response: { cb_1: "7", typed_sequence: "green" } },
+    { trial_type: "mock-plugin", trial_index: 1, time_elapsed: 200, response: { cb_1: "3", typed_sequence: "blue" } },
+  ]);
+
+  test("flat object: one row per trial, no element_index, join key + dotted columns", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(surveyData);
+
+    const rows = meta.getExtractedObjects().get("response")!;
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({ trial_index: 0, "response.cb_1": "7", "response.typed_sequence": "green" });
+    expect(rows[1]).toEqual({ trial_index: 1, "response.cb_1": "3", "response.typed_sequence": "blue" });
+    expect(rows[0]).not.toHaveProperty("element_index");
+  });
+
+  test("VALIDATION INVARIANT: every dotted response.* variable has a matching sidecar column", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(surveyData);
+
+    const dotted = meta.getVariableNames().filter(n => n.startsWith("response."));
+    const rows = meta.getExtractedObjects().get("response")!;
+    const joinKeys = meta.getArrayJoinKeys();
+    const cols = new Set(rows.flatMap(r => Object.keys(r)).filter(c => !joinKeys.includes(c)));
+    for (const name of dotted) expect(cols.has(name)).toBe(true); // no phantom variableMeasured names
+  });
+
+  test("CSV input: JSON-string object cells are extracted the same way", async () => {
+    const csv = ["trial_type,trial_index,time_elapsed,response",
+      'mock-plugin,0,100,"{""cb_1"":""7""}"'].join("\n");
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+    expect(meta.getExtractedObjects().get("response")![0]).toEqual({ trial_index: "0", "response.cb_1": "7" });
+  });
+
+  test("JOIN KEYS: reuses configurable arrayJoinKeys — no object-specific logic", async () => {
+    // trial_index repeats across subjects; subject_id disambiguates.
+    const multi = JSON.stringify([
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, subject_id: "s1", response: { cb_1: "a" } },
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, subject_id: "s2", response: { cb_1: "b" } },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(multi, {}, "json", { arrayJoinKeys: ["subject_id", "trial_index"] });
+
+    const rows = meta.getExtractedObjects().get("response")!;
+    expect(rows[0]).toEqual({ subject_id: "s1", trial_index: 0, "response.cb_1": "a" });
+    expect(rows[1]).toEqual({ subject_id: "s2", trial_index: 0, "response.cb_1": "b" });
+    expect(new Set(rows.map(r => `${r.subject_id}\0${r.trial_index}`)).size).toBe(rows.length);
+  });
+
+  test("deep nesting: leaves AND intermediate object nodes become columns matching variableMeasured", async () => {
+    const data = JSON.stringify([
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100,
+        response: { Q0: { score: 4, meta: { valid: true } }, flat: 5 } },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const row = meta.getExtractedObjects().get("response")![0];
+    expect(row).toEqual({
+      trial_index: 0,
+      "response.Q0": { score: 4, meta: { valid: true } },     // intermediate node (JSON at write time)
+      "response.Q0.score": 4,
+      "response.Q0.meta": { valid: true },                     // intermediate node
+      "response.Q0.meta.valid": true,
+      "response.flat": 5,
+    });
+    const cols = new Set(Object.keys(row));
+    for (const n of meta.getVariableNames().filter(n => n.startsWith("response."))) expect(cols.has(n)).toBe(true);
+  });
+
+  test("nested array inside object: array parent is a sidecar column AND extracted element-wise", async () => {
+    const data = JSON.stringify([
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, response: { samples: [{ x: 1 }, { x: 2 }] } },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    // response.samples is a column in the object sidecar (so it isn't a phantom variableMeasured name)…
+    expect(meta.getExtractedObjects().get("response")![0]).toEqual({ trial_index: 0, "response.samples": [{ x: 1 }, { x: 2 }] });
+    // …and the nested array is still extracted element-wise by the existing array machinery.
+    expect(meta.getExtractedArrays().has("response.samples")).toBe(true);
+  });
+
+  test("extractedObjects resets between generate() calls", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(surveyData);
+    expect(meta.getExtractedObjects().get("response")).toHaveLength(2);
+
+    await meta.generate(JSON.stringify([
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, response: { cb_1: "x" } },
+    ]));
+    expect(meta.getExtractedObjects().get("response")).toHaveLength(1);
+  });
+
+  test("top-level array column goes to extractedArrays, not extractedObjects", async () => {
+    const data = JSON.stringify([
+      { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100, mouse_tracking_data: [{ x: 1 }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    expect(meta.getExtractedObjects().has("mouse_tracking_data")).toBe(false);
+    expect(meta.getExtractedArrays().has("mouse_tracking_data")).toBe(true);
+  });
+});
