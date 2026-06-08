@@ -76,7 +76,7 @@ export class VariablesMap {
         default: "unknown",
         jsPsych: "The version(s) of the extension(s) used in the trial.",
       },
-      value: "numeric",
+      value: "number",
     };
 
     this.setVariable(extension_version_var);
@@ -109,7 +109,7 @@ export class VariablesMap {
         default: "unknown",
         jsPsych: "The index of the current trial across the whole experiment.",
       },
-      value: "numeric",
+      value: "number",
     };
     this.setVariable(trial_index_var);
 
@@ -121,7 +121,7 @@ export class VariablesMap {
         jsPsych:
           "The number of milliseconds between the start of the experiment and when the trial ended.",
       },
-      value: "numeric",
+      value: "number",
     };
     this.setVariable(time_elapsed_var);
   }
