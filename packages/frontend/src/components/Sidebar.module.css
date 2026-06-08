@@ -1,0 +1,199 @@
+.sidebar {
+  width: 210px;
+  min-width: 210px;
+  background-color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0 1rem;
+  border-right: 1px solid #2e2e2e;
+}
+
+.appTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 0 1.25rem 1.5rem;
+}
+
+.stepList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 1.25rem;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.88rem;
+  font-weight: 400;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.step:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.92);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.active {
+  border-left-color: #646cff;
+  background-color: rgba(100, 108, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+
+.completed {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.locked {
+  color: rgba(255, 255, 255, 0.42);
+  cursor: not-allowed;
+}
+
+.indicator {
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #4caf50;
+}
+
+.dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.active .dot {
+  background-color: #646cff;
+}
+
+.locked .dot {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.footer {
+  padding: 1rem 1.25rem 0;
+  border-top: 1px solid #2e2e2e;
+  margin-top: 0.5rem;
+}
+
+.startOver {
+  width: 100%;
+  background: none;
+  border: 1px solid rgba(255, 100, 100, 0.35);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  color: rgba(255, 160, 160, 0.85);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.startOver:hover {
+  color: #ff8080;
+  border-color: rgba(255, 100, 100, 0.65);
+  background-color: rgba(255, 80, 80, 0.08);
+}
+
+/* Start over confirmation modal */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dialogText {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.5;
+}
+
+.dialogButtons {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.confirmYes {
+  flex: 1;
+  background-color: rgba(255, 80, 80, 0.15);
+  border: 1px solid rgba(255, 100, 100, 0.5);
+  border-radius: 7px;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  color: #ff8080;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s;
+}
+
+.confirmYes:hover {
+  background-color: rgba(255, 80, 80, 0.28);
+  border-color: rgba(255, 100, 100, 0.5);
+}
+
+.confirmCancel {
+  flex: 1;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.confirmCancel:hover {
+  border-color: rgba(255, 255, 255, 0.38);
+  color: rgba(255, 255, 255, 0.92);
+}

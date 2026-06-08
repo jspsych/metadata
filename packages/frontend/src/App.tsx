@@ -1,44 +1,35 @@
-import Upload from "./pages/Upload.tsx";
-import JsPsychMetadata from '@jspsych/metadata';
-import ViewOptions from "./pages/ViewOptions.tsx";
 import { useState } from 'react';
-import './App.css'
+import JsPsychMetadata from '@jspsych/metadata';
+import Landing from './pages/Landing';
+import AppShell from './components/AppShell';
 
+type AppPage = 'landing' | 'main';
 
 function App() {
-  const [jsPsychMetadata] = useState(new JsPsychMetadata()); // metadata objct
-  const [ metadataString, setMetadataString ] = useState(JSON.stringify(jsPsychMetadata.getMetadata(), null, 2)); // this is the metadata string that willl keep track of metadata
-  const [ page, setPage ] = useState('upload'); // page logic, change back to upload when done working with preview page
-  // const [ fileList, setFileList ] = useState<File[]>([]); -> this allows to download and save
+  const [page, setPage] = useState<AppPage>('landing');
+  const [jsPsychMetadata, setJsPsychMetadata] = useState(() => new JsPsychMetadata());
+  const [existingMetadataFile, setExistingMetadataFile] = useState<File | undefined>();
 
-  // whenever updates will just call pretty version 
-  const updateMetadataString = () => { 
-    setMetadataString(JSON.stringify(jsPsychMetadata.getMetadata(), null, 2));
-  }
-
-  // logic for rendering pages
-  const renderPage = () => {
-    switch (page) {
-      case 'upload':
-        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage} updateMetadataString={updateMetadataString} />; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
-      case 'upload-data':
-        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage} updateMetadataString={updateMetadataString} startScreen={"data"}/>; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
-      case 'viewOptions':
-        return <ViewOptions jsPsychMetadata={jsPsychMetadata} metadataString={metadataString} updateMetadataString={updateMetadataString} setPage={setPage}/>; // NEED TO PASS SETPAGE ELEMENT
-      default:
-        console.warn("uncaught page render:", page);
-        return <Upload jsPsychMetadata={jsPsychMetadata} setPage={setPage} updateMetadataString={updateMetadataString} />; // NEED TO PASS IN UPDATE METADATA SO THAT WILL UPDATE STRING WHEN LOADING
-    }
-
+  const handleStart = (isNew: boolean, file?: File) => {
+    if (!isNew && file) setExistingMetadataFile(file);
+    setPage('main');
   };
 
+  const handleStartOver = () => {
+    setJsPsychMetadata(new JsPsychMetadata());
+    setExistingMetadataFile(undefined);
+    setPage('landing');
+  };
+
+  if (page === 'landing') return <Landing onStart={handleStart} />;
+
   return (
-    <>
-      <div className="appPage">
-        {renderPage()}
-      </div>
-    </>
-  )
+    <AppShell
+      jsPsychMetadata={jsPsychMetadata}
+      existingMetadataFile={existingMetadataFile}
+      onStartOver={handleStartOver}
+    />
+  );
 }
 
 export default App;
