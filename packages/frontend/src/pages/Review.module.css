@@ -38,16 +38,6 @@
   margin-bottom: 1.25rem;
 }
 
-.json {
-  margin: 0;
-  padding: 1rem 1.1rem;
-  font-family: 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 0.82rem;
-  line-height: 1.6;
-  color: var(--c-ink-2);
-  white-space: pre;
-}
-
 /* Actions */
 
 .actions {

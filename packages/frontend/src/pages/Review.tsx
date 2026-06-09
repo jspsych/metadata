@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import JSZip from 'jszip';
 import JsPsychMetadata from '@jspsych/metadata';
+import JsonViewer from '../components/JsonViewer';
 import styles from './Review.module.css';
 
 interface ReviewProps {
@@ -33,7 +34,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [zipped, setZipped] = useState(false);
 
   // Review is unmounted whenever the user navigates away, so each visit gets a fresh snapshot.
-  const metadataJson = useMemo(() => JSON.stringify(jsPsychMetadata.getMetadata(), null, 2), []);
+  const metadataObj = useMemo(() => jsPsychMetadata.getMetadata(), []);
+  const metadataJson = useMemo(() => JSON.stringify(metadataObj, null, 2), [metadataObj]);
 
   const projectName = useMemo(() => {
     const name = jsPsychMetadata.getMetadataField('name') as string | undefined;
@@ -99,7 +101,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
       </p>
 
       <div className={styles.jsonBlock}>
-        <pre className={styles.json}>{metadataJson}</pre>
+        <JsonViewer data={metadataObj} />
       </div>
 
       <div className={styles.actions}>

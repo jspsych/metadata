@@ -92,6 +92,8 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
     const hasPluginDesc = (d === undefined || d === 'unknown') && hints(v.description).length > 0;
     const inUnknownSection = initialUnknowns.has(v.name);
 
+    const hasDetails = true; // type selector always available; levels/range shown when present
+
     return (
       <li
         key={v.name}
@@ -100,6 +102,7 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
         <button
           className={styles.rowHeader}
           onClick={() => setExpanded(prev => prev === v.name ? null : v.name)}
+          aria-expanded={isOpen}
         >
           <span className={styles.rowName}>{v.name}</span>
           <span className={styles.rowRight}>
@@ -107,31 +110,32 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
               {v.value || 'unknown'}
             </span>
             {v.needsAttention
-              ? <span className={styles.warnBadge}>⚠ needs description</span>
+              ? <span className={styles.warnBadge}>⚠ no description</span>
               : inUnknownSection && <span className={styles.doneBadge}>✓ filled in</span>
             }
-            <span className={styles.chevron}>{isOpen ? '▲' : '▼'}</span>
+            {hasDetails && (
+              <span className={styles.chevron}>{isOpen ? '▲' : '▼'}</span>
+            )}
           </span>
         </button>
 
-        {isOpen && (
-          <div className={styles.rowBody}>
-            <div className={styles.field}>
-              <label className={styles.label}>Description</label>
-              <textarea
-                className={styles.textarea}
-                value={descValue}
-                placeholder="Describe what this variable measures…"
-                rows={3}
-                onChange={e => handleDescChange(v.name, e.target.value)}
-              />
-              {hasPluginDesc && (
-                <p className={styles.descCaption}>
-                  From plugin documentation — edit to save a custom description
-                </p>
-              )}
-            </div>
+        <div className={styles.inlineDesc}>
+          <textarea
+            className={styles.textarea}
+            value={descValue}
+            placeholder="Describe what this variable measures…"
+            rows={2}
+            onChange={e => handleDescChange(v.name, e.target.value)}
+          />
+          {hasPluginDesc && (
+            <p className={styles.descCaption}>
+              From plugin documentation — edit to save a custom description
+            </p>
+          )}
+        </div>
 
+        {isOpen && hasDetails && (
+          <div className={styles.rowBody}>
             <div className={styles.field}>
               <label className={styles.label}>Type</label>
               <select
@@ -180,7 +184,10 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
       {needDescSection.length > 0 && (
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>Need descriptions</span>
+            <div>
+              <span className={styles.sectionTitle}>Missing descriptions</span>
+              <span className={styles.sectionOptional}> — optional</span>
+            </div>
             <span className={styles.sectionProgress}>
               {needDescSection.length - remainingCount} / {needDescSection.length} filled in
             </span>

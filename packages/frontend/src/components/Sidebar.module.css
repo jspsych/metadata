@@ -107,6 +107,22 @@
   padding: 1rem 1.25rem 0;
   border-top: 1px solid var(--c-border);
   margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.psychdsLink {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--c-ink-3);
+  text-decoration: none;
+  padding: 0.3rem 0;
+  transition: color 0.15s;
+}
+
+.psychdsLink:hover {
+  color: var(--c-forest-bright);
 }
 
 .startOver {

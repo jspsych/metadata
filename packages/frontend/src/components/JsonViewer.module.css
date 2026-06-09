@@ -1,0 +1,74 @@
+.viewer {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  overflow: auto;
+}
+
+.node {
+  display: block;
+}
+
+.line {
+  display: block;
+  word-break: break-word;
+}
+
+.children {
+  padding-left: 1.5rem;
+}
+
+/* Syntax token colors — light mode */
+.key   { color: #005c31; }
+.str   { color: #0d6b7a; }
+.num   { color: #b45309; }
+.bool  { color: #6d28d9; }
+.null  { color: #9ca3af; font-style: italic; }
+.brace { color: #374151; }
+.colon { color: #6b7280; }
+.punct { color: #9ca3af; }
+
+.summary {
+  margin: 0 0.4em;
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.78rem;
+}
+
+.toggle {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0.2em 0 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: inherit;
+  vertical-align: baseline;
+  transition: color 0.1s;
+}
+
+.toggle:hover {
+  color: #13b24b;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Dark mode token overrides */
+@media (prefers-color-scheme: dark) {
+  .key   { color: #4ade80; }
+  .str   { color: #67e8f9; }
+  .num   { color: #fbbf24; }
+  .bool  { color: #c084fc; }
+  .null  { color: #6b7280; }
+  .brace { color: #d1d5db; }
+  .colon { color: #9ca3af; }
+  .punct { color: #6b7280; }
+  .summary { color: #6b7280; }
+  .toggle { color: #6b7280; }
+}

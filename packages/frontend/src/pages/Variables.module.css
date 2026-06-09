@@ -53,6 +53,12 @@
   color: var(--c-ink-3);
 }
 
+.sectionOptional {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--c-ink-4);
+}
+
 /* Variable list */
 
 .list {
@@ -147,7 +153,17 @@
   text-align: center;
 }
 
-/* Expanded body */
+/* Always-visible description area */
+
+.inlineDesc {
+  padding: 0.45rem 0.9rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid var(--c-border-sub);
+}
+
+/* Expanded body (type, levels, range) */
 
 .rowBody {
   padding: 0 0.9rem 1rem 1rem;

@@ -66,6 +66,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       </ul>
 
       <div className={styles.footer}>
+        <a
+          className={styles.psychdsLink}
+          href="https://psychds-docs.readthedocs.io/en/latest/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          What is Psych-DS? ↗
+        </a>
         <button className={styles.startOver} onClick={() => setConfirming(true)}>
           ← Start over
         </button>
