@@ -58,7 +58,7 @@
 
 .step:hover:not(:disabled) {
   color: var(--c-ink);
-  background-color: rgba(19, 178, 75, 0.08);
+  background-color: var(--c-bg-card-hover);
 }
 
 .active {
@@ -69,7 +69,7 @@
 }
 
 .completed {
-  color: var(--c-forest-bright);
+  color: var(--c-ink-2);
 }
 
 .locked {

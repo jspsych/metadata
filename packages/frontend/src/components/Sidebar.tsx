@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StepId } from './AppShell';
 import styles from './Sidebar.module.css';
-import logo from '../assets/jspsychlogo2.png';
+import logo from '../assets/jspsych-logo-no-text.svg';
 
 interface Step {
   id: StepId;

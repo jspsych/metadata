@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import styles from './Landing.module.css';
+import logo from '../assets/jspsych-logo-no-text.svg';
 
 interface LandingProps {
   onStart: (isNew: boolean, file?: File) => void;
@@ -17,6 +18,7 @@ const Landing: React.FC<LandingProps> = ({ onStart }) => {
   return (
     <div className={styles.landing}>
       <div className={styles.header}>
+        <img src={logo} alt="jsPsych" className={styles.logo} />
         <h1 className={styles.title}>jsPsych Metadata Generator</h1>
         <p className={styles.description}>
           Generate Psych-DS compliant metadata for your jsPsych experiments.

@@ -61,40 +61,75 @@ html, body, #root {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --c-bg: #141918;
-    --c-bg-sidebar: #0f1512;
-    --c-bg-raised: #1d2420;
-    --c-bg-input: #161d1a;
-    --c-bg-card-hover: oklch(16% 0.02 155);
+  :root:not([data-theme="light"]) {
+    --c-bg: #232b27;
+    --c-bg-sidebar: #1c2520;
+    --c-bg-raised: #2b3430;
+    --c-bg-input: #212a25;
+    --c-bg-card-hover: #2e3a35;
 
-    --c-ink: oklch(93% 0.008 155);
-    --c-ink-2: oklch(80% 0.012 155);
-    --c-ink-3: oklch(63% 0.015 155);
-    --c-ink-4: oklch(48% 0.01 155);
+    --c-ink: oklch(90% 0.008 155);
+    --c-ink-2: oklch(76% 0.012 155);
+    --c-ink-3: oklch(60% 0.010 155);
+    --c-ink-4: oklch(44% 0.01 155);
 
-    --c-border: #2c3830;
-    --c-border-sub: #1f2b27;
+    --c-border: #3a4641;
+    --c-border-sub: #2e3a34;
 
     --c-accent: #13b24b;
     --c-amber-text: #f78f1e;
     --c-danger: oklch(68% 0.19 27);
 
-    --c-badge-bg: rgba(0, 103, 56, 0.15);
+    --c-badge-bg: rgba(0, 103, 56, 0.18);
     --c-badge-text: #13b24b;
-    --c-badge-border: rgba(0, 103, 56, 0.3);
+    --c-badge-border: rgba(0, 103, 56, 0.35);
 
-    --c-success-bg: rgba(19, 178, 75, 0.09);
-    --c-success-border: rgba(19, 178, 75, 0.25);
+    --c-success-bg: rgba(19, 178, 75, 0.10);
+    --c-success-border: rgba(19, 178, 75, 0.28);
 
     --c-warn-text: oklch(72% 0.14 60);
-    --c-warn-bg: oklch(18% 0.04 70);
-    --c-warn-border: oklch(35% 0.08 70);
+    --c-warn-bg: oklch(22% 0.04 70);
+    --c-warn-border: oklch(38% 0.08 70);
     --c-warn-icon: #f78f1e;
 
-    --c-danger-bg: rgba(217, 48, 37, 0.1);
-    --c-danger-border: rgba(217, 48, 37, 0.35);
+    --c-danger-bg: rgba(217, 48, 37, 0.12);
+    --c-danger-border: rgba(217, 48, 37, 0.38);
   }
+}
+
+:root[data-theme="dark"] {
+  --c-bg: #232b27;
+  --c-bg-sidebar: #1c2520;
+  --c-bg-raised: #2b3430;
+  --c-bg-input: #212a25;
+  --c-bg-card-hover: #2e3a35;
+
+  --c-ink: oklch(90% 0.008 155);
+  --c-ink-2: oklch(76% 0.012 155);
+  --c-ink-3: oklch(60% 0.010 155);
+  --c-ink-4: oklch(44% 0.01 155);
+
+  --c-border: #3a4641;
+  --c-border-sub: #2e3a34;
+
+  --c-accent: #13b24b;
+  --c-amber-text: #f78f1e;
+  --c-danger: oklch(68% 0.19 27);
+
+  --c-badge-bg: rgba(0, 103, 56, 0.18);
+  --c-badge-text: #13b24b;
+  --c-badge-border: rgba(0, 103, 56, 0.35);
+
+  --c-success-bg: rgba(19, 178, 75, 0.10);
+  --c-success-border: rgba(19, 178, 75, 0.28);
+
+  --c-warn-text: oklch(72% 0.14 60);
+  --c-warn-bg: oklch(22% 0.04 70);
+  --c-warn-border: oklch(38% 0.08 70);
+  --c-warn-icon: #f78f1e;
+
+  --c-danger-bg: rgba(217, 48, 37, 0.12);
+  --c-danger-border: rgba(217, 48, 37, 0.38);
 }
 
 body {
@@ -115,9 +150,34 @@ a:hover {
   text-decoration: underline;
 }
 
+.themeToggle {
+  position: fixed;
+  top: 0.875rem;
+  right: 1.25rem;
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 20px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  font-family: 'IBM Plex Sans', system-ui, Helvetica, Arial, sans-serif;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  z-index: 50;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.themeToggle:hover {
+  color: var(--c-ink);
+  border-color: var(--c-ink-3);
+  background-color: var(--c-bg-card-hover);
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--c-amber) transparent;
+  scrollbar-color: var(--c-ink-4) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -130,10 +190,10 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--c-amber);
+  background-color: var(--c-ink-4);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-ink-3);
 }

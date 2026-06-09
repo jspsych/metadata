@@ -13,6 +13,12 @@
   margin-bottom: 2.5rem;
 }
 
+.logo {
+  height: 56px;
+  width: auto;
+  margin-bottom: 1rem;
+}
+
 .title {
   font-size: 2.2rem;
   font-weight: 600;
