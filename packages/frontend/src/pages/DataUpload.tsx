@@ -139,7 +139,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
     }
     setFileTexts(textMap);
 
-    // Pre-flight: check join key uniqueness across all parseable JSON data files
+    // Pre-flight: check join key uniqueness. Only JSON files are checked because
+    // analyzeJoinKeys expects a parsed array of objects; CSV parsing would require
+    // an extra parse step and CSV experiments are typically single-participant files
+    // where trial_index is already unique.
     for (const [name, { content, type }] of textMap) {
       if (type !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
@@ -370,7 +373,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
         <>
           <ul className={styles.fileList}>
             {files.map(f => (
-              <li key={f.name} className={styles.fileItem}>
+              <li key={f.webkitRelativePath || f.name} className={styles.fileItem}>
                 <span className={styles.iconPending}>·</span>
                 <span>{f.webkitRelativePath || f.name}</span>
               </li>

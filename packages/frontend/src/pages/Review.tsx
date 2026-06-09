@@ -32,6 +32,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
 
+  // Review is unmounted whenever the user navigates away, so each visit gets a fresh snapshot.
   const metadataJson = useMemo(() => JSON.stringify(jsPsychMetadata.getMetadata(), null, 2), []);
 
   const projectName = useMemo(() => {

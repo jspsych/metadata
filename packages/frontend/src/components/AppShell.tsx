@@ -55,6 +55,10 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
   const canNavigateTo = (stepId: StepId): boolean => {
     const idx = STEPS.findIndex(s => s.id === stepId);
     if (idx === 0) return true;
+    // Each step requires the preceding step to be complete. For existing projects, Data is
+    // pre-completed so it appears unlocked — but it still requires ProjectInfo first because
+    // ProjectInfo (idx=0) is the predecessor of Data (idx=1). The user must Continue through
+    // ProjectInfo before Data or any later step becomes navigable.
     return completedSteps.has(STEPS[idx - 1].id);
   };
 

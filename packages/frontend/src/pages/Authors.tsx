@@ -31,7 +31,10 @@ function buildFields(row: AuthorRow, nameOverride?: string): AuthorFields {
   if (row.givenName.trim()) fields.givenName = row.givenName.trim();
   if (row.familyName.trim()) fields.familyName = row.familyName.trim();
   if (row.authorType.trim()) fields['@type'] = row.authorType.trim();
-  if (row.orcidSuffix.trim()) fields.identifier = ORCID_PREFIX + row.orcidSuffix.trim();
+  // Only write identifier when the ORCID is fully valid — prevents partial keystrokes from
+  // being committed to metadata while the user is still typing.
+  if (row.orcidSuffix.trim() && isValidOrcid(row.orcidSuffix.trim()))
+    fields.identifier = ORCID_PREFIX + row.orcidSuffix.trim();
   return fields;
 }
 
