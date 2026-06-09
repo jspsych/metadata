@@ -63,6 +63,11 @@ export default class JsPsychMetadata {
   private verbose: boolean = false;
 
   private extractedArrays: Map<string, Array<Record<string, any>>> = new Map();
+  // Plain (non-array) object columns expanded by expandObjectFields. One row per trial,
+  // keyed by the same arrayJoinKeys as extractedArrays, with a column for every dotted
+  // descendant variable (leaf scalars, intermediate object nodes, and nested-array parents).
+  // The CLI writes these as separate Psych-DS CSVs so those dotted names map to real columns.
+  private extractedObjects: Map<string, Array<Record<string, any>>> = new Map();
   private arrayJoinKeys: string[] = ['trial_index'];
   private mixedColumns = new Set<string>();
 
@@ -317,6 +322,17 @@ export default class JsPsychMetadata {
   }
 
   /**
+   * Returns accumulated plain-object-column data keyed by the top-level column name.
+   * Each entry is one row per trial: the join key columns plus a column for every dotted
+   * descendant variable expanded from that object (matching the names in variableMeasured).
+   * Used by the CLI to write a separate Psych-DS CSV per object column, so those dotted
+   * sub-variables resolve to real columns. No element_index (one row per trial, not per element).
+   */
+  getExtractedObjects(): Map<string, Array<Record<string, any>>> {
+    return this.extractedObjects;
+  }
+
+  /**
    * Returns the join key columns used in the most recent generate() call.
    * The CLI uses this to order columns correctly in extracted array CSVs.
    */
@@ -421,6 +437,7 @@ export default class JsPsychMetadata {
    */
   async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean } = {}) {
     this.extractedArrays = new Map();
+    this.extractedObjects = new Map();
     this.arrayJoinKeys = options.arrayJoinKeys ?? ['trial_index'];
 
     var parsed_data;
@@ -527,7 +544,17 @@ export default class JsPsychMetadata {
         this.updateFields(variable, value, type);
       } else {
         if (type === "object" && value !== null && !Array.isArray(value)) {
-          await this.expandObjectFields(variable, value, pluginType, version, joinValues);
+          // Accumulate one row per trial for a separate CSV so every dotted sub-variable that
+          // expandObjectFields registers resolves to a real column (Psych-DS requires every
+          // variableMeasured name to be a CSV column). The row is threaded through the recursion
+          // so deep descendants are captured under their full dotted names; reuses the same
+          // configurable arrayJoinKeys — no object-specific join-key logic. The parent column
+          // itself already exists in the main CSV, so only descendants go in the sidecar.
+          const objectRow: Record<string, any> = { ...joinValues };
+          await this.expandObjectFields(variable, value, pluginType, version, joinValues, objectRow);
+          const existingObjects = this.extractedObjects.get(variable) ?? [];
+          existingObjects.push(objectRow);
+          this.extractedObjects.set(variable, existingObjects);
         } else if (type === "array" || (type === "object" && Array.isArray(value))) {
           // Register parent via generateMetadata to get the plugin description, then
           // override the stored type to "array" (generateMetadata would infer "object"
@@ -742,7 +769,7 @@ export default class JsPsychMetadata {
    * @param joinValues - The current row's join key values, prepended to every
    *   extracted nested-array row so the sub-table can be rejoined to the main data.
    */
-  private async expandObjectFields(parentName: string, obj: Record<string, any>, pluginType: string, version: string, joinValues: Record<string, any>) {
+  private async expandObjectFields(parentName: string, obj: Record<string, any>, pluginType: string, version: string, joinValues: Record<string, any>, row?: Record<string, any>) {
     // Register the parent through the normal path so the plugin description is fetched.
     // typeof obj === "object", so generateMetadata stores value: "object" and updateFields
     // skips levels automatically — no override needed.
@@ -751,9 +778,14 @@ export default class JsPsychMetadata {
       const childName = `${parentName}.${key}`;
       const childValue = obj[key];
 
+      // Record every descendant under its dotted name in the object's sidecar row, so each
+      // registered variableMeasured name (scalar leaf, intermediate object node, or nested-array
+      // parent) has a matching column. Object/array values are JSON-stringified at CSV-write time.
+      if (row) row[childName] = childValue;
+
       if (childValue !== null && typeof childValue === "object" && !Array.isArray(childValue)) {
-        // Nested plain object — recurse so its keys are expanded too.
-        await this.expandObjectFields(childName, childValue, pluginType, version, joinValues);
+        // Nested plain object — recurse so its keys are expanded too (into the same sidecar row).
+        await this.expandObjectFields(childName, childValue, pluginType, version, joinValues, row);
       } else if (Array.isArray(childValue)) {
         // Nested array — register the description, override the inferred "object" type,
         // and extract any object elements into a separate CSV.
