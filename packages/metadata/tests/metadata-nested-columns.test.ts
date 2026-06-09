@@ -191,8 +191,8 @@ describe("Nested JSON column handling", () => {
       expect(extracted.has("response.samples")).toBe(true);
       const rows = extracted.get("response.samples")!;
       expect(rows).toHaveLength(2);
-      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 1, y: 2 });
-      expect(rows[1]).toMatchObject({ trial_index: 0, element_index: 1, x: 3, y: 4 });
+      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, "response.samples.x": 1, "response.samples.y": 2 });
+      expect(rows[1]).toMatchObject({ trial_index: 0, element_index: 1, "response.samples.x": 3, "response.samples.y": 4 });
     });
 
     test("nested arrays of primitives are typed 'array' but not extracted", async () => {
@@ -247,8 +247,8 @@ describe("Nested JSON column handling", () => {
 
       const rows = arrays.get("mouse_tracking_data")!;
       expect(rows).toHaveLength(2);
-      expect(rows[0]).toMatchObject({ trial_index: 3, element_index: 0, x: 120, y: 340, t: 0 });
-      expect(rows[1]).toMatchObject({ trial_index: 3, element_index: 1, x: 121, y: 338, t: 16 });
+      expect(rows[0]).toMatchObject({ trial_index: 3, element_index: 0, "mouse_tracking_data.x": 120, "mouse_tracking_data.y": 340, "mouse_tracking_data.t": 0 });
+      expect(rows[1]).toMatchObject({ trial_index: 3, element_index: 1, "mouse_tracking_data.x": 121, "mouse_tracking_data.y": 338, "mouse_tracking_data.t": 16 });
     });
 
     test("null elements within an array are skipped without error", async () => {
@@ -260,8 +260,8 @@ describe("Nested JSON column handling", () => {
 
       const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
       expect(rows).toHaveLength(2);
-      expect(rows[0].x).toBe(1);
-      expect(rows[1].x).toBe(2);
+      expect(rows[0]["mouse_tracking_data.x"]).toBe(1);
+      expect(rows[1]["mouse_tracking_data.x"]).toBe(2);
     });
 
     test("primitive array [1,2,3] falls through to normal handling — no extracted arrays entry", async () => {
@@ -284,9 +284,9 @@ describe("Nested JSON column handling", () => {
 
       const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
       expect(rows).toHaveLength(3);
-      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 1 });
-      expect(rows[1]).toMatchObject({ trial_index: 1, element_index: 0, x: 2 });
-      expect(rows[2]).toMatchObject({ trial_index: 1, element_index: 1, x: 3 });
+      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, "mouse_tracking_data.x": 1 });
+      expect(rows[1]).toMatchObject({ trial_index: 1, element_index: 0, "mouse_tracking_data.x": 2 });
+      expect(rows[2]).toMatchObject({ trial_index: 1, element_index: 1, "mouse_tracking_data.x": 3 });
     });
 
     test("second generate() call resets extracted arrays — rows from first call are not retained", async () => {
@@ -302,7 +302,7 @@ describe("Nested JSON column handling", () => {
 
       const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 99 });
+      expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, "mouse_tracking_data.x": 99 });
     });
   });
 
@@ -475,8 +475,8 @@ describe("generate() arrayJoinKeys option", () => {
 
     const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
     expect(rows).toHaveLength(4);
-    expect(rows[0]).toMatchObject({ subject_id: "s1", trial_index: 0, element_index: 0, x: 1, y: 2 });
-    expect(rows[2]).toMatchObject({ subject_id: "s2", trial_index: 0, element_index: 0, x: 5, y: 6 });
+    expect(rows[0]).toMatchObject({ subject_id: "s1", trial_index: 0, element_index: 0, "mouse_tracking_data.x": 1, "mouse_tracking_data.y": 2 });
+    expect(rows[2]).toMatchObject({ subject_id: "s2", trial_index: 0, element_index: 0, "mouse_tracking_data.x": 5, "mouse_tracking_data.y": 6 });
   });
 
   test("custom arrayJoinKeys: composite keys are unique across all extracted rows", async () => {
@@ -505,7 +505,7 @@ describe("generate() arrayJoinKeys option", () => {
 
     expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("not unique"));
     const rows = meta.getExtractedArrays().get("mouse_tracking_data")!;
-    expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, x: 1 });
+    expect(rows[0]).toMatchObject({ trial_index: 0, element_index: 0, "mouse_tracking_data.x": 1 });
     warnSpy.mockRestore();
   });
 
@@ -663,5 +663,116 @@ describe("plain-object column extraction (getExtractedObjects)", () => {
 
     expect(meta.getExtractedObjects().has("mouse_tracking_data")).toBe(false);
     expect(meta.getExtractedArrays().has("mouse_tracking_data")).toBe(true);
+  });
+});
+
+// ─── array-element field registration (issue #82) ───────────────────────────
+// Array-of-objects columns are extracted to a sidecar CSV. Every column that sidecar
+// carries — the dotted element fields and element_index — must be registered in
+// variableMeasured so it isn't reported as CSV_COLUMN_MISSING_FROM_METADATA. Element
+// fields are recorded one level deep (object/array fields become a single dotted JSON
+// column; not further expanded — tracked separately as a follow-up).
+
+describe("array-element field registration", () => {
+  const mockFetch4 = jest.fn().mockResolvedValue({ text: () => Promise.resolve("") });
+  beforeEach(() => { (global as any).fetch = mockFetch4; mockFetch4.mockClear(); });
+
+  const B = { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100 };
+
+  test("element fields are registered under dotted names with correct types + min/max", async () => {
+    const data = JSON.stringify([
+      { ...B, gaze: [{ x: 10, y: 5, valid: true }] },
+      { ...B, trial_index: 1, gaze: [{ x: 30, y: 7, valid: false }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const names = meta.getVariableNames();
+    expect(names).toContain("gaze.x");
+    expect(names).toContain("gaze.y");
+    expect(names).toContain("gaze.valid");
+
+    const x = meta.getVariable("gaze.x") as any;
+    expect(x.value).toBe("number");
+    expect(x.minValue).toBe(10);
+    expect(x.maxValue).toBe(30);
+    expect((meta.getVariable("gaze.valid") as any).value).toBe("boolean");
+  });
+
+  test("element_index is registered exactly once", async () => {
+    const data = JSON.stringify([
+      { ...B, gaze: [{ x: 1 }], other: [{ y: 2 }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    expect(meta.getVariableNames()).toContain("element_index");
+    expect((meta.getVariable("element_index") as any).value).toBe("number");
+    expect(meta.getVariableNames().filter(n => n === "element_index")).toHaveLength(1);
+  });
+
+  test("VALIDATION INVARIANT: every extracted-array sidecar column is in variableMeasured", async () => {
+    const data = JSON.stringify([
+      { ...B, gaze: [{ x: 1, y: 2 }, { x: 3, y: 4 }], clicks: [{ target: "a", correct: true }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const declared = new Set(meta.getVariableNames());
+    for (const [, rows] of meta.getExtractedArrays()) {
+      for (const row of rows) {
+        for (const col of Object.keys(row)) {
+          expect(declared.has(col)).toBe(true); // no column missing from variableMeasured
+        }
+      }
+    }
+  });
+
+  test("object/array element fields are recorded one level deep (dotted JSON column, not expanded)", async () => {
+    const data = JSON.stringify([
+      { ...B, pts: [{ point: { x: 1, y: 2 }, samples: [9, 8] }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const names = meta.getVariableNames();
+    expect(names).toContain("pts.point");
+    expect(names).toContain("pts.samples");
+    expect((meta.getVariable("pts.point") as any).value).toBe("object");
+    expect((meta.getVariable("pts.samples") as any).value).toBe("array");
+    // not expanded / not extracted further
+    expect(names).not.toContain("pts.point.x");
+    expect(meta.getExtractedArrays().has("pts.samples")).toBe(false);
+
+    // the sidecar row keeps the nested value under the single dotted column
+    const row = meta.getExtractedArrays().get("pts")![0];
+    expect(row["pts.point"]).toEqual({ x: 1, y: 2 });
+    expect(row["pts.samples"]).toEqual([9, 8]);
+  });
+
+  test("element field that is null in all elements is still declared (no phantom column)", async () => {
+    const data = JSON.stringify([
+      { ...B, gaze: [{ x: 1, pupil: null }, { x: 2, pupil: null }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    expect(meta.getVariableNames()).toContain("gaze.pupil");
+    // and the sidecar column exists, so the invariant holds
+    const declared = new Set(meta.getVariableNames());
+    for (const row of meta.getExtractedArrays().get("gaze")!) {
+      for (const col of Object.keys(row)) expect(declared.has(col)).toBe(true);
+    }
+  });
+
+  test("dotted names prevent collisions between same-named fields of different array columns", async () => {
+    const data = JSON.stringify([
+      { ...B, gaze: [{ x: 1 }], clicks: [{ x: 999 }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    expect((meta.getVariable("gaze.x") as any).minValue).toBe(1);
+    expect((meta.getVariable("clicks.x") as any).minValue).toBe(999);
   });
 });
