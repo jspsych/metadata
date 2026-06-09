@@ -63,6 +63,16 @@ jsPsych experiments produce structured tabular data, but the output files typica
 
 Because jsPsych plugins have consistent, documented parameter names, it's possible to automatically generate much of the `variableMeasured` content by reading the data and looking up what each column means in the plugin that produced it. That's what the jsPsych Metadata CLI does — it reads your experiment output and generates a `dataset_description.json` populated with variable descriptions drawn from the jsPsych plugin documentation.
 
+### How it ties into the rest of jsPsych
+
+Metadata generation isn't a separate tool you have to bolt on afterward — it draws on the same jsPsych modules your experiment is already built from, and can run wherever your workflow lives:
+
+- **In the browser, alongside your experiment.** The `@jspsych/metadata` library runs client-side, so an experiment can generate or update its own `dataset_description.json` at the moment data is collected, using the plugins it already loaded.
+- **In Node or a build step.** The same library runs server-side to process data you've already collected, in batch.
+- **From the command line.** The Metadata CLI wraps that library for researchers who just want to point at a folder of files.
+
+In every case the variable descriptions come from the **same jsPsych plugin modules your experiment uses**. Because the plugin is the source of truth, the descriptions stay consistent with the plugin versions you actually ran — there's no separate data dictionary to maintain by hand.
+
 ---
 
 ## FAIR data principles
