@@ -185,7 +185,7 @@ export function analyzeJoinKeys(
   };
 }
 
-export async function parseCSV(input) {''
+export async function parseCSV(input) {
   if (!parse) {
     throw new Error('Parser module not loaded');
   }
