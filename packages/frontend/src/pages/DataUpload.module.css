@@ -84,12 +84,23 @@
   background-color: #2f2f3a;
 }
 
+.pickerOr {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
 .folderName {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.55);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pickError {
+  margin: -0.75rem 0 1rem;
+  font-size: 0.85rem;
+  color: #ff8080;
 }
 
 /* File list (before processing) */

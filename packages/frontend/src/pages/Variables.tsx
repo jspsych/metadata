@@ -18,8 +18,14 @@ function descMap(desc: VariableFields['description']): Record<string, string> {
 }
 
 function editableDefault(desc: VariableFields['description']): string {
-  const d = descMap(desc).default;
-  return d && d !== 'unknown' ? d : '';
+  const map = descMap(desc);
+  const d = map['default'];
+  // Use the default value if it's a real user-written string (not absent or the sentinel "unknown").
+  // An explicitly cleared empty string (d === '') also counts — prevents snapping back to the hint.
+  if (d !== undefined && d !== 'unknown') return d;
+  // Fall back to the first plugin hint as the current effective description
+  const h = hints(desc);
+  return h.length > 0 ? h[0].value : '';
 }
 
 function hints(desc: VariableFields['description']): { key: string; value: string }[] {
@@ -81,8 +87,9 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
 
   const renderVar = (v: VarRow) => {
     const isOpen = expanded === v.name;
-    const h = hints(v.description);
     const descValue = editableDefault(v.description);
+    const d = descMap(v.description)['default'];
+    const hasPluginDesc = (d === undefined || d === 'unknown') && hints(v.description).length > 0;
     const inUnknownSection = initialUnknowns.has(v.name);
 
     return (
@@ -118,14 +125,10 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
                 rows={3}
                 onChange={e => handleDescChange(v.name, e.target.value)}
               />
-              {h.length > 0 && (
-                <div className={styles.hints}>
-                  {h.map(({ key, value }) => (
-                    <p key={key} className={styles.hint}>
-                      <span className={styles.hintKey}>{key}:</span> {value}
-                    </p>
-                  ))}
-                </div>
+              {hasPluginDesc && (
+                <p className={styles.descCaption}>
+                  From plugin documentation — edit to save a custom description
+                </p>
               )}
             </div>
 

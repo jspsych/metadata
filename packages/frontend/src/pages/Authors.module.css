@@ -261,6 +261,150 @@
   color: rgba(100, 108, 255, 1);
 }
 
+/* Bulk import warning */
+
+.bulkWarning {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(255, 180, 0, 0.08);
+  border: 1px solid rgba(255, 180, 0, 0.25);
+  border-radius: 7px;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1rem;
+  font-size: 0.83rem;
+  color: rgba(255, 200, 80, 0.9);
+  line-height: 1.5;
+}
+
+.warningDismiss {
+  background: none;
+  border: none;
+  color: rgba(255, 180, 0, 0.5);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.warningDismiss:hover {
+  color: rgba(255, 180, 0, 0.9);
+}
+
+/* Bulk import */
+
+.bulkToggleBtn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.84rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-bottom: 1.5rem;
+  display: block;
+  transition: color 0.15s;
+}
+
+.bulkToggleBtn:hover {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.bulkPanel {
+  border: 1px solid #2e2e2e;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bulkInstructions {
+  margin: 0;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+}
+
+.bulkExample {
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 5px;
+  padding: 0.5rem 0.7rem;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.bulkTextarea {
+  width: 100%;
+  background: #1e1e1e;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.bulkTextarea:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.bulkTextarea::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.bulkActions {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.importBtn {
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45em 1.2em;
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.importBtn:hover {
+  background-color: #535bf2;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  padding: 0.45em 1.1em;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cancelBtn:hover {
+  border-color: #646cff;
+  color: rgba(255, 255, 255, 0.82);
+}
+
 /* Continue */
 
 .continueBtn {

@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import styles from './ProjectInfo.module.css';
 
-export const OPTIONAL_FIELDS: { key: string; label: string; hint: string }[] = [
-  { key: 'license',       label: 'License',        hint: 'URL or name of the license for this dataset' },
-  { key: 'keywords',      label: 'Keywords',        hint: 'Comma-separated keywords to assist search' },
-  { key: 'citation',      label: 'Citation',        hint: 'How to cite this dataset (URL or scholarly reference)' },
-  { key: 'url',           label: 'URL',             hint: 'Canonical source URL for this dataset' },
-  { key: 'funder',        label: 'Funder',          hint: 'Source(s) of funding — grant numbers or organization names' },
-  { key: 'identifier',    label: 'Identifier',      hint: 'Unique identifier such as a DOI or PMID' },
-  { key: 'privacyPolicy', label: 'Privacy policy',  hint: 'One of: open, private, open_deidentified, open_redacted' },
+export const OPTIONAL_FIELDS: { key: string; label: string; hint: string; help?: string; options?: readonly string[] }[] = [
+  { key: 'license',    label: 'License',    hint: 'URL or SPDX identifier for the license', help: 'A license tells others what they can do with your data. Common choices for open research data: CC0 (public domain — no restrictions), CC-BY-4.0 (free to use with attribution). You can enter a standard identifier (e.g. CC-BY-4.0) or a URL to the full license text. If your institution has a data-sharing policy, check there first.' },
+  { key: 'keywords',   label: 'Keywords',   hint: 'Comma-separated keywords to assist search' },
+  { key: 'citation',   label: 'Citation',   hint: 'How to cite this dataset (URL or scholarly reference)' },
+  { key: 'url',        label: 'URL',        hint: 'Canonical source URL for this dataset' },
+  { key: 'funder',     label: 'Funder',     hint: 'Source(s) of funding — grant numbers or organization names' },
+  { key: 'identifier', label: 'Identifier', hint: 'Unique identifier such as a DOI or PMID' },
+  { key: 'privacyPolicy', label: 'Privacy policy', hint: 'How data access is restricted for this dataset', options: ['', 'open', 'private', 'open_deidentified', 'open_redacted'],
+    help: 'Choose the option that matches your IRB approval or data-sharing agreement:\n• open — data can be shared publicly without restriction\n• open_deidentified — data can be shared after removing directly identifying information (names, dates of birth, etc.)\n• open_redacted — data can be shared after removing specific sensitive fields\n• private — data is not to be shared outside your team' },
 ];
 
 export type ProjectInfoSession = {
@@ -43,6 +44,8 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
 }) => {
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [helpOpen, setHelpOpen] = useState<string | null>(null);
+  const toggleHelp = (key: string) => setHelpOpen(prev => prev === key ? null : key);
 
   useEffect(() => {
     if (!existingMetadataFile) return;
@@ -130,10 +133,25 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
         </div>
 
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="project-description">
-            Description <span className={styles.required}>*</span>
-          </label>
-          <p className={styles.hint}>A brief description of your experiment and dataset</p>
+          <div className={styles.labelRow}>
+            <label className={styles.label} htmlFor="project-description">
+              Description <span className={styles.required}>*</span>
+            </label>
+            <button
+              type="button"
+              className={styles.helpBtn}
+              onClick={() => toggleHelp('description')}
+              aria-expanded={helpOpen === 'description'}
+              aria-label="Help for Description"
+            >ⓘ</button>
+          </div>
+          {helpOpen === 'description' && (
+            <div className={styles.helpBlock}>
+              A good description helps others understand your dataset. Include: what the experiment measured (e.g. response time, accuracy), the task or paradigm (e.g. Stroop, n-back), roughly how many participants, and any key conditions or manipulations.
+              <br /><br />
+              <em>Example: "Stroop task data from 40 undergraduates (20 control, 20 ADHD), measuring response time and accuracy across congruent and incongruent conditions."</em>
+            </div>
+          )}
           <textarea
             id="project-description"
             className={styles.textarea}
@@ -159,17 +177,46 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
 
           {session.optionalOpen && (
             <div className={styles.optionalFields}>
-              {OPTIONAL_FIELDS.map(({ key, label, hint }) => (
+              {OPTIONAL_FIELDS.map(({ key, label, hint, help, options }) => (
                 <div key={key} className={styles.field}>
-                  <label className={styles.label} htmlFor={`project-${key}`}>{label}</label>
+                  <div className={styles.labelRow}>
+                    <label className={styles.label} htmlFor={`project-${key}`}>{label}</label>
+                    {help && (
+                      <button
+                        type="button"
+                        className={styles.helpBtn}
+                        onClick={() => toggleHelp(key)}
+                        aria-expanded={helpOpen === key}
+                        aria-label={`Help for ${label}`}
+                      >ⓘ</button>
+                    )}
+                  </div>
+                  {help && helpOpen === key && (
+                    <div className={styles.helpBlock}>
+                      {help.split('\n').map((line, i) => line ? <p key={i} className={styles.helpLine}>{line}</p> : null)}
+                    </div>
+                  )}
                   <p className={styles.hint}>{hint}</p>
-                  <input
-                    id={`project-${key}`}
-                    className={styles.input}
-                    type="text"
-                    value={session.optional[key] ?? ''}
-                    onChange={e => setOptionalField(key, e.target.value)}
-                  />
+                  {options ? (
+                    <select
+                      id={`project-${key}`}
+                      className={styles.select}
+                      value={session.optional[key] ?? ''}
+                      onChange={e => setOptionalField(key, e.target.value)}
+                    >
+                      {options.map(opt => (
+                        <option key={opt} value={opt}>{opt === '' ? '— not set —' : opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`project-${key}`}
+                      className={styles.input}
+                      type="text"
+                      value={session.optional[key] ?? ''}
+                      onChange={e => setOptionalField(key, e.target.value)}
+                    />
+                  )}
                 </div>
               ))}
             </div>

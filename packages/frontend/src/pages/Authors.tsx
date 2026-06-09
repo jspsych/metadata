@@ -8,6 +8,11 @@ interface AuthorsProps {
 }
 
 const ORCID_PREFIX = 'https://orcid.org/';
+const ORCID_RE = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
+
+function isValidOrcid(suffix: string): boolean {
+  return ORCID_RE.test(suffix.trim());
+}
 
 type AuthorRow = {
   id: number;
@@ -115,6 +120,67 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
       if (prev.length > 1) return prev.filter(r => r.id !== id);
       return [emptyRow(nextId())];
     });
+  };
+
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkWarning, setBulkWarning] = useState<string | null>(null);
+
+  const handleBulkImport = () => {
+    const existingNames = new Set(rows.map(r => r.committedName?.toLowerCase()).filter(Boolean));
+    const newRows: AuthorRow[] = [];
+    const invalidOrcids: string[] = [];
+
+    for (const rawLine of bulkText.split('\n')) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      const [rawName, rawOrcid = ''] = line.includes(',') ? line.split(',') : [line];
+      const name = rawName.trim();
+      if (!name) continue;
+      if (existingNames.has(name.toLowerCase())) continue;
+
+      // Normalise ORCID — strip full URL prefix if pasted
+      const orcidRaw = rawOrcid.trim();
+      const orcidNorm = orcidRaw.startsWith(ORCID_PREFIX)
+        ? orcidRaw.slice(ORCID_PREFIX.length)
+        : orcidRaw;
+
+      // Validate ORCID — import name without it if invalid
+      let orcidSuffix = '';
+      if (orcidNorm) {
+        if (isValidOrcid(orcidNorm)) {
+          orcidSuffix = orcidNorm;
+        } else {
+          invalidOrcids.push(name);
+        }
+      }
+
+      const id = nextId();
+      const row: AuthorRow = { id, name, committedName: name, givenName: '', familyName: '', authorType: '', orcidSuffix, optionalOpen: !!orcidSuffix };
+      jsPsychMetadata.setAuthor(buildFields(row));
+      newRows.push(row);
+      existingNames.add(name.toLowerCase());
+    }
+
+    if (newRows.length === 0) { setShowBulkImport(false); setBulkText(''); return; }
+
+    // Replace the single empty placeholder row if it exists, otherwise append
+    setRows(prev => {
+      const hasOnlyEmpty = prev.length === 1 && !prev[0].committedName;
+      return hasOnlyEmpty ? newRows : [...prev, ...newRows];
+    });
+    setShowBulkImport(false);
+    setBulkText('');
+
+    if (invalidOrcids.length > 0) {
+      setBulkWarning(
+        `ORCID not saved for: ${invalidOrcids.join(', ')}. ` +
+        `ORCIDs must be in the format 0000-0001-2345-6789. Add them manually using the author cards above.`
+      );
+    } else {
+      setBulkWarning(null);
+    }
   };
 
   const savedCount = rows.filter(r => r.committedName).length;
@@ -244,12 +310,48 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
         ))}
       </div>
 
+      {bulkWarning && (
+        <div className={styles.bulkWarning}>
+          <span>⚠ {bulkWarning}</span>
+          <button className={styles.warningDismiss} onClick={() => setBulkWarning(null)}>✕</button>
+        </div>
+      )}
+
       <button
         className={styles.addBtn}
         onClick={() => setRows(prev => [...prev, emptyRow(nextId())])}
       >
         + Add another author
       </button>
+
+      {!showBulkImport ? (
+        <button className={styles.bulkToggleBtn} onClick={() => setShowBulkImport(true)}>
+          + Add multiple authors at once
+        </button>
+      ) : (
+        <div className={styles.bulkPanel}>
+          <p className={styles.bulkInstructions}>
+            One author per line. To include an ORCID, separate it from the name with a comma:
+          </p>
+          <pre className={styles.bulkExample}>{'Jane Smith\nJohn Doe, 0000-0001-2345-6789\nAlice Lee, 0000-0002-3456-7890'}</pre>
+          <textarea
+            className={styles.bulkTextarea}
+            value={bulkText}
+            onChange={e => setBulkText(e.target.value)}
+            rows={6}
+            placeholder="Paste author names here…"
+            autoFocus
+          />
+          <div className={styles.bulkActions}>
+            <button className={styles.importBtn} onClick={handleBulkImport}>
+              Import
+            </button>
+            <button className={styles.cancelBtn} onClick={() => { setShowBulkImport(false); setBulkText(''); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <button className={styles.continueBtn} onClick={onComplete}>
         Continue →

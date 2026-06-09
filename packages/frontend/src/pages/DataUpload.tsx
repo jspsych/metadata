@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import JSZip from 'jszip';
 import JsPsychMetadata, { analyzeJoinKeys } from '@jspsych/metadata';
 import styles from './DataUpload.module.css';
 
@@ -56,10 +57,13 @@ const DataUpload: React.FC<DataUploadProps> = ({
   onSessionChange,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
   const initialPhase: Phase = dataProcessed ? 'hasData' : existingMetadataLoaded ? 'fromExisting' : 'idle';
   const [phase, setPhase] = useState<Phase>(initialPhase);
   const [files, setFiles] = useState<File[]>(session.files);
+  const [sourceName, setSourceName] = useState('');
+  const [pickError, setPickError] = useState('');
   const [fileTexts, setFileTexts] = useState(session.fileTexts);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
   const [joinKeyCandidates, setJoinKeyCandidates] = useState<JoinKeyCandidate[]>(session.joinKeyCandidates);
@@ -86,9 +90,42 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const picked = [...e.target.files].filter(f => !f.name.startsWith('.'));
+    const folderName = picked[0]?.webkitRelativePath.split('/')[0] ?? '';
     setFiles(picked);
+    setSourceName(folderName);
+    setPickError('');
     setPhase('ready');
     setFileStatuses([]);
+  };
+
+  const handleZipChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const zipFile = e.target.files?.[0];
+    if (!zipFile) return;
+    setPickError('');
+    try {
+      const zip = await JSZip.loadAsync(zipFile);
+      const extracted: File[] = [];
+      await Promise.all(
+        Object.values(zip.files).map(async entry => {
+          if (entry.dir) return;
+          if (entry.name.startsWith('__MACOSX') || entry.name.split('/').pop()?.startsWith('.')) return;
+          const text = await entry.async('text');
+          extracted.push(new File([text], entry.name));
+        })
+      );
+      if (extracted.length === 0) {
+        setPickError('No readable files found in the zip archive.');
+        return;
+      }
+      setFiles(extracted);
+      setSourceName(zipFile.name.replace(/\.zip$/i, ''));
+      setPhase('ready');
+      setFileStatuses([]);
+    } catch {
+      setPickError('Could not read the zip file — make sure it is a valid .zip archive.');
+    }
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
   };
 
   const handleProcess = async () => {
@@ -157,7 +194,8 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
       update(i, { status: 'loading' });
 
-      if (file.name === 'dataset_description.json') {
+      const filePath = file.webkitRelativePath || file.name;
+      if (filePath === 'dataset_description.json' || filePath.endsWith('/dataset_description.json')) {
         update(i, { status: 'skipped', detail: 'existing metadata file' });
         continue;
       }
@@ -214,16 +252,17 @@ const DataUpload: React.FC<DataUploadProps> = ({
         <p className={styles.fromExistingOptional}>
           Optionally, upload your data folder to add new variables or refresh levels and ranges.
         </p>
-        <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
-          Upload data folder (optional)
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFolderChange}
-        />
+        <div className={styles.pickerRow}>
+          <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+            Upload data folder (optional)
+          </button>
+          <span className={styles.pickerOr}>or</span>
+          <button className={styles.browseBtn} onClick={() => zipInputRef.current?.click()}>
+            Upload .zip (optional)
+          </button>
+        </div>
+        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} />
+        <input ref={zipInputRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleZipChange} />
         <div className={styles.doneActions}>
           <button className={styles.continueBtn} onClick={onComplete}>
             Continue →
@@ -273,16 +312,17 @@ const DataUpload: React.FC<DataUploadProps> = ({
         </div>
 
         <div className={styles.additionalDivider}>Upload additional files</div>
-        <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
-          Choose folder
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFolderChange}
-        />
+        <div className={styles.pickerRow}>
+          <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+            Choose folder
+          </button>
+          <span className={styles.pickerOr}>or</span>
+          <button className={styles.browseBtn} onClick={() => zipInputRef.current?.click()}>
+            Upload .zip
+          </button>
+        </div>
+        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} />
+        <input ref={zipInputRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleZipChange} />
       </div>
     );
   }
@@ -291,17 +331,21 @@ const DataUpload: React.FC<DataUploadProps> = ({
     <div className={styles.page}>
       <h2 className={styles.heading}>Data</h2>
       <p className={styles.description}>
-        Select your data folder. CSV and JSON files will be processed; other file types are skipped.
+        Select your data folder or upload a .zip archive. CSV and JSON files will be processed; other file types are skipped.
       </p>
 
-      {/* Folder picker */}
+      {/* Pickers */}
       <div className={styles.pickerRow}>
         <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
           {files.length > 0 ? 'Change folder' : 'Choose folder'}
         </button>
-        {files.length > 0 && (
+        <span className={styles.pickerOr}>or</span>
+        <button className={styles.browseBtn} onClick={() => zipInputRef.current?.click()}>
+          Upload .zip
+        </button>
+        {files.length > 0 && sourceName && (
           <span className={styles.folderName}>
-            {files[0].webkitRelativePath.split('/')[0]} ({files.length} file{files.length !== 1 ? 's' : ''})
+            {sourceName} ({files.length} file{files.length !== 1 ? 's' : ''})
           </span>
         )}
         <input
@@ -311,7 +355,15 @@ const DataUpload: React.FC<DataUploadProps> = ({
           style={{ display: 'none' }}
           onChange={handleFolderChange}
         />
+        <input
+          ref={zipInputRef}
+          type="file"
+          accept=".zip"
+          style={{ display: 'none' }}
+          onChange={handleZipChange}
+        />
       </div>
+      {pickError && <p className={styles.pickError}>{pickError}</p>}
 
       {/* File list (before processing) */}
       {phase === 'ready' && (

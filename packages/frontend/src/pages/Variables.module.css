@@ -198,28 +198,13 @@
   color: rgba(255, 255, 255, 0.22);
 }
 
-/* jsPsych hint descriptions */
+/* Plugin description caption */
 
-.hints {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.45rem 0.65rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-left: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0 4px 4px 0;
-}
-
-.hint {
+.descCaption {
   margin: 0;
-  font-size: 0.79rem;
-  color: rgba(255, 255, 255, 0.42);
-  line-height: 1.5;
-}
-
-.hintKey {
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
 }
 
 /* Type select */

@@ -86,7 +86,7 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
       case 'authors':
         return <Authors jsPsychMetadata={jsPsychMetadata} onComplete={() => completeStep('authors')} />;
       case 'review':
-        return <Review jsPsychMetadata={jsPsychMetadata} />;
+        return <Review jsPsychMetadata={jsPsychMetadata} dataFiles={dataSession.fileTexts} />;
     }
   };
 
