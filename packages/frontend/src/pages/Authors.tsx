@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import JsPsychMetadata, { AuthorFields } from '@jspsych/metadata';
 import styles from './Authors.module.css';
 
@@ -20,8 +20,6 @@ type AuthorRow = {
   optionalOpen: boolean;
 };
 
-let nextId = 0;
-
 function buildFields(row: AuthorRow, nameOverride?: string): AuthorFields {
   const name = nameOverride ?? row.name.trim();
   const fields: AuthorFields = { name };
@@ -32,8 +30,7 @@ function buildFields(row: AuthorRow, nameOverride?: string): AuthorFields {
   return fields;
 }
 
-function fromExisting(author: AuthorFields | string): AuthorRow {
-  const id = nextId++;
+function fromExisting(author: AuthorFields | string, id: number): AuthorRow {
   if (typeof author === 'string') {
     return { id, name: author, committedName: author, givenName: '', familyName: '', authorType: '', orcidSuffix: '', optionalOpen: false };
   }
@@ -52,14 +49,17 @@ function fromExisting(author: AuthorFields | string): AuthorRow {
   };
 }
 
-function emptyRow(): AuthorRow {
-  return { id: nextId++, name: '', committedName: null, givenName: '', familyName: '', authorType: '', orcidSuffix: '', optionalOpen: false };
+function emptyRow(id: number): AuthorRow {
+  return { id, name: '', committedName: null, givenName: '', familyName: '', authorType: '', orcidSuffix: '', optionalOpen: false };
 }
 
 const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
+  const nextIdRef = useRef(0);
+  const nextId = () => nextIdRef.current++;
+
   const [rows, setRows] = useState<AuthorRow[]>(() => {
     const list = jsPsychMetadata.getAuthorList();
-    return list.length > 0 ? list.map(fromExisting) : [emptyRow()];
+    return list.length > 0 ? list.map(a => fromExisting(a, nextIdRef.current++)) : [emptyRow(nextIdRef.current++)];
   });
 
   // Sync non-name fields to metadata immediately (name syncs on blur to avoid partial states)
@@ -113,7 +113,7 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
       const row = prev.find(r => r.id === id)!;
       if (row.committedName) jsPsychMetadata.deleteAuthor(row.committedName);
       if (prev.length > 1) return prev.filter(r => r.id !== id);
-      return [emptyRow()];
+      return [emptyRow(nextId())];
     });
   };
 
@@ -142,10 +142,11 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label}>
+              <label className={styles.label} htmlFor={`author-name-${row.id}`}>
                 Name <span className={styles.required}>*</span>
               </label>
               <input
+                id={`author-name-${row.id}`}
                 className={styles.input}
                 type="text"
                 value={row.name}
@@ -173,10 +174,11 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
                   <p className={styles.groupLabel}>Recommended if available</p>
 
                   <div className={styles.field}>
-                    <label className={styles.label}>ORCID</label>
+                    <label className={styles.label} htmlFor={`author-orcid-${row.id}`}>ORCID</label>
                     <div className={styles.orcidGroup}>
                       <span className={styles.orcidPrefix}>https://orcid.org/</span>
                       <input
+                        id={`author-orcid-${row.id}`}
                         className={styles.orcidInput}
                         type="text"
                         value={row.orcidSuffix}
@@ -193,8 +195,9 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
 
                   <div className={styles.fieldRow}>
                     <div className={styles.field}>
-                      <label className={styles.label}>Given name</label>
+                      <label className={styles.label} htmlFor={`author-given-${row.id}`}>Given name</label>
                       <input
+                        id={`author-given-${row.id}`}
                         className={styles.input}
                         type="text"
                         value={row.givenName}
@@ -203,8 +206,9 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
                       />
                     </div>
                     <div className={styles.field}>
-                      <label className={styles.label}>Family name</label>
+                      <label className={styles.label} htmlFor={`author-family-${row.id}`}>Family name</label>
                       <input
+                        id={`author-family-${row.id}`}
                         className={styles.input}
                         type="text"
                         value={row.familyName}
@@ -215,11 +219,12 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
                   </div>
 
                   <div className={styles.field}>
-                    <label className={styles.label}>@type</label>
+                    <label className={styles.label} htmlFor={`author-type-${row.id}`}>@type</label>
                     <p className={styles.fieldHint}>
                       Usually "Person" or "Organization". Leave blank if unsure.
                     </p>
                     <input
+                      id={`author-type-${row.id}`}
                       className={styles.input}
                       type="text"
                       list={`author-type-list-${row.id}`}
@@ -241,7 +246,7 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
 
       <button
         className={styles.addBtn}
-        onClick={() => setRows(prev => [...prev, emptyRow()])}
+        onClick={() => setRows(prev => [...prev, emptyRow(nextId())])}
       >
         + Add another author
       </button>

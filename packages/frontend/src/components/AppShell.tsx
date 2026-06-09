@@ -40,12 +40,12 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
 
   const completeStep = (stepId: StepId) => {
     const idx = STEPS.findIndex(s => s.id === stepId);
-    const nextCompleted = new Set([...completedSteps, stepId]);
-    setCompletedSteps(nextCompleted);
+    setCompletedSteps(prev => new Set([...prev, stepId]));
     // Navigate to the first step after this one that hasn't been completed yet,
     // so pre-completed steps (e.g. Data when opening existing project) are skipped.
+    const afterComplete = new Set([...completedSteps, stepId]);
     for (let i = idx + 1; i < STEPS.length; i++) {
-      if (!nextCompleted.has(STEPS[i].id)) {
+      if (!afterComplete.has(STEPS[i].id)) {
         setCurrentStep(STEPS[i].id);
         return;
       }

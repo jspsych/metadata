@@ -80,7 +80,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
   }, [files, fileTexts, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
 
   useEffect(() => {
-    if (inputRef.current) (inputRef.current as any).webkitdirectory = true;
+    if (inputRef.current) (inputRef.current as any).webkitdirectory = true; // not in TS lib
   }, []);
 
   const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,13 +98,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
     for (const file of files) {
       const type = file.name.split('.').pop()?.toLowerCase() || '';
       const content = await readFileAsText(file);
-      textMap.set(file.name, { content, type });
+      textMap.set(file.webkitRelativePath || file.name, { content, type });
     }
     setFileTexts(textMap);
 
-    // Pre-flight: check join key uniqueness on first parseable JSON data file
+    // Pre-flight: check join key uniqueness across all parseable JSON data files
     for (const [name, { content, type }] of textMap) {
-      if (type !== 'json' || name === 'dataset_description.json') continue;
+      if (type !== 'json') continue;
+      if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
       try {
         const parsed = JSON.parse(content);
         if (!Array.isArray(parsed) || parsed.length === 0) continue;
@@ -116,7 +117,6 @@ const DataUpload: React.FC<DataUploadProps> = ({
           setPhase('joinKeys');
           return;
         }
-        break;
       } catch {
         continue;
       }
@@ -151,7 +151,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const entry = textMap.get(file.name);
+      const entry = textMap.get(file.webkitRelativePath || file.name);
       if (!entry) continue;
       const { content, type } = entry;
 
@@ -377,7 +377,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
           <ul className={styles.candidateList}>
             <li className={styles.candidateItem}>
-              <input type="checkbox" checked disabled readOnly />
+              <input type="checkbox" checked disabled onChange={() => {}} />
               <span>trial_index</span>
               <span className={styles.candidateTag}>default</span>
             </li>

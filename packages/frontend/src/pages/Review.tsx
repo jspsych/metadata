@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import styles from './Review.module.css';
 
@@ -22,12 +22,10 @@ function blobDownload(json: string) {
 
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata }) => {
   const [downloaded, setDownloaded] = useState(false);
-  const [saveError, setSaveError] = useState('');
 
-  const metadataJson = JSON.stringify(jsPsychMetadata.getMetadata(), null, 2);
+  const metadataJson = useMemo(() => JSON.stringify(jsPsychMetadata.getMetadata(), null, 2), []);
 
   const handleDownload = async () => {
-    setSaveError('');
     const json = metadataJson;
 
     if ('showSaveFilePicker' in window) {
@@ -76,7 +74,6 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata }) => {
             Navigate to your dataset folder in the save dialog so the file lands next to your <code className={styles.code}>data/</code> folder — then it's ready to validate.
           </p>
         )}
-        {saveError && <p className={styles.saveError}>{saveError}</p>}
       </div>
 
       <div className={styles.validatorNote}>

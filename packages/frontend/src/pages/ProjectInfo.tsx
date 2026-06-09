@@ -89,7 +89,11 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
 
     for (const { key } of OPTIONAL_FIELDS) {
       const val = (session.optional[key] ?? '').trim();
-      if (val) jsPsychMetadata.setMetadataField(key, val);
+      if (val) {
+        jsPsychMetadata.setMetadataField(key, val);
+      } else {
+        jsPsychMetadata.deleteMetadataField(key);
+      }
     }
 
     onComplete();
@@ -111,11 +115,12 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
 
       <div className={styles.form}>
         <div className={styles.field}>
-          <label className={styles.label}>
+          <label className={styles.label} htmlFor="project-name">
             Project name <span className={styles.required}>*</span>
           </label>
           <p className={styles.hint}>The name of your dataset</p>
           <input
+            id="project-name"
             className={styles.input}
             type="text"
             value={session.name}
@@ -125,11 +130,12 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
         </div>
 
         <div className={styles.field}>
-          <label className={styles.label}>
+          <label className={styles.label} htmlFor="project-description">
             Description <span className={styles.required}>*</span>
           </label>
           <p className={styles.hint}>A brief description of your experiment and dataset</p>
           <textarea
+            id="project-description"
             className={styles.textarea}
             value={session.description}
             onChange={e => set({ description: e.target.value })}
@@ -155,9 +161,10 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
             <div className={styles.optionalFields}>
               {OPTIONAL_FIELDS.map(({ key, label, hint }) => (
                 <div key={key} className={styles.field}>
-                  <label className={styles.label}>{label}</label>
+                  <label className={styles.label} htmlFor={`project-${key}`}>{label}</label>
                   <p className={styles.hint}>{hint}</p>
                   <input
+                    id={`project-${key}`}
                     className={styles.input}
                     type="text"
                     value={session.optional[key] ?? ''}
