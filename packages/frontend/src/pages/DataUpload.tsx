@@ -31,12 +31,13 @@ export const emptyDataSession: DataSession = {
 interface DataUploadProps {
   jsPsychMetadata: JsPsychMetadata;
   dataProcessed: boolean;
+  existingMetadataLoaded?: boolean;
   onComplete: () => void;
   session: DataSession;
   onSessionChange: (s: DataSession) => void;
 }
 
-type Phase = 'hasData' | 'idle' | 'ready' | 'preflight' | 'joinKeys' | 'processing' | 'done';
+type Phase = 'hasData' | 'fromExisting' | 'idle' | 'ready' | 'preflight' | 'joinKeys' | 'processing' | 'done';
 
 const readFileAsText = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -49,13 +50,15 @@ const readFileAsText = (file: File): Promise<string> =>
 const DataUpload: React.FC<DataUploadProps> = ({
   jsPsychMetadata,
   dataProcessed,
+  existingMetadataLoaded,
   onComplete,
   session,
   onSessionChange,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [phase, setPhase] = useState<Phase>(dataProcessed ? 'hasData' : 'idle');
+  const initialPhase: Phase = dataProcessed ? 'hasData' : existingMetadataLoaded ? 'fromExisting' : 'idle';
+  const [phase, setPhase] = useState<Phase>(initialPhase);
   const [files, setFiles] = useState<File[]>(session.files);
   const [fileTexts, setFileTexts] = useState(session.fileTexts);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
@@ -192,6 +195,43 @@ const DataUpload: React.FC<DataUploadProps> = ({
     setJoinKeyReturnPhase(returnTo);
     setPhase('joinKeys');
   };
+
+  // Existing-project flow: variables already loaded from JSON, data upload is optional
+  if (phase === 'fromExisting') {
+    return (
+      <div className={styles.page}>
+        <h2 className={styles.heading}>Data</h2>
+        <div className={styles.hasDataBanner}>
+          <span className={styles.iconSuccess}>✓</span>
+          <div>
+            <strong>Variables loaded from existing metadata</strong>
+            <p className={styles.hasDataSub}>
+              All variable descriptions, types, and levels were loaded from your{' '}
+              <code>dataset_description.json</code>. No data upload is needed.
+            </p>
+          </div>
+        </div>
+        <p className={styles.fromExistingOptional}>
+          Optionally, upload your data folder to add new variables or refresh levels and ranges.
+        </p>
+        <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+          Upload data folder (optional)
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleFolderChange}
+        />
+        <div className={styles.doneActions}>
+          <button className={styles.continueBtn} onClick={onComplete}>
+            Continue →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Already-processed summary shown when navigating back to this step
   if (phase === 'hasData') {

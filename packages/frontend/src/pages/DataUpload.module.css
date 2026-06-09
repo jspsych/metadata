@@ -41,6 +41,13 @@
   line-height: 1.5;
 }
 
+.fromExistingOptional {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.5;
+}
+
 .additionalDivider {
   font-size: 0.78rem;
   font-weight: 600;

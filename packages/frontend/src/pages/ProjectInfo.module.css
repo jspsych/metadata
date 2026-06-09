@@ -117,6 +117,12 @@
   transition: color 0.15s;
 }
 
+.optionalHint {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.38);
+}
+
 .optionalToggle:hover {
   color: rgba(255, 255, 255, 0.88);
   border-color: transparent;

@@ -2,31 +2,45 @@ import { useState, useEffect } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import styles from './ProjectInfo.module.css';
 
-interface ProjectInfoProps {
-  jsPsychMetadata: JsPsychMetadata;
-  existingMetadataFile?: File;
-  onComplete: () => void;
-}
-
-const OPTIONAL_FIELDS: { key: string; label: string; hint: string }[] = [
+export const OPTIONAL_FIELDS: { key: string; label: string; hint: string }[] = [
   { key: 'license',       label: 'License',        hint: 'URL or name of the license for this dataset' },
+  { key: 'keywords',      label: 'Keywords',        hint: 'Comma-separated keywords to assist search' },
   { key: 'citation',      label: 'Citation',        hint: 'How to cite this dataset (URL or scholarly reference)' },
   { key: 'url',           label: 'URL',             hint: 'Canonical source URL for this dataset' },
   { key: 'funder',        label: 'Funder',          hint: 'Source(s) of funding — grant numbers or organization names' },
   { key: 'identifier',    label: 'Identifier',      hint: 'Unique identifier such as a DOI or PMID' },
   { key: 'privacyPolicy', label: 'Privacy policy',  hint: 'One of: open, private, open_deidentified, open_redacted' },
-  { key: 'keywords',      label: 'Keywords',        hint: 'Comma-separated keywords to assist search' },
 ];
 
-type OptionalValues = Record<string, string>;
+export type ProjectInfoSession = {
+  name: string;
+  description: string;
+  optional: Record<string, string>;
+  optionalOpen: boolean;
+};
 
-const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMetadataFile, onComplete }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [optionalOpen, setOptionalOpen] = useState(false);
-  const [optional, setOptional] = useState<OptionalValues>(
-    Object.fromEntries(OPTIONAL_FIELDS.map(f => [f.key, '']))
-  );
+export const emptyProjectInfoSession = (): ProjectInfoSession => ({
+  name: '',
+  description: '',
+  optional: Object.fromEntries(OPTIONAL_FIELDS.map(f => [f.key, ''])),
+  optionalOpen: false,
+});
+
+interface ProjectInfoProps {
+  jsPsychMetadata: JsPsychMetadata;
+  existingMetadataFile?: File;
+  session: ProjectInfoSession;
+  onSessionChange: (s: ProjectInfoSession) => void;
+  onComplete: () => void;
+}
+
+const ProjectInfo: React.FC<ProjectInfoProps> = ({
+  jsPsychMetadata,
+  existingMetadataFile,
+  session,
+  onSessionChange,
+  onComplete,
+}) => {
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -37,15 +51,15 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMeta
     reader.onload = () => {
       try {
         jsPsychMetadata.loadMetadata(reader.result as string);
-        setName(jsPsychMetadata.getMetadataField('name') || '');
-        setDescription(jsPsychMetadata.getMetadataField('description') || '');
-        setOptional(
-          Object.fromEntries(
-            OPTIONAL_FIELDS.map(f => [f.key, jsPsychMetadata.getMetadataField(f.key) || ''])
-          )
+        const optionalVals = Object.fromEntries(
+          OPTIONAL_FIELDS.map(f => [f.key, jsPsychMetadata.getMetadataField(f.key) as string || ''])
         );
-        const hasOptional = OPTIONAL_FIELDS.some(f => jsPsychMetadata.getMetadataField(f.key));
-        if (hasOptional) setOptionalOpen(true);
+        onSessionChange({
+          name: jsPsychMetadata.getMetadataField('name') as string || '',
+          description: jsPsychMetadata.getMetadataField('description') as string || '',
+          optional: optionalVals,
+          optionalOpen: OPTIONAL_FIELDS.some(f => !!jsPsychMetadata.getMetadataField(f.key)),
+        });
         setLoadStatus('loaded');
       } catch {
         setLoadStatus('error');
@@ -59,16 +73,22 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMeta
     reader.readAsText(existingMetadataFile);
   }, [existingMetadataFile]);
 
+  const set = (patch: Partial<ProjectInfoSession>) =>
+    onSessionChange({ ...session, ...patch });
+
+  const setOptionalField = (key: string, value: string) =>
+    set({ optional: { ...session.optional, [key]: value } });
+
   const handleContinue = () => {
-    if (!name.trim()) { setError('Project name is required.'); return; }
-    if (!description.trim()) { setError('Description is required.'); return; }
+    if (!session.name.trim()) { setError('Project name is required.'); return; }
+    if (!session.description.trim()) { setError('Description is required.'); return; }
     setError('');
 
-    jsPsychMetadata.setMetadataField('name', name.trim());
-    jsPsychMetadata.setMetadataField('description', description.trim());
+    jsPsychMetadata.setMetadataField('name', session.name.trim());
+    jsPsychMetadata.setMetadataField('description', session.description.trim());
 
     for (const { key } of OPTIONAL_FIELDS) {
-      const val = optional[key].trim();
+      const val = (session.optional[key] ?? '').trim();
       if (val) jsPsychMetadata.setMetadataField(key, val);
     }
 
@@ -98,8 +118,8 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMeta
           <input
             className={styles.input}
             type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
+            value={session.name}
+            onChange={e => set({ name: e.target.value })}
             placeholder="e.g. my-stroop-experiment"
           />
         </div>
@@ -111,8 +131,8 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMeta
           <p className={styles.hint}>A brief description of your experiment and dataset</p>
           <textarea
             className={styles.textarea}
-            value={description}
-            onChange={e => setDescription(e.target.value)}
+            value={session.description}
+            onChange={e => set({ description: e.target.value })}
             placeholder="e.g. Stroop task data collected from 40 participants…"
             rows={3}
           />
@@ -121,14 +141,17 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMeta
         <div className={styles.optionalSection}>
           <button
             className={styles.optionalToggle}
-            onClick={() => setOptionalOpen(o => !o)}
-            aria-expanded={optionalOpen}
+            onClick={() => set({ optionalOpen: !session.optionalOpen })}
+            aria-expanded={session.optionalOpen}
           >
-            <span>Optional fields</span>
-            <span className={styles.chevron}>{optionalOpen ? '▲' : '▼'}</span>
+            <span>
+              Optional fields{' '}
+              <span className={styles.optionalHint}>(license, keywords, citation…)</span>
+            </span>
+            <span className={styles.chevron}>{session.optionalOpen ? '▲' : '▼'}</span>
           </button>
 
-          {optionalOpen && (
+          {session.optionalOpen && (
             <div className={styles.optionalFields}>
               {OPTIONAL_FIELDS.map(({ key, label, hint }) => (
                 <div key={key} className={styles.field}>
@@ -137,8 +160,8 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ jsPsychMetadata, existingMeta
                   <input
                     className={styles.input}
                     type="text"
-                    value={optional[key]}
-                    onChange={e => setOptional(prev => ({ ...prev, [key]: e.target.value }))}
+                    value={session.optional[key] ?? ''}
+                    onChange={e => setOptionalField(key, e.target.value)}
                   />
                 </div>
               ))}

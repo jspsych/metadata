@@ -1,0 +1,281 @@
+.page {
+  max-width: 600px;
+}
+
+.heading {
+  margin: 0 0 0.4rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.count {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 0.1em 0.55em;
+}
+
+.subtext {
+  margin: 0 0 1.5rem;
+  font-size: 0.86rem;
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.5;
+}
+
+/* Cards */
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #2e2e2e;
+  border-radius: 8px;
+  padding: 1rem 1rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardIndex {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  color: rgba(255, 100, 100, 0.65);
+  cursor: pointer;
+  padding: 0.1em 0.3em;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.removeBtn:hover {
+  color: rgba(255, 100, 100, 0.9);
+}
+
+/* Fields */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.required {
+  color: #ff6b6b;
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.38);
+  line-height: 1.4;
+}
+
+.input {
+  background: #1e1e1e;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  padding: 0.48rem 0.65rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+/* ORCID prefix input */
+
+.orcidGroup {
+  display: flex;
+  align-items: center;
+  background: #1e1e1e;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.orcidGroup:focus-within {
+  border-color: #646cff;
+}
+
+.orcidPrefix {
+  padding: 0.48rem 0 0.48rem 0.65rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.28);
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.orcidInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0.48rem 0.65rem 0.48rem 0.2rem;
+  font-size: 0.88rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.orcidInput:focus {
+  outline: none;
+}
+
+.orcidInput::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+/* Optional section */
+
+.optionalSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.optionalToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.42);
+  padding: 0.25rem 0;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.optionalToggle:hover {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.optionalHint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.chevron {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.28);
+  margin-left: 0.4rem;
+  flex-shrink: 0;
+}
+
+.optionalFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-top: 0.7rem;
+}
+
+/* Group labels within optional section */
+
+.groupLabel {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.groupNote {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1.4;
+}
+
+/* Add author */
+
+.addBtn {
+  background: none;
+  border: 1px dashed rgba(100, 108, 255, 0.35);
+  border-radius: 8px;
+  color: rgba(100, 108, 255, 0.75);
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.55rem 1rem;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.addBtn:hover {
+  border-color: rgba(100, 108, 255, 0.65);
+  color: rgba(100, 108, 255, 1);
+}
+
+/* Continue */
+
+.continueBtn {
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6em 1.6em;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.continueBtn:hover {
+  background-color: #535bf2;
+}

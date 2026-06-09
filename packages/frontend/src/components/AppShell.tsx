@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import Sidebar from './Sidebar';
-import ProjectInfo from '../pages/ProjectInfo';
+import ProjectInfo, { ProjectInfoSession, emptyProjectInfoSession } from '../pages/ProjectInfo';
 import DataUpload, { DataSession, emptyDataSession } from '../pages/DataUpload';
 import Variables from '../pages/Variables';
 import Authors from '../pages/Authors';
@@ -25,19 +25,31 @@ interface AppShellProps {
 }
 
 const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFile, onStartOver }) => {
+  const isExistingProject = !!existingMetadataFile;
+
   const [currentStep, setCurrentStep] = useState<StepId>('projectInfo');
-  const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set());
+  // Pre-complete the Data step for existing projects — variables are already loaded from the JSON
+  const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(
+    () => isExistingProject ? new Set<StepId>(['data']) : new Set<StepId>()
+  );
   const [dataProcessed, setDataProcessed] = useState(false);
   const [dataSession, setDataSession] = useState<DataSession>(emptyDataSession);
+  const [projectInfoSession, setProjectInfoSession] = useState<ProjectInfoSession>(
+    () => emptyProjectInfoSession()
+  );
 
   const completeStep = (stepId: StepId) => {
-    setCompletedSteps(prev => {
-      const next = new Set(prev);
-      next.add(stepId);
-      return next;
-    });
     const idx = STEPS.findIndex(s => s.id === stepId);
-    if (idx < STEPS.length - 1) setCurrentStep(STEPS[idx + 1].id);
+    const nextCompleted = new Set([...completedSteps, stepId]);
+    setCompletedSteps(nextCompleted);
+    // Navigate to the first step after this one that hasn't been completed yet,
+    // so pre-completed steps (e.g. Data when opening existing project) are skipped.
+    for (let i = idx + 1; i < STEPS.length; i++) {
+      if (!nextCompleted.has(STEPS[i].id)) {
+        setCurrentStep(STEPS[i].id);
+        return;
+      }
+    }
   };
 
   const canNavigateTo = (stepId: StepId): boolean => {
@@ -53,6 +65,8 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
           <ProjectInfo
             jsPsychMetadata={jsPsychMetadata}
             existingMetadataFile={existingMetadataFile}
+            session={projectInfoSession}
+            onSessionChange={setProjectInfoSession}
             onComplete={() => completeStep('projectInfo')}
           />
         );
@@ -61,6 +75,7 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
           <DataUpload
             jsPsychMetadata={jsPsychMetadata}
             dataProcessed={dataProcessed}
+            existingMetadataLoaded={isExistingProject}
             onComplete={() => { setDataProcessed(true); completeStep('data'); }}
             session={dataSession}
             onSessionChange={setDataSession}

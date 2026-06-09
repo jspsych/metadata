@@ -358,9 +358,15 @@ export class VariablesMap {
     }
 
     var exists = false;
-    // creates map for description if doesn't exist
+    // Convert non-object descriptions to object form before merging.
+    // Preserve meaningful string descriptions as { default: string } so that
+    // user-written descriptions loaded from an existing JSON survive a re-run
+    // of generate(). "unknown" and other falsy values are treated as empty.
     if (typeof updated_var["description"] !== "object") {
-      updated_var["description"] = {};
+      const existing = updated_var["description"];
+      updated_var["description"] = (typeof existing === "string" && existing && existing !== "unknown")
+        ? { default: existing }
+        : {};
     }
 
     // appends key to other keys if default value/description are the same already exist to keep metadata shorter
