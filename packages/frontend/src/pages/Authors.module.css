@@ -1,12 +1,14 @@
 .page {
-  max-width: 600px;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .heading {
   margin: 0 0 0.4rem;
   font-size: 1.5rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--c-accent);
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
@@ -15,8 +17,8 @@
 .count {
   font-size: 0.9rem;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--c-ink-2);
+  background: var(--c-border-sub);
   border-radius: 10px;
   padding: 0.1em 0.55em;
 }
@@ -24,7 +26,7 @@
 .subtext {
   margin: 0 0 1.5rem;
   font-size: 0.86rem;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--c-ink-3);
   line-height: 1.5;
 }
 
@@ -38,8 +40,8 @@
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid #2e2e2e;
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
   border-radius: 8px;
   padding: 1rem 1rem 0.85rem;
   display: flex;
@@ -56,24 +58,23 @@
 .cardIndex {
   font-size: 0.74rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--c-ink-3);
 }
 
 .removeBtn {
   background: none;
   border: none;
   font-size: 0.78rem;
-  color: rgba(255, 100, 100, 0.65);
+  color: var(--c-danger);
   cursor: pointer;
   padding: 0.1em 0.3em;
   font-family: inherit;
   transition: color 0.15s;
+  opacity: 0.7;
 }
 
 .removeBtn:hover {
-  color: rgba(255, 100, 100, 0.9);
+  opacity: 1;
 }
 
 /* Fields */
@@ -93,42 +94,43 @@
 .label {
   font-size: 0.74rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--c-ink-3);
 }
 
 .required {
-  color: #ff6b6b;
+  color: var(--c-danger);
 }
 
 .fieldHint {
   margin: 0;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--c-ink-3);
   line-height: 1.4;
 }
 
 .input {
-  background: #1e1e1e;
-  border: 1px solid #383838;
-  border-radius: 6px;
+  background: var(--c-bg-input);
+  border: 1px solid var(--c-border);
+  border-bottom: 2px solid var(--c-border);
+  border-radius: 2px 2px 0 0;
   padding: 0.48rem 0.65rem;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--c-ink);
   font-family: inherit;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   width: 100%;
   box-sizing: border-box;
 }
 
 .input:focus {
   outline: none;
-  border-color: #646cff;
+  border-bottom-color: var(--c-forest-bright);
+  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
 }
 
+
 .input::placeholder {
-  color: rgba(255, 255, 255, 0.22);
+  color: var(--c-ink-3);
 }
 
 /* ORCID prefix input */
@@ -136,21 +138,23 @@
 .orcidGroup {
   display: flex;
   align-items: center;
-  background: #1e1e1e;
-  border: 1px solid #383838;
-  border-radius: 6px;
+  background: var(--c-bg-input);
+  border: 1px solid var(--c-border);
+  border-bottom: 2px solid var(--c-border);
+  border-radius: 2px 2px 0 0;
   overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .orcidGroup:focus-within {
-  border-color: #646cff;
+  border-bottom-color: var(--c-forest-bright);
+  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
 }
 
 .orcidPrefix {
   padding: 0.48rem 0 0.48rem 0.65rem;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--c-ink-3);
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   white-space: nowrap;
   flex-shrink: 0;
@@ -165,7 +169,7 @@
   padding: 0.48rem 0.65rem 0.48rem 0.2rem;
   font-size: 0.88rem;
   font-family: 'Fira Code', 'Cascadia Code', monospace;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--c-ink);
 }
 
 .orcidInput:focus {
@@ -173,7 +177,7 @@
 }
 
 .orcidInput::placeholder {
-  color: rgba(255, 255, 255, 0.22);
+  color: var(--c-ink-3);
 }
 
 /* Optional section */
@@ -192,25 +196,25 @@
   cursor: pointer;
   font-family: inherit;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--c-ink-3);
   padding: 0.25rem 0;
   text-align: left;
   transition: color 0.15s;
 }
 
 .optionalToggle:hover {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--c-ink-2);
 }
 
 .optionalHint {
   font-weight: 400;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--c-ink-4);
 }
 
 .chevron {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--c-ink-4);
   margin-left: 0.4rem;
   flex-shrink: 0;
 }
@@ -227,16 +231,14 @@
 .groupLabel {
   margin: 0;
   font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.32);
+  font-weight: 600;
+  color: var(--c-ink-3);
 }
 
 .groupNote {
   margin: 0.2rem 0 0;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--c-ink-3);
   line-height: 1.4;
 }
 
@@ -244,21 +246,21 @@
 
 .addBtn {
   background: none;
-  border: 1px dashed rgba(100, 108, 255, 0.35);
+  border: 1px dashed var(--c-accent);
   border-radius: 8px;
-  color: rgba(100, 108, 255, 0.75);
+  color: var(--c-accent);
   font-size: 0.88rem;
   font-family: inherit;
   cursor: pointer;
   padding: 0.55rem 1rem;
   width: 100%;
   margin-bottom: 1.5rem;
-  transition: border-color 0.15s, color 0.15s;
+  opacity: 0.7;
+  transition: opacity 0.15s;
 }
 
 .addBtn:hover {
-  border-color: rgba(100, 108, 255, 0.65);
-  color: rgba(100, 108, 255, 1);
+  opacity: 1;
 }
 
 /* Bulk import warning */
@@ -268,30 +270,31 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  background: rgba(255, 180, 0, 0.08);
-  border: 1px solid rgba(255, 180, 0, 0.25);
+  background: var(--c-warn-bg);
+  border: 1px solid var(--c-warn-border);
   border-radius: 7px;
   padding: 0.65rem 0.85rem;
   margin-bottom: 1rem;
   font-size: 0.83rem;
-  color: rgba(255, 200, 80, 0.9);
+  color: var(--c-warn-text);
   line-height: 1.5;
 }
 
 .warningDismiss {
   background: none;
   border: none;
-  color: rgba(255, 180, 0, 0.5);
+  color: var(--c-warn-icon);
   cursor: pointer;
   font-size: 0.78rem;
   padding: 0;
   flex-shrink: 0;
   line-height: 1;
   font-family: inherit;
+  opacity: 0.65;
 }
 
 .warningDismiss:hover {
-  color: rgba(255, 180, 0, 0.9);
+  opacity: 1;
 }
 
 /* Bulk import */
@@ -299,7 +302,7 @@
 .bulkToggleBtn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--c-ink-3);
   font-size: 0.84rem;
   font-family: inherit;
   cursor: pointer;
@@ -310,24 +313,24 @@
 }
 
 .bulkToggleBtn:hover {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--c-ink-2);
 }
 
 .bulkPanel {
-  border: 1px solid #2e2e2e;
+  border: 1px solid var(--c-border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--c-bg-raised);
 }
 
 .bulkInstructions {
   margin: 0;
   font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-ink-2);
   line-height: 1.5;
 }
 
@@ -335,8 +338,8 @@
   margin: 0;
   font-size: 0.75rem;
   font-family: 'Fira Code', 'Cascadia Code', monospace;
-  color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--c-ink-3);
+  background: var(--c-border-sub);
   border-radius: 5px;
   padding: 0.5rem 0.7rem;
   white-space: pre;
@@ -345,25 +348,27 @@
 
 .bulkTextarea {
   width: 100%;
-  background: #1e1e1e;
-  border: 1px solid #383838;
-  border-radius: 6px;
+  background: var(--c-bg-input);
+  border: 1px solid var(--c-border);
+  border-bottom: 2px solid var(--c-border);
+  border-radius: 2px 2px 0 0;
   padding: 0.55rem 0.7rem;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--c-ink);
   font-family: inherit;
   resize: vertical;
   box-sizing: border-box;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .bulkTextarea:focus {
   outline: none;
-  border-color: #646cff;
+  border-bottom-color: var(--c-forest-bright);
+  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
 }
 
 .bulkTextarea::placeholder {
-  color: rgba(255, 255, 255, 0.22);
+  color: var(--c-ink-3);
 }
 
 .bulkActions {
@@ -372,8 +377,8 @@
 }
 
 .importBtn {
-  background-color: #646cff;
-  color: white;
+  background-color: var(--c-amber);
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   padding: 0.45em 1.2em;
@@ -385,33 +390,33 @@
 }
 
 .importBtn:hover {
-  background-color: #535bf2;
+  background-color: var(--c-amber-hover);
 }
 
 .cancelBtn {
   background: none;
-  border: 1px solid #383838;
+  border: 1px solid var(--c-border);
   border-radius: 6px;
   padding: 0.45em 1.1em;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-ink-2);
   font-family: inherit;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .cancelBtn:hover {
-  border-color: #646cff;
-  color: rgba(255, 255, 255, 0.82);
+  border-color: var(--c-accent);
+  color: var(--c-ink);
 }
 
 /* Continue */
 
 .continueBtn {
-  background-color: #646cff;
-  color: white;
+  background-color: var(--c-amber);
+  color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   padding: 0.6em 1.6em;
   font-size: 0.95rem;
   font-weight: 500;
@@ -421,5 +426,5 @@
 }
 
 .continueBtn:hover {
-  background-color: #535bf2;
+  background-color: var(--c-amber-hover);
 }

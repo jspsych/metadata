@@ -8,20 +8,132 @@ html, body, #root {
   height: 100%;
 }
 
+:root {
+  /* Brand */
+  --c-forest-deep: #006738;
+  --c-forest-bright: #13b24b;
+  --c-amber: #f78f1e;
+  --c-amber-hover: #e07d12;
+  --c-danger: #d93025;
+
+  /* Surfaces — light */
+  --c-bg: #f4f7f5;
+  --c-bg-sidebar: oklch(94% 0.03 155);
+  --c-bg-raised: #ffffff;
+  --c-bg-input: #ffffff;
+  --c-bg-card-hover: oklch(97% 0.03 155);
+
+  /* Ink — light (forest DNA via trace chroma, not saturated green) */
+  --c-ink: #1a2e24;
+  --c-ink-2: oklch(37% 0.012 155);
+  --c-ink-3: oklch(52% 0.010 155);
+  --c-ink-4: #9ab5a8;
+
+  /* Borders — light */
+  --c-border: #d6e0da;
+  --c-border-sub: #eaf0ed;
+
+  /* Interactive accent — forest-deep in light, forest-bright in dark */
+  --c-accent: #006738;
+
+  /* Amber for text/icons — darker in light mode to hit contrast on light surfaces */
+  --c-amber-text: oklch(46% 0.17 55);
+
+  /* Type / status badge */
+  --c-badge-bg: oklch(94% 0.04 155);
+  --c-badge-text: #006738;
+  --c-badge-border: oklch(87% 0.07 155);
+
+  /* Semantic — success */
+  --c-success-text: #13b24b;
+  --c-success-bg: oklch(95% 0.04 145);
+  --c-success-border: oklch(85% 0.08 145);
+
+  /* Semantic — warning callout */
+  --c-warn-text: oklch(48% 0.14 60);
+  --c-warn-bg: oklch(97% 0.025 70);
+  --c-warn-border: oklch(86% 0.07 70);
+  --c-warn-icon: oklch(62% 0.17 60);
+
+  /* Semantic — danger */
+  --c-danger-bg: oklch(97% 0.02 27);
+  --c-danger-border: oklch(88% 0.06 27);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #141918;
+    --c-bg-sidebar: #0f1512;
+    --c-bg-raised: #1d2420;
+    --c-bg-input: #161d1a;
+    --c-bg-card-hover: oklch(16% 0.02 155);
+
+    --c-ink: oklch(93% 0.008 155);
+    --c-ink-2: oklch(80% 0.012 155);
+    --c-ink-3: oklch(63% 0.015 155);
+    --c-ink-4: oklch(48% 0.01 155);
+
+    --c-border: #2c3830;
+    --c-border-sub: #1f2b27;
+
+    --c-accent: #13b24b;
+    --c-amber-text: #f78f1e;
+    --c-danger: oklch(68% 0.19 27);
+
+    --c-badge-bg: rgba(0, 103, 56, 0.15);
+    --c-badge-text: #13b24b;
+    --c-badge-border: rgba(0, 103, 56, 0.3);
+
+    --c-success-bg: rgba(19, 178, 75, 0.09);
+    --c-success-border: rgba(19, 178, 75, 0.25);
+
+    --c-warn-text: oklch(72% 0.14 60);
+    --c-warn-bg: oklch(18% 0.04 70);
+    --c-warn-border: oklch(35% 0.08 70);
+    --c-warn-icon: #f78f1e;
+
+    --c-danger-bg: rgba(217, 48, 37, 0.1);
+    --c-danger-border: rgba(217, 48, 37, 0.35);
+  }
+}
+
 body {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  background-color: #242424;
-  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--c-bg);
+  color: var(--c-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: #646cff;
+  color: var(--c-accent);
   text-decoration: none;
 }
 a:hover {
-  color: #535bf2;
+  text-decoration: underline;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-amber) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--c-amber);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--c-amber-hover);
 }

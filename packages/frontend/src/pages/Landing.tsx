@@ -33,7 +33,7 @@ const Landing: React.FC<LandingProps> = ({ onStart }) => {
         </button>
 
         <button className={styles.card} onClick={() => fileInputRef.current?.click()}>
-          <span className={styles.cardIcon}>↑</span>
+          <span className={styles.cardIconAmber}>↑</span>
           <span className={styles.cardTitle}>Open existing project</span>
           <span className={styles.cardDesc}>
             Upload a <code>dataset_description.json</code> to continue editing

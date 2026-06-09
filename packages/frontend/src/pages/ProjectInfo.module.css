@@ -1,12 +1,14 @@
 .page {
-  max-width: 560px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .heading {
   margin: 0 0 1.75rem;
   font-size: 1.5rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--c-accent);
 }
 
 .loadedBanner {
@@ -14,9 +16,9 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.85rem;
-  color: #4caf50;
-  background: rgba(76, 175, 80, 0.1);
-  border: 1px solid rgba(76, 175, 80, 0.25);
+  color: var(--c-success-text);
+  background: var(--c-success-bg);
+  border: 1px solid var(--c-success-border);
   border-radius: 6px;
   padding: 0.4rem 0.75rem;
   margin: 0 0 1.5rem;
@@ -24,11 +26,11 @@
 
 .loadedBanner code {
   font-size: 0.8rem;
-  color: #6fcf72;
+  color: var(--c-success-text);
 }
 
 .loading {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--c-ink-3);
   font-size: 0.95rem;
   padding: 2rem 0;
 }
@@ -54,7 +56,7 @@
 .label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--c-ink);
 }
 
 .helpBtn {
@@ -62,7 +64,7 @@
   border: none;
   padding: 0;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--c-ink-4);
   cursor: pointer;
   line-height: 1;
   font-family: inherit;
@@ -70,15 +72,16 @@
 }
 
 .helpBtn:hover {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--c-ink-2);
 }
 
+/* Help block — full border, no side stripe */
 .helpBlock {
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.04);
-  border-left: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0 5px 5px 0;
+  color: var(--c-ink-2);
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 5px;
   padding: 0.6rem 0.75rem;
   line-height: 1.6;
 }
@@ -92,28 +95,29 @@
 }
 
 .required {
-  color: #ff8080;
+  color: var(--c-danger);
   margin-left: 2px;
 }
 
 .hint {
   margin: 0;
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--c-ink-3);
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  background-color: #1e1e1e;
-  border: 1px solid #3a3a3a;
-  border-radius: 7px;
-  padding: 0.55rem 0.75rem;
+  background-color: var(--c-bg-input);
+  border: 1px solid var(--c-border);
+  border-bottom: 2px solid var(--c-border);
+  border-radius: 2px 2px 0 0;
+  padding: 0.6rem 0.75rem;
   font-size: 0.9rem;
   font-family: inherit;
-  color: rgba(255, 255, 255, 0.88);
-  transition: border-color 0.15s;
+  color: var(--c-ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
 }
 
@@ -125,13 +129,14 @@
 .select:focus,
 .textarea:focus {
   outline: none;
-  border-color: #646cff;
+  border-bottom-color: var(--c-forest-bright);
+  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
 }
 
 .input::placeholder,
 .select::placeholder,
 .textarea::placeholder {
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--c-ink-3);
 }
 
 .textarea {
@@ -144,7 +149,7 @@
 .optionalSection {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--c-border);
   padding-top: 0.25rem;
 }
 
@@ -157,7 +162,7 @@
   padding: 0.6rem 0;
   font-size: 0.88rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--c-ink-2);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
@@ -167,17 +172,16 @@
 .optionalHint {
   font-weight: 400;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--c-ink-3);
 }
 
 .optionalToggle:hover {
-  color: rgba(255, 255, 255, 0.88);
-  border-color: transparent;
+  color: var(--c-ink);
 }
 
 .chevron {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--c-ink-4);
 }
 
 .optionalFields {
@@ -192,17 +196,17 @@
 .error {
   margin: 0;
   font-size: 0.85rem;
-  color: #ff8080;
+  color: var(--c-danger);
 }
 
 .continueBtn {
   align-self: flex-start;
-  background-color: #646cff;
-  color: white;
+  background-color: var(--c-amber);
+  color: #ffffff;
   border: none;
-  border-radius: 8px;
-  padding: 0.6em 1.6em;
-  font-size: 0.95rem;
+  border-radius: 7px;
+  padding: 0.7em 2em;
+  font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -210,6 +214,5 @@
 }
 
 .continueBtn:hover {
-  background-color: #535bf2;
-  border-color: transparent;
+  background-color: var(--c-amber-hover);
 }

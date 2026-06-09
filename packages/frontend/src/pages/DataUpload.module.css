@@ -1,18 +1,20 @@
 .page {
-  max-width: 600px;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .heading {
   margin: 0 0 0.5rem;
   font-size: 1.5rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--c-accent);
 }
 
 .description {
   margin: 0 0 1.75rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--c-ink-2);
   line-height: 1.5;
 }
 
@@ -22,8 +24,8 @@
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
-  background: rgba(76, 175, 80, 0.08);
-  border: 1px solid rgba(76, 175, 80, 0.25);
+  background: var(--c-success-bg);
+  border: 1px solid var(--c-success-border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.25rem;
@@ -31,29 +33,27 @@
 
 .hasDataBanner strong {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--c-ink);
 }
 
 .hasDataSub {
   margin: 0.3rem 0 0;
   font-size: 0.83rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-ink-2);
   line-height: 1.5;
 }
 
 .fromExistingOptional {
   margin: 1rem 0 0.5rem;
   font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--c-ink-3);
   line-height: 1.5;
 }
 
 .additionalDivider {
   font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+  color: var(--c-ink-3);
   margin: 1.5rem 0 0.75rem;
 }
 
@@ -67,12 +67,12 @@
 }
 
 .browseBtn {
-  background-color: #2a2a2a;
-  border: 1px solid #444;
+  background-color: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
   border-radius: 7px;
   padding: 0.5rem 1.1rem;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--c-ink-2);
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.15s, background-color 0.15s;
@@ -80,18 +80,18 @@
 }
 
 .browseBtn:hover {
-  border-color: #646cff;
-  background-color: #2f2f3a;
+  border-color: var(--c-accent);
+  background-color: var(--c-bg-card-hover);
 }
 
 .pickerOr {
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--c-ink-4);
 }
 
 .folderName {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-ink-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -100,7 +100,7 @@
 .pickError {
   margin: -0.75rem 0 1rem;
   font-size: 0.85rem;
-  color: #ff8080;
+  color: var(--c-danger);
 }
 
 /* File list (before processing) */
@@ -111,9 +111,9 @@
   padding: 0;
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid #2e2e2e;
+  border: 1px solid var(--c-border);
   border-radius: 8px;
-  background: #1e1e1e;
+  background: var(--c-bg-raised);
 }
 
 .fileItem {
@@ -122,8 +122,8 @@
   gap: 0.6rem;
   padding: 0.4rem 0.85rem;
   font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.65);
-  border-bottom: 1px solid #2a2a2a;
+  color: var(--c-ink-2);
+  border-bottom: 1px solid var(--c-border-sub);
 }
 
 .fileItem:last-child {
@@ -134,17 +134,17 @@
 
 .preflight {
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--c-ink-3);
   margin: 0.5rem 0 1rem;
 }
 
 /* Process button */
 
 .processBtn {
-  background-color: #646cff;
-  color: white;
+  background-color: var(--c-amber);
+  color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   padding: 0.55em 1.4em;
   font-size: 0.92rem;
   font-weight: 500;
@@ -154,8 +154,7 @@
 }
 
 .processBtn:hover {
-  background-color: #535bf2;
-  border-color: transparent;
+  background-color: var(--c-amber-hover);
 }
 
 /* Join key section */
@@ -169,28 +168,28 @@
 .joinKeyWarning {
   display: flex;
   gap: 0.85rem;
-  background: rgba(255, 180, 0, 0.08);
-  border: 1px solid rgba(255, 180, 0, 0.25);
+  background: var(--c-warn-bg);
+  border: 1px solid var(--c-warn-border);
   border-radius: 8px;
   padding: 1rem;
 }
 
 .warnIcon {
   font-size: 1.1rem;
-  color: #ffb400;
+  color: var(--c-warn-icon);
   flex-shrink: 0;
   margin-top: 1px;
 }
 
 .joinKeyWarning strong {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--c-ink);
 }
 
 .joinKeyExplainer {
   margin: 0.35rem 0 0;
   font-size: 0.83rem;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--c-ink-2);
   line-height: 1.5;
 }
 
@@ -201,7 +200,7 @@
   border: none;
   padding: 0;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--c-ink-3);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
@@ -211,13 +210,14 @@
 }
 
 .helpToggle:hover {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--c-ink-2);
 }
 
+/* Help text — full border, no side stripe */
 .helpText {
-  background: rgba(255, 255, 255, 0.04);
-  border-left: 2px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0 6px 6px 0;
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
@@ -227,20 +227,21 @@
 .helpText p {
   margin: 0;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-ink-2);
   line-height: 1.6;
 }
 
 .helpText strong {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--c-ink);
 }
 
 .helpText code {
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   font-size: 0.79rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--c-border-sub);
   border-radius: 3px;
   padding: 0.1em 0.35em;
+  color: var(--c-ink);
 }
 
 .candidateList {
@@ -257,13 +258,13 @@
   align-items: center;
   gap: 0.6rem;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--c-ink);
 }
 
 .candidateItem input[type="checkbox"] {
   width: 15px;
   height: 15px;
-  accent-color: #646cff;
+  accent-color: var(--c-accent);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -275,14 +276,14 @@
 
 .candidateTag {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--c-ink-3);
+  background: var(--c-border-sub);
   border-radius: 4px;
   padding: 0.1em 0.45em;
 }
 
 .proceedLabel {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--c-ink-3);
   font-style: italic;
 }
 
@@ -295,9 +296,9 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  border: 1px solid #2e2e2e;
+  border: 1px solid var(--c-border);
   border-radius: 8px;
-  background: #1e1e1e;
+  background: var(--c-bg-raised);
   max-height: 260px;
   overflow-y: auto;
 }
@@ -308,7 +309,7 @@
   gap: 0.6rem;
   padding: 0.4rem 0.85rem;
   font-size: 0.84rem;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid var(--c-border-sub);
 }
 
 .statusItem:last-child {
@@ -316,22 +317,22 @@
 }
 
 .statusName {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--c-ink);
   flex: 1;
 }
 
 .statusDetail {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--c-ink-3);
 }
 
 /* Status icons */
 
-.iconSuccess  { color: #4caf50; font-size: 0.85rem; width: 14px; }
-.iconError    { color: #ff6b6b; font-size: 0.85rem; width: 14px; }
-.iconSkipped  { color: rgba(255, 255, 255, 0.3); font-size: 0.85rem; width: 14px; }
-.iconLoading  { color: rgba(255, 255, 255, 0.45); font-size: 0.85rem; width: 14px; }
-.iconPending  { color: rgba(255, 255, 255, 0.2); font-size: 0.85rem; width: 14px; }
+.iconSuccess  { color: var(--c-forest-bright); font-size: 0.85rem; width: 14px; }
+.iconError    { color: var(--c-danger); font-size: 0.85rem; width: 14px; }
+.iconSkipped  { color: var(--c-ink-4); font-size: 0.85rem; width: 14px; }
+.iconLoading  { color: var(--c-ink-3); font-size: 0.85rem; width: 14px; }
+.iconPending  { color: var(--c-ink-4); font-size: 0.85rem; width: 14px; }
 
 /* Join key action row */
 
@@ -346,13 +347,13 @@
   border: none;
   padding: 0;
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--c-ink-3);
   cursor: pointer;
   font-family: inherit;
 }
 
 .cancelBtn:hover {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--c-ink-2);
 }
 
 /* Done actions row */
@@ -369,7 +370,7 @@
   border: none;
   padding: 0;
   font-size: 0.83rem;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--c-ink-3);
   cursor: pointer;
   font-family: inherit;
   text-decoration: underline;
@@ -377,16 +378,16 @@
 }
 
 .reConfigureBtn:hover {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--c-ink-2);
 }
 
 /* Continue */
 
 .continueBtn {
-  background-color: #646cff;
-  color: white;
+  background-color: var(--c-amber);
+  color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   padding: 0.6em 1.6em;
   font-size: 0.95rem;
   font-weight: 500;
@@ -396,6 +397,5 @@
 }
 
 .continueBtn:hover {
-  background-color: #535bf2;
-  border-color: transparent;
+  background-color: var(--c-amber-hover);
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StepId } from './AppShell';
 import styles from './Sidebar.module.css';
+import logo from '../assets/jspsychlogo2.png';
 
 interface Step {
   id: StepId;
@@ -28,7 +29,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <nav className={styles.sidebar}>
-      <span className={styles.appTitle}>jsPsych Metadata</span>
+      <div className={styles.header}>
+        <img src={logo} alt="" className={styles.logo} />
+        <span className={styles.appTitle}>jsPsych Metadata</span>
+      </div>
       <ul className={styles.stepList}>
         {steps.map((step) => {
           const isActive = step.id === currentStep;

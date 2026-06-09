@@ -7,6 +7,6 @@
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 2.5rem 3rem;
-  background-color: #242424;
+  padding: 3rem 2rem;
+  background-color: var(--c-bg);
 }
