@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './App.css';
 import JsPsychMetadata from '@jspsych/metadata';
 import Landing from './pages/Landing';
 import AppShell from './components/AppShell';
