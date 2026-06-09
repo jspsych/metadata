@@ -815,13 +815,14 @@ export default class JsPsychMetadata {
    * produce no rows.
    */
   private async accumulateArrayColumn(columnName: string, arr: any[], joinValues: Record<string, any>, pluginType: string, version: string) {
-    const objectElements: Array<{ element: Record<string, any>; index: number }> = [];
+    // Every non-empty element produces a row. Object elements expand into named columns
+    // (`columnName.field`); primitive or nested-array elements have no field name, so they go
+    // under a synthetic `columnName.value` column. Null/undefined elements are skipped.
+    const elements: Array<{ element: any; index: number }> = [];
     arr.forEach((element, index) => {
-      if (element !== null && typeof element === "object" && !Array.isArray(element)) {
-        objectElements.push({ element, index });
-      }
+      if (element !== null && element !== undefined) elements.push({ element, index });
     });
-    if (objectElements.length === 0) return;
+    if (elements.length === 0) return;
 
     // Declare the join-key columns this table carries that aren't known yet: element_index, plus
     // any ancestor element-index keys passed down from an enclosing array (qualified
@@ -847,13 +848,28 @@ export default class JsPsychMetadata {
     }
 
     const existing = this.extractedArrays.get(columnName) ?? [];
-    for (const { element, index } of objectElements) {
+    for (const { element, index } of elements) {
       const row: Record<string, any> = { ...joinValues, element_index: index };
       // Join keys for any array nested inside this element: the current keys plus THIS element's
       // index, qualified by the column name so it doesn't clash with the grandchild's own
       // element_index. This keeps a grandchild sub-table joinable to its specific parent element.
       const nestedJoin: Record<string, any> = { ...joinValues, [`${columnName}.element_index`]: index };
-      await this.expandElementFields(columnName, element, row, nestedJoin, pluginType, version);
+
+      if (typeof element === "object" && !Array.isArray(element)) {
+        // Object element → expand its named fields (columnName.field), recursing as needed.
+        await this.expandElementFields(columnName, element, row, nestedJoin, pluginType, version);
+      } else {
+        // Primitive (or nested-array) element → no field name, so record it under columnName.value.
+        // The synthetic name differs from the array parent (value:"array") to avoid a collision.
+        const valueName = `${columnName}.value`;
+        row[valueName] = element;
+        if (Array.isArray(element)) {
+          await this.registerNodeVariable(valueName, element, "array", pluginType, version);
+          await this.accumulateArrayColumn(valueName, element, nestedJoin, pluginType, version);
+        } else {
+          await this.registerScalarField(valueName, element, pluginType, version);
+        }
+      }
       existing.push(row);
     }
     this.extractedArrays.set(columnName, existing);
