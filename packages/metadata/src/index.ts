@@ -802,14 +802,17 @@ export default class JsPsychMetadata {
    * Accumulates the object elements of an array column into `extractedArrays` for
    * separate Psych-DS CSV output, keyed by the column's (possibly dotted) name.
    * Each emitted row is the join key values, an `element_index`, then the element's
-   * own fields under DOTTED names (`columnName.field`) so they don't collide with
-   * top-level columns or with fields of other array columns. Every emitted column —
-   * the element fields and `element_index` — is registered in variableMeasured so the
-   * sidecar CSV has no columns missing from the metadata. Element fields are recorded
-   * one level deep: an object- or array-valued field becomes a single dotted column
-   * holding its JSON value (it is not further expanded or extracted).
-   * Null / primitive top-level array elements are skipped; arrays with no object
-   * elements produce no rows.
+   * fields under DOTTED names (`columnName.field`) so they don't collide with top-level
+   * columns or with fields of other array columns. Every emitted column is registered in
+   * variableMeasured so the sidecar CSV has no columns missing from the metadata.
+   *
+   * Element fields recurse (see expandElementFields): a nested plain object is expanded
+   * into deeper dotted columns in the SAME row; a nested array is extracted into its own
+   * grandchild CSV, joinable via `${columnName}.element_index` (this element's position)
+   * carried alongside the existing join keys.
+   *
+   * Null / primitive top-level array elements are skipped; arrays with no object elements
+   * produce no rows.
    */
   private async accumulateArrayColumn(columnName: string, arr: any[], joinValues: Record<string, any>, pluginType: string, version: string) {
     const objectElements: Array<{ element: Record<string, any>; index: number }> = [];
@@ -820,8 +823,10 @@ export default class JsPsychMetadata {
     });
     if (objectElements.length === 0) return;
 
-    // element_index is a real column in every extracted-array CSV; declare it once so it
-    // isn't flagged as missing from variableMeasured.
+    // Declare the join-key columns this table carries that aren't known yet: element_index, plus
+    // any ancestor element-index keys passed down from an enclosing array (qualified
+    // "<col>.element_index"). Pre-existing keys (trial_index, participant_id, …) are already
+    // declared and are skipped.
     if (!this.containsVariable("element_index")) {
       this.setVariable({
         "@type": "PropertyValue",
@@ -830,29 +835,73 @@ export default class JsPsychMetadata {
         value: "number",
       });
     }
+    for (const joinKey of Object.keys(joinValues)) {
+      if (!this.containsVariable(joinKey)) {
+        this.setVariable({
+          "@type": "PropertyValue",
+          name: joinKey,
+          description: { default: "Join key referencing the position of an enclosing array element (0-based index)." },
+          value: "number",
+        });
+      }
+    }
 
     const existing = this.extractedArrays.get(columnName) ?? [];
     for (const { element, index } of objectElements) {
       const row: Record<string, any> = { ...joinValues, element_index: index };
-      for (const key of Object.keys(element)) {
-        const fieldName = `${columnName}.${key}`;
-        const fieldValue = element[key];
-        row[fieldName] = fieldValue;
-        await this.registerArrayElementField(fieldName, fieldValue, pluginType, version);
-      }
+      // Join keys for any array nested inside this element: the current keys plus THIS element's
+      // index, qualified by the column name so it doesn't clash with the grandchild's own
+      // element_index. This keeps a grandchild sub-table joinable to its specific parent element.
+      const nestedJoin: Record<string, any> = { ...joinValues, [`${columnName}.element_index`]: index };
+      await this.expandElementFields(columnName, element, row, nestedJoin, pluginType, version);
       existing.push(row);
     }
     this.extractedArrays.set(columnName, existing);
   }
 
   /**
-   * Registers (or folds another value into) one field of an extracted array element under
-   * its dotted name, so every column written to the array sidecar CSV is represented in
-   * variableMeasured. Object/array-valued fields are recorded one level deep — a single
-   * dotted column holding the JSON value — and are not further expanded or extracted.
+   * Recursively records one array element's fields into `row` under dotted names. Scalars become
+   * columns with type + min/max/levels tracking; nested plain objects are expanded into the SAME
+   * row (deeper dotted columns); nested arrays are extracted into their own grandchild CSV via
+   * accumulateArrayColumn (keyed by `nestedJoin`). Object/array nodes are also kept as a single
+   * dotted JSON column so their own name is represented as a column too.
    */
-  private async registerArrayElementField(name: string, value: any, pluginType: string, version: string) {
-    // Empty values: ensure the column is declared (placeholder) without polluting min/max/levels.
+  private async expandElementFields(prefix: string, obj: Record<string, any>, row: Record<string, any>, nestedJoin: Record<string, any>, pluginType: string, version: string) {
+    for (const key of Object.keys(obj)) {
+      const name = `${prefix}.${key}`;
+      const value = obj[key];
+      row[name] = value; // object/array values are JSON-stringified at CSV-write time
+
+      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        await this.registerNodeVariable(name, value, "object", pluginType, version);
+        await this.expandElementFields(name, value, row, nestedJoin, pluginType, version);
+      } else if (Array.isArray(value)) {
+        await this.registerNodeVariable(name, value, "array", pluginType, version);
+        await this.accumulateArrayColumn(name, value, nestedJoin, pluginType, version);
+      } else {
+        await this.registerScalarField(name, value, pluginType, version);
+      }
+    }
+  }
+
+  /** Registers an object/array node variable once (with its plugin description, if any). */
+  private async registerNodeVariable(name: string, value: any, type: "object" | "array", pluginType: string, version: string) {
+    if (this.containsVariable(name) && (this.getVariable(name) as VariableFields).value !== "unknown") return;
+    await this.generateMetadata(name, value, pluginType, version);
+    if (!this.containsVariable(name)) {
+      // generateMetadata is a no-op without a pluginType — declare the column anyway.
+      this.setVariable({ "@type": "PropertyValue", name, description: { default: "unknown" }, value: type });
+    } else {
+      this.updateVariable(name, "value", type); // typeof {}/[] === "object"; pin the intended type
+    }
+  }
+
+  /**
+   * Registers one scalar array-element field under its dotted name (so the sidecar column is
+   * represented in variableMeasured), then folds later values into min/max/levels. Empty values
+   * still declare the column (placeholder) without polluting min/max/levels.
+   */
+  private async registerScalarField(name: string, value: any, pluginType: string, version: string) {
     if (value === null || value === undefined || value === "" || value === "null") {
       if (!this.containsVariable(name)) {
         this.setVariable({ "@type": "PropertyValue", name, description: { default: "unknown" }, value: "unknown" });
@@ -860,23 +909,16 @@ export default class JsPsychMetadata {
       return;
     }
 
-    const isArray = Array.isArray(value);
-    const type = isArray ? "array" : typeof value;
+    const type = typeof value;
     const needsRegister = !this.containsVariable(name) || (this.getVariable(name) as VariableFields).value === "unknown";
 
     if (needsRegister) {
-      // First real value: register with the plugin description (if any) and correct type,
-      // tracking min/max/levels via generateMetadata's updateFields call.
       await this.generateMetadata(name, value, pluginType, version);
       if (!this.containsVariable(name)) {
-        // generateMetadata is a no-op without a pluginType — declare the column anyway.
         this.setVariable({ "@type": "PropertyValue", name, description: { default: "unknown" }, value: type });
         this.updateFields(name, value, type);
-      } else if (isArray) {
-        this.updateVariable(name, "value", "array"); // typeof [] === "object"; override
       }
     } else {
-      // Already registered: fold this value into min/max/levels without refetching the description.
       this.updateFields(name, value, type);
     }
   }

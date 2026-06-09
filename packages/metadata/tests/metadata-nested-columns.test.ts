@@ -728,7 +728,7 @@ describe("array-element field registration", () => {
     }
   });
 
-  test("object/array element fields are recorded one level deep (dotted JSON column, not expanded)", async () => {
+  test("object element field is expanded; primitive-array element field stays a JSON column", async () => {
     const data = JSON.stringify([
       { ...B, pts: [{ point: { x: 1, y: 2 }, samples: [9, 8] }] },
     ]);
@@ -737,16 +737,20 @@ describe("array-element field registration", () => {
 
     const names = meta.getVariableNames();
     expect(names).toContain("pts.point");
-    expect(names).toContain("pts.samples");
     expect((meta.getVariable("pts.point") as any).value).toBe("object");
+    // object field IS now expanded (recursive follow-up)
+    expect(names).toContain("pts.point.x");
+    expect(names).toContain("pts.point.y");
+
+    // primitive array (no object elements) is NOT extracted — kept as a single JSON column
+    expect(names).toContain("pts.samples");
     expect((meta.getVariable("pts.samples") as any).value).toBe("array");
-    // not expanded / not extracted further
-    expect(names).not.toContain("pts.point.x");
     expect(meta.getExtractedArrays().has("pts.samples")).toBe(false);
 
-    // the sidecar row keeps the nested value under the single dotted column
     const row = meta.getExtractedArrays().get("pts")![0];
-    expect(row["pts.point"]).toEqual({ x: 1, y: 2 });
+    expect(row["pts.point.x"]).toBe(1);
+    expect(row["pts.point.y"]).toBe(2);
+    expect(row["pts.point"]).toEqual({ x: 1, y: 2 }); // node kept as JSON column too
     expect(row["pts.samples"]).toEqual([9, 8]);
   });
 
@@ -774,5 +778,96 @@ describe("array-element field registration", () => {
 
     expect((meta.getVariable("gaze.x") as any).minValue).toBe(1);
     expect((meta.getVariable("clicks.x") as any).minValue).toBe(999);
+  });
+});
+
+// ─── recursive array-element unnesting (deeper levels) ──────────────────────
+// Building on the one-level array-element registration: object fields inside an array
+// element are expanded into the same row (deeper dotted columns); array fields inside an
+// array element are extracted to a grandchild table, joinable to their specific parent
+// element via a qualified `<col>.element_index` key.
+
+describe("recursive array-element unnesting", () => {
+  const mf = jest.fn().mockResolvedValue({ text: () => Promise.resolve("") });
+  beforeEach(() => { (global as any).fetch = mf; mf.mockClear(); });
+  const B = { trial_type: "mock-plugin", trial_index: 0, time_elapsed: 100 };
+
+  test("object inside an array element is expanded into the same row (deeper dotted columns)", async () => {
+    const data = JSON.stringify([
+      { ...B, pts: [{ accuracy: 0.9, point: { x: 1, y: 2 } }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const names = meta.getVariableNames();
+    expect(names).toContain("pts.point");      // intermediate node
+    expect(names).toContain("pts.point.x");    // expanded leaf
+    expect(names).toContain("pts.point.y");
+    expect((meta.getVariable("pts.point.x") as any).value).toBe("number");
+
+    const row = meta.getExtractedArrays().get("pts")![0];
+    expect(row["pts.point.x"]).toBe(1);
+    expect(row["pts.point.y"]).toBe(2);
+    expect(meta.getExtractedArrays().has("pts.point")).toBe(false); // plain object → no grandchild table
+  });
+
+  test("array inside an array element is extracted to a grandchild table joinable to its parent element", async () => {
+    const data = JSON.stringify([
+      { ...B, pts: [
+        { samples: [{ t: 0, v: 9 }, { t: 1, v: 8 }] },
+        { samples: [{ t: 0, v: 7 }] },
+      ] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const gc = meta.getExtractedArrays().get("pts.samples")!;
+    expect(gc).toBeDefined();
+    expect(gc).toHaveLength(3);
+    // multi-level join key: trial_index + qualified parent index + own element_index
+    expect(gc[0]).toMatchObject({ trial_index: 0, "pts.element_index": 0, element_index: 0, "pts.samples.t": 0, "pts.samples.v": 9 });
+    expect(gc[1]).toMatchObject({ trial_index: 0, "pts.element_index": 0, element_index: 1, "pts.samples.v": 8 });
+    expect(gc[2]).toMatchObject({ trial_index: 0, "pts.element_index": 1, element_index: 0, "pts.samples.v": 7 });
+
+    expect(meta.getVariableNames()).toContain("pts.element_index"); // qualified parent-index key declared
+    expect(meta.getVariableNames()).toContain("pts.samples");       // array parent node declared
+    expect((meta.getVariable("pts.samples") as any).value).toBe("array");
+  });
+
+  test("VALIDATION INVARIANT holds across parent AND grandchild tables", async () => {
+    const data = JSON.stringify([
+      { ...B, pts: [{ accuracy: 0.9, samples: [{ t: 0, v: 1 }] }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const declared = new Set(meta.getVariableNames());
+    for (const [, rows] of meta.getExtractedArrays()) {
+      for (const row of rows) {
+        for (const col of Object.keys(row)) expect(declared.has(col)).toBe(true);
+      }
+    }
+  });
+
+  test("three levels deep: array → element-array → element-array", async () => {
+    const data = JSON.stringify([
+      { ...B, a: [{ b: [{ c: [{ leaf: 1 }] }] }] },
+    ]);
+    const meta = new JsPsychMetadata();
+    await meta.generate(data);
+
+    const ggc = meta.getExtractedArrays().get("a.b.c")!;
+    expect(ggc).toBeDefined();
+    expect(ggc[0]).toMatchObject({
+      trial_index: 0,
+      "a.element_index": 0,
+      "a.b.element_index": 0,
+      element_index: 0,
+      "a.b.c.leaf": 1,
+    });
+    const declared = new Set(meta.getVariableNames());
+    for (const [, rows] of meta.getExtractedArrays())
+      for (const row of rows)
+        for (const col of Object.keys(row)) expect(declared.has(col)).toBe(true);
   });
 });
