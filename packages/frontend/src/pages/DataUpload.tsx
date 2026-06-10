@@ -406,7 +406,8 @@ const DataUpload: React.FC<DataUploadProps> = ({
               <p className={styles.joinKeyFile}>{joinKeyProblemFile}</p>
               <p className={styles.joinKeyExplainer}>
                 <code>trial_index</code> resets to 0 for each participant in merged files, so it
-                can't tell rows apart on its own. Pick an additional column below to make each row unique.
+                can't tell rows apart on its own. Pick an additional column below to form a{' '}
+                <strong>join key</strong> — a unique row identifier.
               </p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import Sidebar from './Sidebar';
+import PreviewDrawer from './PreviewDrawer';
 import ProjectInfo, { ProjectInfoSession, emptyProjectInfoSession } from '../pages/ProjectInfo';
 import DataUpload, { DataSession, emptyDataSession } from '../pages/DataUpload';
 import Variables from '../pages/Variables';
@@ -37,6 +38,7 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
   const [projectInfoSession, setProjectInfoSession] = useState<ProjectInfoSession>(
     () => emptyProjectInfoSession()
   );
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const completeStep = (stepId: StepId) => {
     const idx = STEPS.findIndex(s => s.id === stepId);
@@ -107,6 +109,22 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
       <main className={styles.content}>
         {renderStep()}
       </main>
+
+      <button
+        className={styles.previewPill}
+        onClick={() => setPreviewOpen(true)}
+        aria-label="Open JSON preview"
+      >
+        <span className={styles.previewPillIcon}>{'{}'}</span>
+        Preview
+      </button>
+
+      {previewOpen && (
+        <PreviewDrawer
+          jsPsychMetadata={jsPsychMetadata}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 };
