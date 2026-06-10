@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import styles from './ProjectInfo.module.css';
 
@@ -45,6 +45,12 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [error, setError] = useState('');
   const [helpOpen, setHelpOpen] = useState<string | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<Record<string, string> | null>(null);
+  const [conflictFields, setConflictFields] = useState<string[]>([]);
+  const [conflictExpanded, setConflictExpanded] = useState(false);
+  const [uploadHelpOpen, setUploadHelpOpen] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
   const toggleHelp = (key: string) => setHelpOpen(prev => prev === key ? null : key);
 
   useEffect(() => {
@@ -82,13 +88,64 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
   const setOptionalField = (key: string, value: string) =>
     set({ optional: { ...session.optional, [key]: value } });
 
+  const applyUpload = (data: Record<string, string>, overwritePrimary: boolean) => {
+    const patch: Partial<ProjectInfoSession> = {};
+    if (overwritePrimary) {
+      if (data.name !== undefined) patch.name = data.name;
+      if (data.description !== undefined) patch.description = data.description;
+    }
+    const newOptional = { ...session.optional };
+    for (const { key } of OPTIONAL_FIELDS) {
+      if (data[key] !== undefined) newOptional[key] = data[key];
+    }
+    patch.optional = newOptional;
+    if (OPTIONAL_FIELDS.some(f => data[f.key] !== undefined)) patch.optionalOpen = true;
+    onSessionChange({ ...session, ...patch });
+    setPendingUpload(null);
+    setConflictFields([]);
+    setConflictExpanded(false);
+  };
+
+  const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string) as Record<string, unknown>;
+        const parsed: Record<string, string> = {};
+        if (typeof data.name === 'string') parsed.name = data.name;
+        if (typeof data.description === 'string') parsed.description = data.description;
+        for (const { key } of OPTIONAL_FIELDS) {
+          const val = data[key];
+          if (typeof val === 'string') parsed[key] = val;
+          else if (Array.isArray(val)) parsed[key] = val.join(', ');
+        }
+
+        const conflicts: string[] = [];
+        if (parsed.name !== undefined && session.name.trim() && parsed.name !== session.name.trim()) conflicts.push('name');
+        if (parsed.description !== undefined && session.description.trim() && parsed.description !== session.description.trim()) conflicts.push('description');
+
+        if (conflicts.length > 0) {
+          setPendingUpload(parsed);
+          setConflictFields(conflicts);
+        } else {
+          applyUpload(parsed, true);
+        }
+      } catch {
+        setError('Could not parse the uploaded JSON file — check that it is valid.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleContinue = () => {
     if (!session.name.trim()) { setError('Project name is required.'); return; }
-    if (!session.description.trim()) { setError('Description is required.'); return; }
     setError('');
 
     jsPsychMetadata.setMetadataField('name', session.name.trim());
-    jsPsychMetadata.setMetadataField('description', session.description.trim());
+    jsPsychMetadata.setMetadataField('description', session.description.trim() || 'No description provided.');
 
     for (const { key } of OPTIONAL_FIELDS) {
       const val = (session.optional[key] ?? '').trim();
@@ -117,6 +174,104 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
       )}
 
       <div className={styles.form}>
+        <div className={styles.uploadSection}>
+          <div className={styles.uploadRow}>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".json"
+              className={styles.hiddenInput}
+              onChange={handleJsonUpload}
+            />
+            <button
+              type="button"
+              className={styles.uploadBtn}
+              onClick={() => uploadInputRef.current?.click()}
+            >
+              ↑ Pre-fill from JSON
+            </button>
+            <button
+              type="button"
+              className={styles.helpBtn}
+              onClick={() => setUploadHelpOpen(o => !o)}
+              aria-expanded={uploadHelpOpen}
+              aria-label="Help for pre-fill from JSON"
+            >ⓘ</button>
+            <span className={styles.uploadHint}>Populate fields from an existing metadata file</span>
+          </div>
+          {uploadHelpOpen && (
+            <div className={styles.helpBlock}>
+              Accepts any <code>.json</code> file that contains one or more of the following fields:
+              <br /><br />
+              <code>name</code>, <code>description</code>, <code>license</code>, <code>keywords</code>, <code>citation</code>, <code>url</code>, <code>funder</code>, <code>identifier</code>, <code>privacyPolicy</code>
+              <br /><br />
+              Array values (e.g. <code>"keywords": ["stroop", "rt"]</code>) are joined as comma-separated text. Unrecognized fields are ignored.
+              <br /><br />
+              Example:
+              <pre className={styles.uploadHelpExample}>{`{
+  "name": "my-stroop-experiment",
+  "description": "Stroop task data from 40 participants.",
+  "license": "CC-BY-4.0",
+  "keywords": ["stroop", "reaction time"]
+}`}</pre>
+            </div>
+          )}
+        </div>
+
+        {pendingUpload && (() => {
+          const count = conflictFields.length;
+          const fieldStr = count === 1
+            ? `"${conflictFields[0]}"`
+            : conflictFields.map(f => `"${f}"`).join(' and ');
+          const msg = count === 1
+            ? `The uploaded file has a different ${fieldStr} than what you've already entered.`
+            : `The uploaded file has different values for ${fieldStr} than what you've already entered.`;
+          return (
+            <div className={styles.conflictCallout}>
+              <div className={styles.conflictMsgRow}>
+                <p className={styles.conflictMsg}>{msg}</p>
+                <button
+                  type="button"
+                  className={styles.conflictToggle}
+                  onClick={() => setConflictExpanded(e => !e)}
+                  aria-expanded={conflictExpanded}
+                >
+                  {conflictExpanded ? 'Hide details ▲' : 'See details ▼'}
+                </button>
+              </div>
+              {conflictExpanded && (
+                <div className={styles.conflictDetails}>
+                  {conflictFields.map(field => {
+                    const original = field === 'name' ? session.name : session.description;
+                    const uploaded = pendingUpload[field];
+                    return (
+                      <div key={field} className={styles.conflictDetail}>
+                        {count > 1 && <p className={styles.conflictDetailField}>{field}</p>}
+                        <div className={styles.conflictDetailRow}>
+                          <span className={styles.conflictDetailLabel}>Current</span>
+                          <span className={styles.conflictDetailValue}>{original}</span>
+                        </div>
+                        <div className={styles.conflictDetailRow}>
+                          <span className={styles.conflictDetailLabel}>Uploaded</span>
+                          <span className={styles.conflictDetailValue}>{uploaded}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className={styles.conflictBtns}>
+                <button type="button" className={styles.conflictYes} onClick={() => applyUpload(pendingUpload, true)}>
+                  Yes, overwrite
+                </button>
+                <button type="button" className={styles.conflictNo} onClick={() => applyUpload(pendingUpload, false)}>
+                  No, keep mine
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className={styles.field}>
           <label className={styles.label} htmlFor="project-name">
             Project name <span className={styles.required}>*</span>
@@ -135,7 +290,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
         <div className={styles.field}>
           <div className={styles.labelRow}>
             <label className={styles.label} htmlFor="project-description">
-              Description <span className={styles.required}>*</span>
+              Description
             </label>
             <button
               type="button"
@@ -152,6 +307,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
               <em>Example: "Stroop task data from 40 undergraduates (20 control, 20 ADHD), measuring response time and accuracy across congruent and incongruent conditions."</em>
             </div>
           )}
+          <p className={styles.hint}>Briefly describe your dataset. If left blank, defaults to "No description provided."</p>
           <textarea
             id="project-description"
             className={styles.textarea}

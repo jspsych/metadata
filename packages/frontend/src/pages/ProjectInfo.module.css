@@ -191,6 +191,190 @@
   padding-top: 0.75rem;
 }
 
+/* JSON upload row */
+
+.uploadSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uploadRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.uploadBtn {
+  background: none;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.uploadBtn:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.uploadHint {
+  font-size: 0.8rem;
+  color: var(--c-ink-3);
+}
+
+.uploadHelpExample {
+  margin: 0.25rem 0 0;
+  padding: 0.5rem 0.65rem;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+/* Conflict callout */
+
+.conflictCallout {
+  background: var(--c-warn-bg);
+  border: 1px solid var(--c-warn-border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.conflictMsg {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--c-warn-text);
+}
+
+.conflictMsgRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.conflictToggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--c-warn-text);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.conflictToggle:hover {
+  opacity: 1;
+}
+
+.conflictDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-warn-border);
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+.conflictDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.conflictDetailField {
+  margin: 0 0 0.1rem;
+  font-weight: 500;
+  color: var(--c-ink-2);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.conflictDetailRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+
+.conflictDetailLabel {
+  flex-shrink: 0;
+  width: 4.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--c-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.conflictDetailValue {
+  color: var(--c-ink);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.conflictBtns {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--c-warn-border);
+  margin-top: 0.1rem;
+}
+
+.conflictYes {
+  background: var(--c-amber);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.conflictYes:hover {
+  background: var(--c-amber-hover);
+}
+
+.conflictNo {
+  background: none;
+  border: 1px solid var(--c-border);
+  border-radius: 5px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.conflictNo:hover {
+  border-color: var(--c-ink-3);
+  color: var(--c-ink);
+}
+
 /* Error + Continue */
 
 .error {
