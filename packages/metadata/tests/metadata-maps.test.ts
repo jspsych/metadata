@@ -79,7 +79,7 @@ const variable_data: VariableFields[] = [
       default: "unknown",
       jsPsych: "The index of the current trial across the whole experiment.",
     },
-    value: "numeric",
+    value: "number",
   },
   {
     "@type": "PropertyValue",
@@ -89,7 +89,7 @@ const variable_data: VariableFields[] = [
       jsPsych:
         "The number of milliseconds between the start of the experiment and when the trial ended.",
     },
-    value: "numeric",
+    value: "number",
   },
 ];
 
