@@ -110,14 +110,16 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
         {renderStep()}
       </main>
 
-      <button
-        className={styles.previewPill}
-        onClick={() => setPreviewOpen(true)}
-        aria-label="Open JSON preview"
-      >
-        <span className={styles.previewPillIcon}>{'{}'}</span>
-        Preview
-      </button>
+      {currentStep !== 'review' && (
+        <button
+          className={styles.previewPill}
+          onClick={() => setPreviewOpen(true)}
+          aria-label="Open JSON preview"
+        >
+          <span className={styles.previewPillIcon}>{'{}'}</span>
+          Preview
+        </button>
+      )}
 
       {previewOpen && (
         <PreviewDrawer

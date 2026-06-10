@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from './JsonViewer';
 import styles from './PreviewDrawer.module.css';
@@ -11,6 +11,11 @@ interface PreviewDrawerProps {
 const PreviewDrawer: React.FC<PreviewDrawerProps> = ({ jsPsychMetadata, onClose }) => {
   // Fresh snapshot on each open (component mounts when drawer opens)
   const data = useMemo(() => jsPsychMetadata.getMetadata(), []);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
   return (
     <>
