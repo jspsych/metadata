@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
+import PageHeader from '../components/PageHeader';
 import styles from './ProjectInfo.module.css';
 
 export const OPTIONAL_FIELDS: { key: string; label: string; hint: string; help?: string; options?: readonly string[] }[] = [
@@ -164,8 +165,9 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
   }
 
   return (
-    <div className={styles.page}>
-      <h2 className={styles.heading}>Project Info</h2>
+    <>
+      <PageHeader title="Project Info" />
+      <div className={styles.page}>
 
       {loadStatus === 'loaded' && (
         <p className={styles.loadedBanner}>
@@ -276,14 +278,14 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
           <label className={styles.label} htmlFor="project-name">
             Project name <span className={styles.required}>*</span>
           </label>
-          <p className={styles.hint}>The name of your dataset</p>
+          <p className={styles.hint}>The name of your dataset — any format works (e.g. StroopTask2024, my-stroop-experiment, stroop_study)</p>
           <input
             id="project-name"
             className={styles.input}
             type="text"
             value={session.name}
             onChange={e => set({ name: e.target.value })}
-            placeholder="e.g. my-stroop-experiment"
+            placeholder="e.g. StroopTask2024"
           />
         </div>
 
@@ -386,6 +388,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
         </button>
       </div>
     </div>
+    </>
   );
 };
 

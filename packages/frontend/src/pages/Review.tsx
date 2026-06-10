@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import JSZip from 'jszip';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
+import PageHeader from '../components/PageHeader';
 import styles from './Review.module.css';
 
 interface ReviewProps {
@@ -92,8 +93,9 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const usesFilePicker = 'showSaveFilePicker' in window;
 
   return (
-    <div className={styles.page}>
-      <h2 className={styles.heading}>Review & Download</h2>
+    <>
+      <PageHeader title="Review & Download" />
+      <div className={styles.page}>
 
       <p className={styles.subtext}>
         This is your <code className={styles.code}>dataset_description.json</code>. Go back to any
@@ -152,6 +154,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
         <pre className={styles.cliBlock}>npx @jspsych/cli validate --psych-ds-dir ./your-dataset</pre>
       </div>
     </div>
+    </>
   );
 };
 

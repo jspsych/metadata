@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
 import JsPsychMetadata, { analyzeJoinKeys } from '@jspsych/metadata';
+import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
 type JoinKeyCandidate = { column: string; makesUnique: boolean };
@@ -240,8 +241,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   // Existing-project flow: variables already loaded from JSON, data upload is optional
   if (phase === 'fromExisting') {
     return (
-      <div className={styles.page}>
-        <h2 className={styles.heading}>Data</h2>
+      <>
+        <PageHeader title="Data" />
+        <div className={styles.page}>
         <div className={styles.hasDataBanner}>
           <span className={styles.iconSuccess}>✓</span>
           <div>
@@ -272,6 +274,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           </button>
         </div>
       </div>
+      </>
     );
   }
 
@@ -279,8 +282,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   if (phase === 'hasData') {
     const varCount = jsPsychMetadata.getVariableNames().length;
     return (
-      <div className={styles.page}>
-        <h2 className={styles.heading}>Data</h2>
+      <>
+        <PageHeader title="Data" />
+        <div className={styles.page}>
         <div className={styles.hasDataBanner}>
           <span className={styles.iconSuccess}>✓</span>
           <div>
@@ -327,12 +331,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
         <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} />
         <input ref={zipInputRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleZipChange} />
       </div>
+      </>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <h2 className={styles.heading}>Data</h2>
+    <>
+      <PageHeader title="Data" />
+      <div className={styles.page}>
       <p className={styles.description}>
         Select your data folder or upload a .zip archive. CSV and JSON files will be processed; other file types are skipped.
       </p>
@@ -498,6 +504,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
         </div>
       )}
     </div>
+    </>
   );
 };
 

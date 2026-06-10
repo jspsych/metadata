@@ -5,37 +5,6 @@
   padding-top: 1rem; /* pushes content clear of the fixed header */
 }
 
-/* ─── Fixed header ─────────────────────────────────────────────────────────── */
-/*
- * position: fixed so it sits flush with the very top of the viewport,
- * starting at the right edge of the sidebar (210px + 1px border = 211px).
- */
-
-.stickyHeader {
-  position: fixed;
-  top: 0;
-  left: 211px;
-  right: 0;
-  z-index: 20;
-  background: var(--c-bg);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 8rem 0.85rem 2rem; /* right: clear of the fixed theme toggle (~6.75rem from right) */
-  border-bottom: 1px solid var(--c-border);
-}
-
-.heading {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--c-ink);
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
 .count {
   font-size: 0.9rem;
   font-weight: 400;

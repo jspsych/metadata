@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import JsPsychMetadata, { VariableFields } from '@jspsych/metadata';
+import PageHeader from '../components/PageHeader';
 import styles from './Variables.module.css';
 
 interface VariablesProps {
@@ -213,24 +214,23 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
 
   return (
     <>
-      <div className={styles.stickyHeader}>
-        <h2 className={styles.heading}>
-          Variables
-          <span className={styles.count}>{vars.length}</span>
-        </h2>
-        <label className={styles.toggleSwitch}>
-          <span className={styles.toggleLabel}>Expand all</span>
-          <input
-            type="checkbox"
-            className={styles.toggleInput}
-            checked={allExpanded}
-            onChange={toggleAll}
-          />
-          <span className={styles.toggleTrack}>
-            <span className={styles.toggleThumb} />
-          </span>
-        </label>
-      </div>
+      <PageHeader
+        title={<>Variables <span className={styles.count}>{vars.length}</span></>}
+        right={
+          <label className={styles.toggleSwitch}>
+            <span className={styles.toggleLabel}>Expand all</span>
+            <input
+              type="checkbox"
+              className={styles.toggleInput}
+              checked={allExpanded}
+              onChange={toggleAll}
+            />
+            <span className={styles.toggleTrack}>
+              <span className={styles.toggleThumb} />
+            </span>
+          </label>
+        }
+      />
 
       <div className={styles.page}>
         {needDescSection.length > 0 && (

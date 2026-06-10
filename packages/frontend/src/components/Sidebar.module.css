@@ -144,6 +144,21 @@
   border-color: var(--c-danger);
 }
 
+/* Dark mode: increase contrast of sidebar text and border */
+@media (prefers-color-scheme: dark) {
+  .sidebar { border-right-color: #4e5f57; }
+  .appTitle { color: var(--c-ink); }
+  .step:not(.active):not(.locked) { color: oklch(82% 0.012 155); }
+  .psychdsLink { color: var(--c-ink-2); }
+  .psychdsLink:hover { color: var(--c-forest-bright); }
+}
+
+:global([data-theme="dark"]) .sidebar { border-right-color: #4e5f57; }
+:global([data-theme="dark"]) .appTitle { color: var(--c-ink); }
+:global([data-theme="dark"]) .step:not(.active):not(.locked) { color: oklch(82% 0.012 155); }
+:global([data-theme="dark"]) .psychdsLink { color: var(--c-ink-2); }
+:global([data-theme="dark"]) .psychdsLink:hover { color: var(--c-forest-bright); }
+
 /* Start over confirmation modal */
 
 .overlay {
