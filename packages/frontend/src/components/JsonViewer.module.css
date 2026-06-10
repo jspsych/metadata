@@ -19,11 +19,11 @@
   padding-left: 1.5rem;
 }
 
-/* Syntax token colors — light mode */
-.key   { color: #15803d; }
-.str   { color: #1d4ed8; }
-.num   { color: #b45309; }
-.bool  { color: #7c3aed; }
+/* Syntax token colors — light mode (jsPsych logo palette, darkened for contrast on white) */
+.key   { color: #006838; }  /* logo dark green — 7:1 on white */
+.str   { color: #b06210; }  /* orange-amber (hue ~31°) — 4.5:1 on white */
+.num   { color: #c41a10; }  /* clear red (hue ~3°) — 6.0:1 on white */
+.bool  { color: #0d9e38; }  /* darkened logo bright green — 3.5:1 on white */
 .null  { color: #9ca3af; font-style: italic; }
 .brace { color: #374151; }
 .colon { color: #6b7280; }
@@ -61,10 +61,10 @@
 
 /* Dark mode token overrides — media query covers OS dark mode, data-theme covers manual toggle */
 @media (prefers-color-scheme: dark) {
-  .key   { color: #86efac; }
-  .str   { color: #93c5fd; }
-  .num   { color: #fb923c; }
-  .bool  { color: #c084fc; }
+  .key   { color: #13b24b; }  /* logo bright green — readable on dark bg */
+  .str   { color: #f78f1e; }  /* logo amber (hue ~34°) — full brightness on dark */
+  .num   { color: #f03d2a; }  /* clear red (hue ~5°) — 3.3:1 on dark bg */
+  .bool  { color: #4bd172; }  /* lighter green, distinct from key — 6.6:1 on dark bg */
   .null  { color: #6b7280; }
   .brace { color: #d1d5db; }
   .colon { color: #9ca3af; }
@@ -73,10 +73,10 @@
   .toggle { color: #6b7280; }
 }
 
-:global([data-theme="dark"]) .key   { color: #86efac; }
-:global([data-theme="dark"]) .str   { color: #93c5fd; }
-:global([data-theme="dark"]) .num   { color: #fb923c; }
-:global([data-theme="dark"]) .bool  { color: #c084fc; }
+:global([data-theme="dark"]) .key   { color: #13b24b; }
+:global([data-theme="dark"]) .str   { color: #f78f1e; }
+:global([data-theme="dark"]) .num   { color: #f03d2a; }
+:global([data-theme="dark"]) .bool  { color: #4bd172; }
 :global([data-theme="dark"]) .null  { color: #6b7280; }
 :global([data-theme="dark"]) .brace { color: #d1d5db; }
 :global([data-theme="dark"]) .colon { color: #9ca3af; }
