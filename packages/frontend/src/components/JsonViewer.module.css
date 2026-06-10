@@ -20,10 +20,10 @@
 }
 
 /* Syntax token colors — light mode */
-.key   { color: #005c31; }
-.str   { color: #0d6b7a; }
+.key   { color: #15803d; }
+.str   { color: #1d4ed8; }
 .num   { color: #b45309; }
-.bool  { color: #6d28d9; }
+.bool  { color: #7c3aed; }
 .null  { color: #9ca3af; font-style: italic; }
 .brace { color: #374151; }
 .colon { color: #6b7280; }
@@ -59,11 +59,11 @@
   display: none;
 }
 
-/* Dark mode token overrides */
+/* Dark mode token overrides — media query covers OS dark mode, data-theme covers manual toggle */
 @media (prefers-color-scheme: dark) {
-  .key   { color: #4ade80; }
-  .str   { color: #67e8f9; }
-  .num   { color: #fbbf24; }
+  .key   { color: #86efac; }
+  .str   { color: #93c5fd; }
+  .num   { color: #fb923c; }
   .bool  { color: #c084fc; }
   .null  { color: #6b7280; }
   .brace { color: #d1d5db; }
@@ -72,3 +72,14 @@
   .summary { color: #6b7280; }
   .toggle { color: #6b7280; }
 }
+
+:global([data-theme="dark"]) .key   { color: #86efac; }
+:global([data-theme="dark"]) .str   { color: #93c5fd; }
+:global([data-theme="dark"]) .num   { color: #fb923c; }
+:global([data-theme="dark"]) .bool  { color: #c084fc; }
+:global([data-theme="dark"]) .null  { color: #6b7280; }
+:global([data-theme="dark"]) .brace { color: #d1d5db; }
+:global([data-theme="dark"]) .colon { color: #9ca3af; }
+:global([data-theme="dark"]) .punct { color: #6b7280; }
+:global([data-theme="dark"]) .summary { color: #6b7280; }
+:global([data-theme="dark"]) .toggle { color: #6b7280; }

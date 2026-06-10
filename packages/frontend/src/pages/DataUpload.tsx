@@ -398,8 +398,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
             <div>
               <strong>trial_index is not unique in {joinKeyProblemFile}</strong>
               <p className={styles.joinKeyExplainer}>
-                Your data contains nested arrays that need a unique row identifier to extract correctly.
-                Select additional columns below to make each row uniquely identifiable.
+                Your data contains nested arrays that need a <strong>join key</strong> — a unique row
+                identifier — to extract correctly. Select additional columns below to form a join key
+                that uniquely identifies each row.
               </p>
             </div>
           </div>
