@@ -3,12 +3,12 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { input, select, checkbox, Separator } from '@inquirer/prompts';
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
 import path from 'path';
 import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
-import { isValidPsychDSDataFilename, toPsychDSValue, fileStem } from './utils';
+import { fileStem } from './utils';
 
 // Define a type for the parsed arguments
 interface Argv {
