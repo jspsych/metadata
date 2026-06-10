@@ -2,9 +2,9 @@ import jsonld from 'jsonld';
 import {
   validateWeb,
   type WebFileTree,
+  type PsychDSValidationOutput,
 } from 'psychds-validator/web/psychds-validator.js';
-
-const FILENAME = 'dataset_description.json';
+import { DATASET_DESCRIPTION_FILENAME as FILENAME, dataFilePath } from '../datasetLayout';
 
 export interface ValidationIssue {
   key: string;
@@ -35,17 +35,6 @@ export class ValidationUnavailableError extends Error {
 function ensureJsonldGlobal() {
   const w = window as unknown as { jsonld?: unknown };
   if (!w.jsonld) w.jsonld = jsonld;
-}
-
-/**
- * Mirrors Review's zip layout: dataset_description.json at the root and every
- * data file under a `data/` directory, with the top-level export folder
- * stripped (e.g. "my-experiment/sub01.csv" -> "data/sub01.csv").
- */
-function dataFilePath(originalPath: string): string {
-  const parts = originalPath.split('/');
-  const relative = parts.length > 1 ? parts.slice(1).join('/') : originalPath;
-  return `data/${relative}`;
 }
 
 /** Inserts a `/`-separated path into the nested file-tree dict, creating dirs. */
@@ -97,8 +86,12 @@ export async function validatePsychDS(
 
   const tree = buildFileTree(metadataJson, dataFiles);
 
-  let output;
+  let output: PsychDSValidationOutput;
   try {
+    // 'latest' (rather than a pinned version) keeps results consistent with the
+    // CLI (`npx @jspsych/cli validate`) and the deployed web validator, which
+    // both use latest; pinning also risks requesting a schema version the
+    // schema server doesn't have, which would break validation outright.
     output = await validateWeb(tree, { schema: 'latest' });
   } catch (err) {
     console.error('Psych-DS validation could not run:', err);

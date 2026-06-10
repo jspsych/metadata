@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
+import { DATASET_DESCRIPTION_FILENAME as FILENAME, dataFilePath } from '../datasetLayout';
 import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
 
@@ -10,8 +11,6 @@ interface ReviewProps {
   jsPsychMetadata: JsPsychMetadata;
   dataFiles?: Map<string, { content: string; type: string }>;
 }
-
-const FILENAME = 'dataset_description.json';
 
 function blobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -22,13 +21,6 @@ function blobDownload(blob: Blob, filename: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function dataFilePath(originalPath: string): string {
-  // Strip the top-level folder (e.g. "my-experiment/sub01.csv" → "data/sub01.csv")
-  const parts = originalPath.split('/');
-  const relative = parts.length > 1 ? parts.slice(1).join('/') : originalPath;
-  return `data/${relative}`;
 }
 
 type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
