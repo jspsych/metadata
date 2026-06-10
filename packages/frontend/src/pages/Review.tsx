@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
+import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
 
 interface ReviewProps {
@@ -30,9 +31,14 @@ function dataFilePath(originalPath: string): string {
   return `data/${relative}`;
 }
 
+type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
+
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
+  const [valStatus, setValStatus] = useState<ValidationStatus>('idle');
+  const [valResult, setValResult] = useState<PsychDSValidationResult | null>(null);
+  const [valError, setValError] = useState<string | null>(null);
 
   // Review is unmounted whenever the user navigates away, so each visit gets a fresh snapshot.
   const metadataObj = useMemo(() => jsPsychMetadata.getMetadata(), []);
@@ -90,6 +96,26 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
     setZipped(true);
   };
 
+  const handleValidate = async () => {
+    setValStatus('running');
+    setValError(null);
+    try {
+      // Lazy-loaded so the ~260 KB validator bundle stays out of the initial load.
+      const { validatePsychDS } = await import('../validation/validatePsychDS');
+      const result = await validatePsychDS(metadataJson, zipEligibleFiles);
+      setValResult(result);
+      setValStatus('done');
+    } catch (err) {
+      setValResult(null);
+      setValError(
+        err instanceof Error && err.name === 'ValidationUnavailableError'
+          ? err.message
+          : `Validation failed unexpectedly: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      setValStatus('unavailable');
+    }
+  };
+
   const usesFilePicker = 'showSaveFilePicker' in window;
 
   return (
@@ -145,13 +171,87 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
       <div className={styles.validatorNote}>
         <p className={styles.validatorTitle}>Validate your dataset</p>
         <p className={styles.validatorText}>
-          Once <code className={styles.code}>dataset_description.json</code> is in your dataset folder, run the validator from the command line:
+          Check this metadata{hasDataFiles ? ' and your data files' : ''} against the
+          Psych-DS standard right here. Validation runs in your browser and needs an
+          internet connection to fetch the schema.
         </p>
-        <pre className={styles.cliBlock}>npx @jspsych/cli validate</pre>
-        <p className={styles.validatorText}>
-          Or with a specific path:
-        </p>
-        <pre className={styles.cliBlock}>npx @jspsych/cli validate --psych-ds-dir ./your-dataset</pre>
+
+        <button
+          className={styles.validateBtn}
+          onClick={handleValidate}
+          disabled={valStatus === 'running'}
+        >
+          {valStatus === 'running'
+            ? 'Validating…'
+            : valStatus === 'idle'
+              ? 'Validate dataset'
+              : 'Re-validate'}
+        </button>
+
+        {valStatus === 'unavailable' && valError && (
+          <div className={`${styles.resultBanner} ${styles.resultUnavailable}`}>
+            {valError}
+          </div>
+        )}
+
+        {valStatus === 'done' && valResult && (
+          <>
+            <div
+              className={`${styles.resultBanner} ${
+                valResult.valid ? styles.resultValid : styles.resultInvalid
+              }`}
+            >
+              {valResult.valid
+                ? '✓ Valid Psych-DS dataset'
+                : `✗ ${valResult.errors.length} error${valResult.errors.length !== 1 ? 's' : ''} found`}
+              {valResult.warnings.length > 0 &&
+                ` · ${valResult.warnings.length} warning${valResult.warnings.length !== 1 ? 's' : ''}`}
+            </div>
+
+            {valResult.errors.length > 0 && (
+              <>
+                <p className={styles.issueGroupLabel}>Errors</p>
+                <ul className={styles.issueList}>
+                  {valResult.errors.map((issue, i) => (
+                    <li key={`e${i}`} className={styles.issueItem}>
+                      <span className={styles.issueKey}>{issue.key}</span>
+                      <span className={styles.issueReason}>{issue.reason}</span>
+                      {issue.evidence.map((ev, j) => (
+                        <span key={j} className={styles.issueEvidence}>{ev}</span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {valResult.warnings.length > 0 && (
+              <>
+                <p className={styles.issueGroupLabel}>Warnings</p>
+                <ul className={styles.issueList}>
+                  {valResult.warnings.map((issue, i) => (
+                    <li key={`w${i}`} className={`${styles.issueItem} ${styles.issueWarn}`}>
+                      <span className={styles.issueKey}>{issue.key}</span>
+                      <span className={styles.issueReason}>{issue.reason}</span>
+                      {issue.evidence.map((ev, j) => (
+                        <span key={j} className={styles.issueEvidence}>{ev}</span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+
+        <details className={styles.cliAlt}>
+          <summary className={styles.cliAltSummary}>Prefer the command line?</summary>
+          <p className={styles.validatorText}>
+            Once <code className={styles.code}>dataset_description.json</code> is in your dataset folder, run:
+          </p>
+          <pre className={styles.cliBlock}>npx @jspsych/cli validate</pre>
+          <pre className={styles.cliBlock}>npx @jspsych/cli validate --psych-ds-dir ./your-dataset</pre>
+        </details>
       </div>
     </div>
     </>
