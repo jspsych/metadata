@@ -10,7 +10,7 @@ import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnal
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
-import { extractVaryingMiddles, findIdentifierColumn, sequentialBases, resolveCollisions, unofficialKeywords } from './rename';
+import { extractVaryingMiddles, findIdentifierColumn, sequentialBases, resolveCollisions, unofficialKeywords, ID_COLUMNS } from './rename';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -390,14 +390,25 @@ async function buildRenameStrategies(
 
   // 1. Read ID from the data: an identifier column with one unique value per file.
   // The most reliable option — the name comes from the data itself, not the old filename.
-  const rowsByFile = new Map<string, Array<Record<string, any>>>();
+  // Process one file at a time so full row arrays can be GC'd before reading the next;
+  // only the per-column unique-value sets are kept, bounding memory to one file's rows.
+  const uniquesByFile = new Map<string, Map<string, Set<string>>>();
   for (const { filePath } of nonCompliant) {
     const rows = await parseDataRows(filePath);
     if (!rows) break;
-    rowsByFile.set(path.resolve(filePath), rows);
+    const colUniques = new Map<string, Set<string>>();
+    for (const col of ID_COLUMNS) {
+      const unique = new Set<string>();
+      for (const row of rows) {
+        const v = row[col];
+        if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
+      }
+      colUniques.set(col, unique);
+    }
+    uniquesByFile.set(path.resolve(filePath), colUniques);
   }
-  if (rowsByFile.size === nonCompliant.length) {
-    const id = findIdentifierColumn(rowsByFile);
+  if (uniquesByFile.size === nonCompliant.length) {
+    const id = findIdentifierColumn(uniquesByFile);
     if (id) {
       strategies.push({
         name: `Use the "${id.column}" value found inside each file`,
@@ -587,7 +598,7 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
 
     // Preview / edit loop: show every rename, then apply, edit one, or go back.
     while (true) {
-      const { bases: resolved, adjusted } = resolveCollisions(proposals);
+      const { bases: resolved, adjusted } = resolveCollisions(proposals, bases.values());
       console.log('\nProposed renames:');
       for (const { filePath, name } of nonCompliant) {
         const base = resolved.get(path.resolve(filePath))!;
@@ -620,7 +631,7 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
       });
       const edited = await input({
         message: 'New name (the part before "_data.csv", e.g. subject-001):',
-        default: proposals.get(target),
+        default: resolved.get(target),
         validate: (v) =>
           isValidPsychDSDataFilename(`${v}_data.csv`)
             ? true

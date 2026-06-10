@@ -75,26 +75,26 @@ export function extractVaryingMiddles(
 export const ID_COLUMNS = ['subject_id', 'participant_id', 'subject', 'participant', 'PROLIFIC_PID', 'prolific_pid'];
 
 /**
- * Searches parsed file contents for an identifier column usable as a filename
+ * Searches per-file unique-value sets for an identifier column usable as a filename
  * value. A column qualifies only if every file has it with exactly one unique
  * non-empty value (a file mixing several subject IDs can't be named after one
  * of them). Returns the first qualifying column from ID_COLUMNS plus each
  * file's value, or null when none qualifies.
+ *
+ * Accepts pre-reduced unique-value sets (Map<filePath, Map<column, Set<value>>>)
+ * so callers can process one file at a time and discard full row arrays before
+ * moving to the next file, keeping memory bounded to a single file's rows.
  */
 export function findIdentifierColumn(
-  rowsByFile: Map<string, Array<Record<string, any>>>
+  uniquesByFile: Map<string, Map<string, Set<string>>>
 ): { column: string; values: Map<string, string> } | null {
-  if (rowsByFile.size === 0) return null;
+  if (uniquesByFile.size === 0) return null;
 
   for (const column of ID_COLUMNS) {
     const values = new Map<string, string>();
     let ok = true;
-    for (const [filePath, rows] of rowsByFile) {
-      const unique = new Set<string>();
-      for (const row of rows) {
-        const v = row[column];
-        if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
-      }
+    for (const [filePath, colUniques] of uniquesByFile) {
+      const unique = colUniques.get(column) ?? new Set<string>();
       if (unique.size !== 1) {
         ok = false;
         break;
@@ -131,11 +131,12 @@ export function sequentialBases(example: string, count: number): string[] | null
  * adjusted, so the preview table can flag them.
  */
 export function resolveCollisions(
-  proposals: Map<string, string>
+  proposals: Map<string, string>,
+  keptBases?: Iterable<string>
 ): { bases: Map<string, string>; adjusted: Set<string> } {
   const bases = new Map<string, string>();
   const adjusted = new Set<string>();
-  const used = new Set<string>();
+  const used = new Set<string>(keptBases);
 
   for (const [filePath, base] of proposals) {
     let candidate = base;

@@ -91,14 +91,33 @@ describe('extractVaryingMiddles', () => {
 });
 
 describe('findIdentifierColumn', () => {
+  // Converts row-style test data to the per-file unique-value sets expected by findIdentifierColumn.
+  const asUniques = (rowsByFile: Map<string, Array<Record<string, any>>>) => {
+    const result = new Map<string, Map<string, Set<string>>>();
+    for (const [fp, rows] of rowsByFile) {
+      const colUniques = new Map<string, Set<string>>();
+      const allCols = new Set(rows.flatMap((r) => Object.keys(r)));
+      for (const col of allCols) {
+        const unique = new Set<string>();
+        for (const row of rows) {
+          const v = row[col];
+          if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
+        }
+        colUniques.set(col, unique);
+      }
+      result.set(fp, colUniques);
+    }
+    return result;
+  };
+
   const rows = (col: string, value: string) => [{ [col]: value, rt: 500 }, { [col]: value, rt: 600 }];
 
   it('finds a subject_id column with one unique value per file', () => {
     const result = findIdentifierColumn(
-      new Map([
+      asUniques(new Map([
         ['/a.csv', rows('subject_id', 'P01')],
         ['/b.csv', rows('subject_id', 'P02')],
-      ])
+      ]))
     );
     expect(result).toEqual({
       column: 'subject_id',
@@ -111,31 +130,31 @@ describe('findIdentifierColumn', () => {
 
   it('respects priority order (subject_id over participant)', () => {
     const result = findIdentifierColumn(
-      new Map([['/a.csv', [{ subject_id: 'P01', participant: 'X' }]]])
+      asUniques(new Map([['/a.csv', [{ subject_id: 'P01', participant: 'X' }]]]))
     );
     expect(result?.column).toBe('subject_id');
   });
 
   it('rejects a column with multiple values in one file', () => {
     const result = findIdentifierColumn(
-      new Map([['/a.csv', [{ subject_id: 'P01' }, { subject_id: 'P02' }]]])
+      asUniques(new Map([['/a.csv', [{ subject_id: 'P01' }, { subject_id: 'P02' }]]]))
     );
     expect(result).toBeNull();
   });
 
   it('rejects a column missing from one file', () => {
     const result = findIdentifierColumn(
-      new Map([
+      asUniques(new Map([
         ['/a.csv', rows('subject_id', 'P01')],
         ['/b.csv', [{ rt: 500 }]],
-      ])
+      ]))
     );
     expect(result).toBeNull();
   });
 
   it('ignores empty/null values when collecting uniques', () => {
     const result = findIdentifierColumn(
-      new Map([['/a.csv', [{ subject_id: 'P01' }, { subject_id: '' }, { subject_id: null }]]])
+      asUniques(new Map([['/a.csv', [{ subject_id: 'P01' }, { subject_id: '' }, { subject_id: null }]]]))
     );
     expect(result?.values.get('/a.csv')).toBe('P01');
   });
@@ -182,5 +201,17 @@ describe('resolveCollisions', () => {
     );
     expect(bases.get('/b')).toBe('subject-1');
     expect(bases.get('/c')).toBe('subject-13');
+  });
+
+  it('avoids colliding with already-compliant kept bases passed as keptBases', () => {
+    // subject-1 is already taken by a kept (non-renamed) file; the proposal for /b
+    // should be disambiguated even though /b is the first in proposals.
+    const kept = ['subject-1'];
+    const { bases, adjusted } = resolveCollisions(
+      new Map([['/b', 'subject-1']]),
+      kept
+    );
+    expect(bases.get('/b')).toBe('subject-12');
+    expect(adjusted.has('/b')).toBe(true);
   });
 });
