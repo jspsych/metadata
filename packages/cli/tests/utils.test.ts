@@ -1,13 +1,9 @@
 import os from "os";
 import path from "path";
+import { objectsToCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, disambiguateArrayFilename } from "@jspsych/metadata";
 import {
   expandHomeDir,
-  objectsToCSV,
-  isValidPsychDSDataFilename,
-  toPsychDSValue,
   fileStem,
-  deriveArrayFilename,
-  disambiguateArrayFilename,
   disambiguateFilename,
 } from "../src/utils";
 import { generatePath } from "../src/data";

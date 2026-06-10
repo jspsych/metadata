@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV } from "@jspsych/metadata";
-import { expandHomeDir, deriveArrayFilename, disambiguateArrayFilename, disambiguateFilename, objectsToCSV, fileStem, isValidPsychDSDataFilename } from "./utils";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV, isValidPsychDSDataFilename } from "@jspsych/metadata";
+import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 
 export interface GenerateOptions {
   arrayJoinKeys?: string[];

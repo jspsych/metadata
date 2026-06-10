@@ -185,6 +185,92 @@ export function analyzeJoinKeys(
   };
 }
 
+/**
+ * Full Psych-DS data filename pattern: one or more `keyword-value` pairs
+ * (keyword: lowercase letters; value: alphanumeric, any case) joined by `_`,
+ * ending in `_data.csv` (or `.tsv`).
+ */
+const PSYCH_DS_FILENAME_RE = /^([a-z]+-[a-zA-Z0-9]+)(_[a-z]+-[a-zA-Z0-9]+)*_data\.(csv|tsv)$/;
+
+/** True if `name` is a fully Psych-DS-compliant data filename. */
+export function isValidPsychDSDataFilename(name: string): boolean {
+  return PSYCH_DS_FILENAME_RE.test(name);
+}
+
+/**
+ * Coerces an arbitrary string into a Psych-DS *value* segment ([a-zA-Z0-9]+).
+ * Runs of non-alphanumeric characters are treated as word boundaries: removed
+ * and the next word capitalised, yielding camelCase so meaning is preserved
+ * (e.g. "mouse_tracking" → "mouseTracking", "RT (ms)" → "RTMs").
+ * Returns `fallback` when the input has no alphanumeric characters.
+ */
+export function toPsychDSValue(name: string, fallback = 'value'): string {
+  const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  return parts[0] + parts.slice(1).map((p) => p[0].toUpperCase() + p.slice(1)).join('');
+}
+
+/**
+ * Derives the Psych-DS filename for an extracted-array CSV from its parent
+ * file's already-normalized base plus the column name:
+ *   base "subject-subject1" + column "mouse_tracking"
+ *     → "subject-subject1_measure-mouseTracking_data.csv"
+ */
+export function deriveArrayFilename(parentBase: string, columnName: string): string {
+  return `${parentBase}_measure-${toPsychDSValue(columnName, 'col')}_data.csv`;
+}
+
+/**
+ * Serialises an array of objects to RFC 4180 CSV. Nested objects/arrays in a
+ * cell are serialised as JSON strings so no data is lost. Priority columns
+ * (trial_index, element_index by default) are placed first; remaining columns
+ * follow in the order they first appear across all rows.
+ */
+export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: string[] = ['trial_index', 'element_index']): string {
+  if (rows.length === 0) return '';
+
+  const allKeys = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row)) allKeys.add(key);
+  }
+  const otherCols = [...allKeys].filter(k => !priorityCols.includes(k));
+  const headers = [...priorityCols.filter(c => allKeys.has(c)), ...otherCols];
+
+  const escape = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
+      ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  const lines = [headers.join(',')];
+  for (const row of rows) {
+    lines.push(headers.map(h => escape(row[h])).join(','));
+  }
+  return lines.join('\r\n');
+}
+
+/**
+ * Returns a filename not already present in `used`. If `base` is free it is
+ * returned as-is; otherwise a counter is appended before the `_data.csv`
+ * suffix (e.g. foo_measure-bar_data.csv → foo_measure-bar2_data.csv) until a
+ * free name is found. The counter has no separator — a hyphen or underscore
+ * would create an invalid Psych-DS keyword-value pair.
+ */
+export function disambiguateArrayFilename(base: string, used: Set<string>): string {
+  if (!used.has(base)) return base;
+
+  const suffix = '_data.csv';
+  const root = base.endsWith(suffix) ? base.slice(0, -suffix.length) : base.replace(/\.csv$/i, '');
+  let n = 2;
+  let candidate = `${root}${n}${suffix}`;
+  while (used.has(candidate)) {
+    n += 1;
+    candidate = `${root}${n}${suffix}`;
+  }
+  return candidate;
+}
+
 export async function parseCSV(input) {
   if (!parse) {
     throw new Error('Parser module not loaded');

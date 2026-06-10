@@ -960,5 +960,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys, parseCSV } from "./utils";
+export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename } from "./utils";
 export type { JoinKeyAnalysis } from "./utils";
