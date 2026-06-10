@@ -528,9 +528,10 @@ export default class JsPsychMetadata {
         if (value.trim() !== "" && Number.isFinite(asNumber)) {
           type = "number";
           value = asNumber;
-        } else if (value.toLowerCase() === "true" || value.toLowerCase() === "false") {
-          type = "boolean";
-          value = (value.toLowerCase() === "true");
+          // NOTE: "true"/"false" strings are intentionally left as strings (not coerced to
+          // boolean) so they accumulate as levels ["true","false"]. Only genuine booleans
+          // (typeof value === "boolean", e.g. from JSON data) are typed "boolean", and those
+          // get no levels — see updateFields.
         } else if (value.startsWith("{") || value.startsWith("[")) {
           const parsed = tryParseJSON(value);
           if (parsed !== null) {
@@ -636,6 +637,11 @@ export default class JsPsychMetadata {
    * @param {*} type - The type of the datapoint
    */
   private updateFields(variable, value, type) {
+    // Boolean variables are self-describing through value:"boolean" — true/false carry no
+    // additional information as levels, so we record no levels (or min/max) for them. This also
+    // avoids pushing raw booleans into the levels array (which is meant to hold strings).
+    if (type === "boolean") return;
+
     // getVariable returns this.variables[name] || {}, so always an object — "x" in {} is safe.
     // The returned value is a live reference to the stored object; mutations (delete below) take
     // effect immediately. If getVariable is ever changed to return a defensive copy, the delete
@@ -736,6 +742,11 @@ export default class JsPsychMetadata {
         for (const parameter in variable_parameters) {
           const parameter_value = variable_parameters[parameter];
           this.updateVariable(variable_key, parameter, parameter_value);
+          // A user-chosen value:"boolean" override warns if the detected values aren't boolean-like
+          // and drops any detected levels/min/max (booleans carry none — see updateFields).
+          if (parameter === "value" && parameter_value === "boolean") {
+            this.applyBooleanOverride(variable_key);
+          }
           if (parameter === "name") variable_key = parameter_value; // renames future instances if changing name
         }
       }
@@ -754,6 +765,43 @@ export default class JsPsychMetadata {
         this.setAuthor(author);
       }
     } else this.setMetadataField(key, value);
+  }
+
+  /**
+   * Applies a user-chosen `value:"boolean"` override to an already-populated variable.
+   * Warns when the values detected from the data don't map cleanly to boolean logic
+   * (anything other than true/false/0/1, case-insensitive), then drops the detected
+   * levels/min/max so the variable matches how genuine booleans are recorded (no levels).
+   */
+  private applyBooleanOverride(variableName: string) {
+    // getVariable returns the live stored object, so the deletes below take effect in place
+    // (same pattern as updateFields).
+    const existing = this.getVariable(variableName) as VariableFields;
+
+    const isBooleanLike = (v: unknown): boolean => {
+      const s = String(v).trim().toLowerCase();
+      return s === "true" || s === "false" || s === "0" || s === "1";
+    };
+
+    const offenders = new Set<string>();
+    if (Array.isArray(existing.levels)) {
+      for (const level of existing.levels) if (!isBooleanLike(level)) offenders.add(String(level));
+    }
+    if (typeof existing.minValue === "number" && !isBooleanLike(existing.minValue)) offenders.add(String(existing.minValue));
+    if (typeof existing.maxValue === "number" && !isBooleanLike(existing.maxValue)) offenders.add(String(existing.maxValue));
+
+    if (offenders.size > 0) {
+      const sample = [...offenders].slice(0, 10).join(", ");
+      const more = offenders.size > 10 ? `, …(+${offenders.size - 10} more)` : "";
+      console.warn(
+        `Variable "${variableName}" was set to value:"boolean", but the detected values don't map cleanly to true/false: ${sample}${more}. Double-check this is the intended type.`
+      );
+    }
+
+    // Booleans carry no levels/min/max; drop any detected so the override is consistent.
+    delete existing.levels;
+    delete existing.minValue;
+    delete existing.maxValue;
   }
 
   /**

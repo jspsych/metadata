@@ -626,3 +626,89 @@ describe("mixed-type column handling (#71)", () => {
     expect(col.maxValue).toBeUndefined();
   });
 });
+
+describe("boolean vs string true/false levels", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+  });
+
+  const col = (m: JsPsychMetadata, name: string) =>
+    (m.getMetadata()["variableMeasured"] as any[]).find((v) => v.name === name);
+
+  test("genuine boolean values get value:boolean and NO levels", async () => {
+    // JSON data carries real booleans (typeof === "boolean").
+    const data = JSON.stringify([
+      { trial_type: "html-keyboard-response", correct: true },
+      { trial_type: "html-keyboard-response", correct: false },
+    ]);
+
+    await jsPsychMetadata.generate(data);
+
+    const c = col(jsPsychMetadata, "correct");
+    expect(c).toBeDefined();
+    expect(c.value).toBe("boolean");
+    expect(c.levels).toBeUndefined();
+    expect(c.minValue).toBeUndefined();
+    expect(c.maxValue).toBeUndefined();
+  });
+
+  test('string "true"/"false" stay string and surface as levels (both values)', async () => {
+    // CSV cells are strings; "true"/"false" are not coerced to boolean, so they accumulate
+    // as levels — and both values are captured (regression for the missing-"true" / [false] bug).
+    const csv = [
+      "trial_type,flag",
+      "html-keyboard-response,true",
+      "html-keyboard-response,false",
+      "html-keyboard-response,true",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const c = col(jsPsychMetadata, "flag");
+    expect(c).toBeDefined();
+    expect(c.value).toBe("string");
+    expect(new Set(c.levels)).toEqual(new Set(["true", "false"]));
+  });
+
+  test("manual value:boolean override drops detected levels", async () => {
+    const csv = ["trial_type,flag", "t,true", "t,false"].join("\n");
+    await jsPsychMetadata.generate(csv, {}, "csv");
+    expect(col(jsPsychMetadata, "flag").levels).toBeDefined();
+
+    await jsPsychMetadata.updateMetadata({ variables: { flag: { value: "boolean" } } });
+
+    const c = col(jsPsychMetadata, "flag");
+    expect(c.value).toBe("boolean");
+    expect(c.levels).toBeUndefined();
+  });
+
+  test("manual value:boolean override warns when data isn't boolean-like", async () => {
+    const csv = ["trial_type,block", "t,Practice", "t,Bonus"].join("\n");
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await jsPsychMetadata.updateMetadata({ variables: { block: { value: "boolean" } } });
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Variable "block"'));
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Practice"));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("manual value:boolean override does NOT warn for true/false/0/1 data", async () => {
+    const csv = ["trial_type,flag", "t,1", "t,0"].join("\n");
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await jsPsychMetadata.updateMetadata({ variables: { flag: { value: "boolean" } } });
+      const booleanWarnings = warn.mock.calls.filter((c) => String(c[0]).includes('value:"boolean"'));
+      expect(booleanWarnings).toHaveLength(0);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
