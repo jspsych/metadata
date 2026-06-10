@@ -402,11 +402,11 @@ const DataUpload: React.FC<DataUploadProps> = ({
           <div className={styles.joinKeyWarning}>
             <span className={styles.warnIcon}>⚠</span>
             <div>
-              <strong>trial_index is not unique in {joinKeyProblemFile}</strong>
+              <strong>Rows need a unique identifier</strong>
+              <p className={styles.joinKeyFile}>{joinKeyProblemFile}</p>
               <p className={styles.joinKeyExplainer}>
-                Your data contains nested arrays that need a <strong>join key</strong> — a unique row
-                identifier — to extract correctly. Select additional columns below to form a join key
-                that uniquely identifies each row.
+                <code>trial_index</code> resets to 0 for each participant in merged files, so it
+                can't tell rows apart on its own. Pick an additional column below to make each row unique.
               </p>
             </div>
           </div>

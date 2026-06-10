@@ -180,11 +180,26 @@
   color: var(--c-ink);
 }
 
+.joinKeyFile {
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.78rem;
+  color: var(--c-ink-3);
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+}
+
 .joinKeyExplainer {
-  margin: 0.35rem 0 0;
+  margin: 0;
   font-size: 0.83rem;
   color: var(--c-ink-2);
   line-height: 1.5;
+}
+
+.joinKeyExplainer code {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.79rem;
+  background: var(--c-border-sub);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
 }
 
 /* Join key help collapsible */
