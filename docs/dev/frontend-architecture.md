@@ -41,7 +41,7 @@ packages/frontend/
 │       └── node-stub.ts
 ```
 
-> **Legacy files still present:** `pages/Upload.tsx`, `pages/Options.tsx`, `pages/ViewOptions.tsx`, `components/ListItems.tsx`, `components/Preview.tsx`, `components/popups/`, `components/upload/`, `useExternalScripts.ts`. These are from the original modal-chain architecture and are no longer imported by any active code. They can be removed once the redesign is confirmed stable. (`App.css` is *not* legacy — it is still imported by `App.tsx`.)
+> **Note:** the original modal-chain files (`pages/Upload.tsx`, `pages/Options.tsx`, `pages/ViewOptions.tsx`, `components/ListItems.tsx`, `components/Preview.tsx`, `components/popups/`, `components/upload/`, `useExternalScripts.ts`, and `App.css`) have been removed; the redesigned wizard described here is the only active architecture.
 
 ---
 
