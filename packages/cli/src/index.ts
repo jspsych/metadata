@@ -398,6 +398,8 @@ async function buildRenameStrategies(
   // The most reliable option — the name comes from the data itself, not the old filename.
   // Process one file at a time so full row arrays can be GC'd before reading the next;
   // only the per-column unique-value sets are kept, bounding memory to one file's rows.
+  // Large datasets make this scan take a few seconds, hence the progress log.
+  console.log(`\nScanning ${nonCompliant.length} data file(s) for identifier columns…`);
   const uniquesByFile = new Map<string, Map<string, Set<string>>>();
   for (const { filePath } of nonCompliant) {
     const rows = await parseDataRows(filePath);
@@ -411,6 +413,10 @@ async function buildRenameStrategies(
       }
       colUniques.set(col, unique);
     }
+    // A column qualifies only when it has exactly one unique value in *every* file,
+    // so a file where no ID column qualifies rules the strategy out dataset-wide —
+    // stop scanning and skip parsing the remaining files entirely.
+    if (![...colUniques.values()].some((unique) => unique.size === 1)) break;
     uniquesByFile.set(path.resolve(filePath), colUniques);
   }
   if (uniquesByFile.size === nonCompliant.length) {
