@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { StepId } from './AppShell';
 import styles from './Sidebar.module.css';
 import logo from '../assets/jspsych-logo-no-text.svg';
@@ -28,11 +28,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [confirming, setConfirming] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  useEffect(() => {
-    const el = dialogRef.current;
-    if (!el) return;
-    if (confirming) { if (!el.open) el.showModal(); }
-    else el.close();
+  useLayoutEffect(() => {
+    if (confirming) dialogRef.current?.showModal();
   }, [confirming]);
 
   return (
@@ -87,26 +84,28 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      <dialog
-        ref={dialogRef}
-        className={styles.dialog}
-        aria-labelledby="startover-title"
-        aria-describedby="startover-desc"
-        onClose={() => setConfirming(false)}
-      >
-        <h3 id="startover-title" className={styles.dialogTitle}>Start over?</h3>
-        <p id="startover-desc" className={styles.dialogText}>
-          All progress will be lost and you'll return to the welcome screen.
-        </p>
-        <div className={styles.dialogButtons}>
-          <button className={styles.confirmYes} onClick={onStartOver}>
-            Yes, start over
-          </button>
-          <button className={styles.confirmCancel} onClick={() => setConfirming(false)}>
-            Cancel
-          </button>
-        </div>
-      </dialog>
+      {confirming && (
+        <dialog
+          ref={dialogRef}
+          className={styles.dialog}
+          aria-labelledby="startover-title"
+          aria-describedby="startover-desc"
+          onClose={() => setConfirming(false)}
+        >
+          <h3 id="startover-title" className={styles.dialogTitle}>Start over?</h3>
+          <p id="startover-desc" className={styles.dialogText}>
+            All progress will be lost and you'll return to the welcome screen.
+          </p>
+          <div className={styles.dialogButtons}>
+            <button className={styles.confirmYes} onClick={onStartOver}>
+              Yes, start over
+            </button>
+            <button className={styles.confirmCancel} onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+          </div>
+        </dialog>
+      )}
     </nav>
   );
 };
