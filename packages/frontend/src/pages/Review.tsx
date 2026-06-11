@@ -85,6 +85,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
     for (const [originalPath, content] of zipEligibleFiles) {
       zip.file(dataFilePath(originalPath), content);
     }
+    zip.file('README.md', `# ${projectName}\nHuman-readable description of the project and dataset.`);
+    zip.file('CHANGES.md', 'For version tracking — if the dataset is updated after being uploaded/shared, changes (with human-readable descriptions) may be recorded here.');
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     blobDownload(blob, `${projectName}.zip`);
     setZipped(true);
