@@ -41,7 +41,7 @@ packages/frontend/
 │       └── node-stub.ts
 ```
 
-> **Legacy files still present:** `App.css`, `pages/Upload.tsx`, `pages/Options.tsx`, `pages/ViewOptions.tsx`, `components/ListItems.tsx`, `components/Preview.tsx`, `components/popups/`, `components/upload/`, `useExternalScripts.ts`. These are from the original modal-chain architecture and are no longer imported by any active code. They can be removed once the redesign is confirmed stable.
+> **Legacy files still present:** `pages/Upload.tsx`, `pages/Options.tsx`, `pages/ViewOptions.tsx`, `components/ListItems.tsx`, `components/Preview.tsx`, `components/popups/`, `components/upload/`, `useExternalScripts.ts`. These are from the original modal-chain architecture and are no longer imported by any active code. They can be removed once the redesign is confirmed stable. (`App.css` is *not* legacy — it is still imported by `App.tsx`.)
 
 ---
 
@@ -168,13 +168,13 @@ The wizard uses a single `JsPsychMetadata` instance created in `App.tsx` and pas
 | `setMetadataField(key, value)` | ProjectInfo | Write name, description, license, etc. |
 | `getMetadataField(key)` | ProjectInfo | Read back field values to pre-fill the form |
 | `generate(content, {}, format, options)` | DataUpload | Parse a data file and accumulate variable metadata |
-| `getVariables()` | Variables | Get the full variable map for display |
+| `getVariableList()` | Variables | Get all variable objects for display |
 | `getVariableNames()` | Variables | List variable names |
 | `getVariable(name)` | Variables | Read a single variable's metadata |
 | `updateVariable(name, key, value)` | Variables | Write user-edited description or type |
 | `getAuthorList()` | Authors | Read existing authors (for pre-filling on existing projects) |
-| `setAuthor(name, data)` | Authors | Add or update an author entry |
-| `removeAuthor(name)` | Authors | Remove an author |
+| `setAuthor(fields)` | Authors | Add or update an author entry (single `AuthorFields` object; keyed by `name`) |
+| `deleteAuthor(name)` | Authors | Remove an author |
 | `getMetadata()` | Review | Serialize the full metadata object to JSON |
 
 ---
