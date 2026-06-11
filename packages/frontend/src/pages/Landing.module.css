@@ -61,6 +61,14 @@
   background-color: var(--c-bg-card-hover);
 }
 
+:global(:root:not([data-theme="dark"])) .card {
+  border-color: #c2d0ca;
+}
+
+:global([data-theme="dark"]) .card {
+  border-color: #607870;
+}
+
 .cardIcon {
   font-size: 1.6rem;
   color: var(--c-accent);
@@ -118,6 +126,14 @@
 
 .psychDsToggle:hover {
   color: var(--c-ink-2);
+}
+
+:global(:root:not([data-theme="dark"])) .psychDsToggle {
+  border-top-color: #c2d0ca;
+}
+
+:global([data-theme="dark"]) .psychDsToggle {
+  border-top-color: #607870;
 }
 
 .chevron {
