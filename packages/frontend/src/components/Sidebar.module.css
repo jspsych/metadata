@@ -73,7 +73,7 @@
 }
 
 .locked {
-  color: var(--c-ink-4);
+  color: var(--c-ink-3);
   cursor: not-allowed;
 }
 
@@ -100,7 +100,7 @@
 }
 
 .locked .dot {
-  background-color: var(--c-border);
+  background-color: var(--c-ink-3);
 }
 
 .footer {
