@@ -78,6 +78,14 @@
   background-color: var(--c-bg-card-hover);
 }
 
+:global(:root:not([data-theme="dark"])) .browseBtn {
+  border-color: #c2d0ca;
+}
+
+:global([data-theme="dark"]) .browseBtn {
+  border-color: #607870;
+}
+
 .pickerOr {
   font-size: 0.82rem;
   color: var(--c-ink-4);

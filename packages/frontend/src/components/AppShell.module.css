@@ -36,6 +36,14 @@
   background-color: var(--c-bg-card-hover);
 }
 
+:global(:root:not([data-theme="dark"])) .previewPill {
+  border-color: #c2d0ca;
+}
+
+:global([data-theme="dark"]) .previewPill {
+  border-color: #607870;
+}
+
 .previewPillIcon {
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   font-size: 0.78rem;

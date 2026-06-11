@@ -72,10 +72,10 @@ html, body, #root {
   --c-bg-input: #212a25;
   --c-bg-card-hover: #2e3a35;
 
-  --c-ink: oklch(90% 0.008 155);
-  --c-ink-2: oklch(76% 0.012 155);
-  --c-ink-3: oklch(60% 0.010 155);
-  --c-ink-4: oklch(44% 0.01 155);
+  --c-ink: oklch(92% 0.008 155);
+  --c-ink-2: oklch(83% 0.012 155);
+  --c-ink-3: oklch(68% 0.010 155);
+  --c-ink-4: oklch(48% 0.01 155);
 
   --c-border: #3a4641;
   --c-border-sub: #2e3a34;
@@ -141,6 +141,14 @@ a:hover {
   color: var(--c-ink);
   border-color: var(--c-ink-3);
   background-color: var(--c-bg-card-hover);
+}
+
+:root:not([data-theme="dark"]) .themeToggle {
+  border-color: #c2d0ca;
+}
+
+:root[data-theme="dark"] .themeToggle {
+  border-color: #607870;
 }
 
 * {
