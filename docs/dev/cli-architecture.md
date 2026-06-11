@@ -47,7 +47,7 @@ The file I/O layer. All file-system reads and writes for data processing go thro
 | `processOptions(metadata, filePath, verbose?)` | Reads a metadata options JSON file and calls `metadata.updateMetadata()`. |
 | `saveTextToPath(text, filePath)` | Writes a string to disk. Used to save `dataset_description.json`. |
 | `loadMetadata(metadata, filePath)` | Reads an existing `dataset_description.json` and calls `metadata.loadMetadata()`. |
-| `generatePath(inputPath)` | Resolves a relative path against `process.cwd()`. |
+| `generatePath(inputPath)` | Resolves a relative path against `process.cwd()`; absolute paths are returned unchanged. |
 
 **`collectDataFiles` (not exported)** is the shared traversal function used by `processDirectory`, `preAnalyzeDirectory`, and `enumerateDataFiles`. It returns `{ files, dirErrors }` and accepts a `{ warn }` option — only `processDirectory` passes `warn: true`, so the depth warning and read errors are not duplicated by the silent pre-passes.
 
