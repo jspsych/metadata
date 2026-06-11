@@ -95,9 +95,14 @@ export async function validatePsychDS(
     output = await validateWeb(tree, { schema: 'latest' });
   } catch (err) {
     console.error('Psych-DS validation could not run:', err);
+    // The overwhelmingly common cause is no network access — the validator fetches
+    // the Psych-DS schema and schema.org context at runtime. Lead with that, but
+    // include the underlying error so a genuine validator/internal failure isn't
+    // silently misreported as a connectivity problem.
+    const detail = err instanceof Error ? err.message : String(err);
     throw new ValidationUnavailableError(
       'The validator could not run. It needs an internet connection to fetch ' +
-        'the Psych-DS schema — check your connection and try again.',
+        `the Psych-DS schema — check your connection and try again. (Details: ${detail})`,
     );
   }
 
