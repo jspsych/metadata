@@ -58,45 +58,13 @@ html, body, #root {
   /* Semantic — danger */
   --c-danger-bg: oklch(97% 0.02 27);
   --c-danger-border: oklch(88% 0.06 27);
+
+  /* Layout */
+  --sidebar-w: 211px; /* sidebar (210px) + right border (1px) */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --c-bg: #232b27;
-    --c-bg-sidebar: #1c2520;
-    --c-bg-raised: #2b3430;
-    --c-bg-input: #212a25;
-    --c-bg-card-hover: #2e3a35;
-
-    --c-ink: oklch(90% 0.008 155);
-    --c-ink-2: oklch(76% 0.012 155);
-    --c-ink-3: oklch(60% 0.010 155);
-    --c-ink-4: oklch(44% 0.01 155);
-
-    --c-border: #3a4641;
-    --c-border-sub: #2e3a34;
-
-    --c-accent: #13b24b;
-    --c-amber-text: #f78f1e;
-    --c-danger: oklch(68% 0.19 27);
-
-    --c-badge-bg: rgba(0, 103, 56, 0.18);
-    --c-badge-text: #13b24b;
-    --c-badge-border: rgba(0, 103, 56, 0.35);
-
-    --c-success-bg: rgba(19, 178, 75, 0.10);
-    --c-success-border: rgba(19, 178, 75, 0.28);
-
-    --c-warn-text: oklch(72% 0.14 60);
-    --c-warn-bg: oklch(22% 0.04 70);
-    --c-warn-border: oklch(38% 0.08 70);
-    --c-warn-icon: #f78f1e;
-
-    --c-danger-bg: rgba(217, 48, 37, 0.12);
-    --c-danger-border: rgba(217, 48, 37, 0.38);
-  }
-}
-
+/* Dark tokens — applied when data-theme="dark" (set synchronously by the
+   inline script in index.html before first paint, so no flash). */
 :root[data-theme="dark"] {
   --c-bg: #232b27;
   --c-bg-sidebar: #1c2520;

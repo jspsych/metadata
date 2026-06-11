@@ -11,7 +11,7 @@
   right: 0;
   bottom: 0;
   width: 420px;
-  max-width: calc(100vw - 211px); /* never wider than the content area */
+  max-width: calc(100vw - var(--sidebar-w)); /* never wider than the content area */
   background: var(--c-bg-raised);
   border-left: 1px solid var(--c-border);
   z-index: 31;
