@@ -6,12 +6,25 @@
  */
 
 /**
- * Official Psych-DS filename keywords (psychds-validator schema). Any other
+ * Official Psych-DS filename keywords (psychds-validator schema), in the order the
+ * keyword-picker menu presents them, with the menu descriptions. Using any other
  * keyword in a filename is legal but triggers FILENAME_UNOFFICIAL_KEYWORD_WARNING.
+ * Single source of truth: OFFICIAL_KEYWORDS is derived from this list, so a schema
+ * change only needs to be made here.
  */
-export const OFFICIAL_KEYWORDS = new Set([
-  'study', 'site', 'subject', 'session', 'task', 'condition', 'trial', 'stimulus', 'description',
-]);
+export const PSYCH_DS_KEYWORDS: Array<{ name: string; value: string; description: string }> = [
+  { name: 'subject', value: 'subject', description: 'The participant/subject the data belongs to' },
+  { name: 'session', value: 'session', description: 'A session of data collection' },
+  { name: 'task', value: 'task', description: 'The task in which the data was collected' },
+  { name: 'condition', value: 'condition', description: 'The experimental condition' },
+  { name: 'trial', value: 'trial', description: 'The trial the data belongs to' },
+  { name: 'stimulus', value: 'stimulus', description: 'The stimulus item' },
+  { name: 'study', value: 'study', description: 'The study the data belongs to' },
+  { name: 'site', value: 'site', description: 'The site where the data was collected' },
+  { name: 'description', value: 'description', description: 'A free-form label describing the file' },
+];
+
+export const OFFICIAL_KEYWORDS = new Set(PSYCH_DS_KEYWORDS.map((k) => k.name));
 
 /**
  * Lists the unofficial keywords in an otherwise-compliant Psych-DS base:
@@ -129,6 +142,12 @@ export function sequentialBases(example: string, count: number): string[] | null
  * no separator, because a hyphen or underscore would break the keyword-value
  * grammar. Returns the final bases plus the set of paths whose base was
  * adjusted, so the preview table can flag them.
+ *
+ * KEEP IN SYNC: @jspsych/metadata's disambiguateArrayFilename
+ * (packages/metadata/src/utils.ts) applies the same no-separator counter at
+ * write time (this one previews, that one writes — different input shapes keep
+ * them separate implementations). If the counter convention ever changes, both
+ * must change together or previewed and written names will diverge.
  */
 export function resolveCollisions(
   proposals: Map<string, string>,

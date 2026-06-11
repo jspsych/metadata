@@ -10,7 +10,7 @@ import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnal
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
-import { extractVaryingMiddles, findIdentifierColumn, sequentialBases, resolveCollisions, unofficialKeywords, ID_COLUMNS } from './rename';
+import { extractVaryingMiddles, findIdentifierColumn, sequentialBases, resolveCollisions, unofficialKeywords, ID_COLUMNS, PSYCH_DS_KEYWORDS } from './rename';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -303,22 +303,8 @@ const promptUnknownDescriptions = async (metadata: JsPsychMetadata) => {
   }
 };
 
-// Official Psych-DS keywords (psychds-validator schema). Using one of these as the keyword
-// for a non-compliant filename avoids the FILENAME_UNOFFICIAL_KEYWORD_WARNING; custom
-// keywords are allowed but emit that warning.
-const PSYCH_DS_KEYWORDS: Array<{ name: string; value: string; description: string }> = [
-  { name: 'subject', value: 'subject', description: 'The participant/subject the data belongs to' },
-  { name: 'session', value: 'session', description: 'A session of data collection' },
-  { name: 'task', value: 'task', description: 'The task in which the data was collected' },
-  { name: 'condition', value: 'condition', description: 'The experimental condition' },
-  { name: 'trial', value: 'trial', description: 'The trial the data belongs to' },
-  { name: 'stimulus', value: 'stimulus', description: 'The stimulus item' },
-  { name: 'study', value: 'study', description: 'The study the data belongs to' },
-  { name: 'site', value: 'site', description: 'The site where the data was collected' },
-  { name: 'description', value: 'description', description: 'A free-form label describing the file' },
-];
-
-/** Prompts for a Psych-DS keyword: official ones from a list, or a custom (warning-emitting) one. */
+/** Prompts for a Psych-DS keyword: official ones from a list (PSYCH_DS_KEYWORDS, the same
+ * set unofficialKeywords() checks against), or a custom (warning-emitting) one. */
 async function promptKeyword(): Promise<string> {
   const CUSTOM = '__custom__';
   let keyword = await select({
@@ -355,6 +341,26 @@ async function parseDataRows(filePath: string): Promise<Array<Record<string, any
   } catch {
     return null;
   }
+}
+
+/**
+ * Validates a proposed Psych-DS base (the keyword-value sequence before "_data.csv").
+ * Shared by every prompt that accepts a base, so the rule and its error message live
+ * in one place.
+ */
+const validateBase = (v: string): true | string =>
+  isValidPsychDSDataFilename(`${v}_data.csv`)
+    ? true
+    : 'Must be one or more keyword-value pairs joined by "_" (keyword: lowercase letters; value: letters/digits), e.g. subject-001_session-2.';
+
+/** Maps each file to the base computed by `baseFor`, keyed by absolute source path. */
+function buildProposals(
+  files: Array<{ filePath: string; name: string }>,
+  baseFor: (f: { filePath: string; name: string }, i: number) => string
+): Map<string, string> {
+  const proposals = new Map<string, string>();
+  files.forEach((f, i) => proposals.set(path.resolve(f.filePath), baseFor(f, i)));
+  return proposals;
 }
 
 interface RenameStrategy {
@@ -439,11 +445,7 @@ async function buildRenameStrategies(
         samplePreview((f) => `<keyword>-${toPsychDSValue(pattern.middles.get(fileStem(f.name))!)}`),
       propose: async () => {
         const keyword = await promptKeyword();
-        const proposals = new Map<string, string>();
-        for (const { filePath, name } of nonCompliant) {
-          proposals.set(path.resolve(filePath), `${keyword}-${toPsychDSValue(pattern.middles.get(fileStem(name))!)}`);
-        }
-        return proposals;
+        return buildProposals(nonCompliant, ({ name }) => `${keyword}-${toPsychDSValue(pattern.middles.get(fileStem(name))!)}`);
       },
     });
   }
@@ -464,16 +466,14 @@ async function buildRenameStrategies(
         message: 'Name for the first file (the part before "_data.csv", must end in a number):',
         default: 'subject-001',
         validate: (v) => {
-          if (!isValidPsychDSDataFilename(`${v}_data.csv`))
-            return 'Must be one or more keyword-value pairs joined by "_" (keyword: lowercase letters; value: letters/digits), e.g. subject-001.';
+          const valid = validateBase(v);
+          if (valid !== true) return valid;
           if (!/\d$/.test(v)) return 'Must end in a number so the remaining files can continue the sequence.';
           return true;
         },
       });
       const labels = sequentialBases(example, nonCompliant.length)!;
-      const proposals = new Map<string, string>();
-      nonCompliant.forEach(({ filePath }, i) => proposals.set(path.resolve(filePath), labels[i]));
-      return proposals;
+      return buildProposals(nonCompliant, (_f, i) => labels[i]);
     },
   });
 
@@ -488,11 +488,7 @@ async function buildRenameStrategies(
       samplePreview((f) => `<keyword>-${toPsychDSValue(fileStem(f.name))}`),
     propose: async () => {
       const keyword = await promptKeyword();
-      const proposals = new Map<string, string>();
-      for (const { filePath, name } of nonCompliant) {
-        proposals.set(path.resolve(filePath), `${keyword}-${toPsychDSValue(fileStem(name))}`);
-      }
-      return proposals;
+      return buildProposals(nonCompliant, ({ name }) => `${keyword}-${toPsychDSValue(fileStem(name))}`);
     },
   });
 
@@ -632,10 +628,7 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
       const edited = await input({
         message: 'New name (the part before "_data.csv", e.g. subject-001):',
         default: resolved.get(target),
-        validate: (v) =>
-          isValidPsychDSDataFilename(`${v}_data.csv`)
-            ? true
-            : 'Must be one or more keyword-value pairs joined by "_" (keyword: lowercase letters; value: letters/digits), e.g. subject-001_session-2.',
+        validate: validateBase,
       });
       proposals.set(target, edited);
     }

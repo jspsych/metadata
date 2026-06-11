@@ -256,6 +256,12 @@ export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: str
  * suffix (e.g. foo_measure-bar_data.csv → foo_measure-bar2_data.csv) until a
  * free name is found. The counter has no separator — a hyphen or underscore
  * would create an invalid Psych-DS keyword-value pair.
+ *
+ * KEEP IN SYNC: the CLI's resolveCollisions (packages/cli/src/rename.ts) applies
+ * the same no-separator counter to its rename preview (this one writes, that one
+ * previews — different input shapes keep them separate implementations). If the
+ * counter convention ever changes, both must change together or previewed and
+ * written names will diverge.
  */
 export function disambiguateArrayFilename(base: string, used: Set<string>): string {
   if (!used.has(base)) return base;
