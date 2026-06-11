@@ -400,8 +400,10 @@ const main = async () => {
       project_path = argv['psych-ds-dir'];
       new_project = false;
       await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
-      // project_path is argv['psych-ds-dir'] (a string) inside this branch — no typeof guard needed here.
-      await validatePsychDS(project_path, verbose); // informational only — result not acted on here
+      // NOTE: we intentionally do NOT validate here. At this point the data files have not been
+      // copied into the project yet, so validation would always fail with MISSING_DATA_DIRECTORY
+      // and print a misleading "✘ validation failed" to stderr. The real validation runs after the
+      // data is written (see below).
       if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
