@@ -144,15 +144,12 @@
   border-color: var(--c-danger);
 }
 
-/* Dark mode: increase contrast of sidebar text and border */
-@media (prefers-color-scheme: dark) {
-  .sidebar { border-right-color: #4e5f57; }
-  .appTitle { color: var(--c-ink); }
-  .step:not(.active):not(.locked) { color: oklch(82% 0.012 155); }
-  .psychdsLink { color: var(--c-ink-2); }
-  .psychdsLink:hover { color: var(--c-forest-bright); }
-}
+/* Light mode: locked steps need to look clearly faded vs the dark base step color.
+   --c-ink-3 (oklch 52%) is too close to --c-ink-2 (oklch 37%) on the pale sidebar. */
+:global([data-theme="light"]) .locked { color: oklch(66% 0.008 155); }
+:global([data-theme="light"]) .locked .dot { background-color: oklch(66% 0.008 155); }
 
+/* Dark mode: increase contrast of sidebar text and border */
 :global([data-theme="dark"]) .sidebar { border-right-color: #4e5f57; }
 :global([data-theme="dark"]) .appTitle { color: var(--c-ink); }
 :global([data-theme="dark"]) .step:not(.active):not(.locked) { color: oklch(82% 0.012 155); }
