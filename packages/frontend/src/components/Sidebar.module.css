@@ -149,6 +149,18 @@
 :global([data-theme="light"]) .locked { color: oklch(66% 0.008 155); }
 :global([data-theme="light"]) .locked .dot { background-color: oklch(66% 0.008 155); }
 
+/* Light mode: Start Over border (--c-danger-border at oklch 88%) is near-invisible on the
+   pale sidebar (oklch 94%). Give it a tinted background and a readable border. */
+:global(:root:not([data-theme="dark"])) .startOver {
+  background-color: rgba(217, 48, 37, 0.07);
+  border-color: oklch(82% 0.09 27);
+}
+
+/* Dark mode: match the light-mode tinted background so the button has presence in both themes. */
+:global([data-theme="dark"]) .startOver {
+  background-color: var(--c-danger-bg);
+}
+
 /* Dark mode: increase contrast of sidebar text and border */
 :global([data-theme="dark"]) .sidebar { border-right-color: #4e5f57; }
 :global([data-theme="dark"]) .appTitle { color: var(--c-ink); }
