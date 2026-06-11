@@ -88,6 +88,32 @@ export function extractVaryingMiddles(
 export const ID_COLUMNS = ['subject_id', 'participant_id', 'subject', 'participant', 'PROLIFIC_PID', 'prolific_pid'];
 
 /**
+ * Reduces one file's parsed rows to the per-ID-column unique-value sets that
+ * findIdentifierColumn consumes. Each set is capped at 2 entries: downstream
+ * only cares whether a column has *exactly one* unique value (and what it is),
+ * so a second distinct value already disqualifies the column and further
+ * values need not be stored. The row scan stops early once every ID column
+ * is disqualified.
+ */
+export function reduceIdCandidates(rows: Array<Record<string, any>>): Map<string, Set<string>> {
+  const colUniques = new Map<string, Set<string>>();
+  for (const col of ID_COLUMNS) colUniques.set(col, new Set<string>());
+
+  for (const row of rows) {
+    let undecided = 0;
+    for (const col of ID_COLUMNS) {
+      const unique = colUniques.get(col)!;
+      if (unique.size >= 2) continue;
+      const v = row[col];
+      if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
+      if (unique.size < 2) undecided += 1;
+    }
+    if (undecided === 0) break;
+  }
+  return colUniques;
+}
+
+/**
  * Searches per-file unique-value sets for an identifier column usable as a filename
  * value. A column qualifies only if every file has it with exactly one unique
  * non-empty value (a file mixing several subject IDs can't be named after one

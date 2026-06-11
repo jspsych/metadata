@@ -10,7 +10,7 @@ import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnal
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
-import { extractVaryingMiddles, findIdentifierColumn, sequentialBases, resolveCollisions, unofficialKeywords, ID_COLUMNS, PSYCH_DS_KEYWORDS } from './rename';
+import { extractVaryingMiddles, findIdentifierColumn, reduceIdCandidates, sequentialBases, resolveCollisions, unofficialKeywords, PSYCH_DS_KEYWORDS } from './rename';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -397,22 +397,15 @@ async function buildRenameStrategies(
   // 1. Read ID from the data: an identifier column with one unique value per file.
   // The most reliable option — the name comes from the data itself, not the old filename.
   // Process one file at a time so full row arrays can be GC'd before reading the next;
-  // only the per-column unique-value sets are kept, bounding memory to one file's rows.
-  // Large datasets make this scan take a few seconds, hence the progress log.
+  // reduceIdCandidates keeps only capped per-column unique-value sets, bounding memory
+  // to one file's rows. Large datasets make this scan take a few seconds, hence the
+  // progress log.
   console.log(`\nScanning ${nonCompliant.length} data file(s) for identifier columns…`);
   const uniquesByFile = new Map<string, Map<string, Set<string>>>();
   for (const { filePath } of nonCompliant) {
     const rows = await parseDataRows(filePath);
     if (!rows) break;
-    const colUniques = new Map<string, Set<string>>();
-    for (const col of ID_COLUMNS) {
-      const unique = new Set<string>();
-      for (const row of rows) {
-        const v = row[col];
-        if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
-      }
-      colUniques.set(col, unique);
-    }
+    const colUniques = reduceIdCandidates(rows);
     // A column qualifies only when it has exactly one unique value in *every* file,
     // so a file where no ID column qualifies rules the strategy out dataset-wide —
     // stop scanning and skip parsing the remaining files entirely.

@@ -1,9 +1,11 @@
 import {
   extractVaryingMiddles,
   findIdentifierColumn,
+  reduceIdCandidates,
   sequentialBases,
   resolveCollisions,
   unofficialKeywords,
+  ID_COLUMNS,
 } from '../src/rename';
 
 describe('sequentialBases', () => {
@@ -90,22 +92,50 @@ describe('extractVaryingMiddles', () => {
   });
 });
 
+describe('reduceIdCandidates', () => {
+  it('collects the single unique value of each ID column', () => {
+    const result = reduceIdCandidates([
+      { subject_id: 'P01', rt: 500 },
+      { subject_id: 'P01', rt: 600 },
+    ]);
+    expect(result.get('subject_id')).toEqual(new Set(['P01']));
+  });
+
+  it('only tracks ID columns, not arbitrary data columns', () => {
+    const result = reduceIdCandidates([{ subject_id: 'P01', rt: 500, stimulus: 'a.png' }]);
+    expect([...result.keys()].sort()).toEqual([...ID_COLUMNS].sort());
+  });
+
+  it('caps each set at 2 — a second distinct value already disqualifies the column', () => {
+    const rows = Array.from({ length: 1000 }, (_, i) => ({ subject_id: `P${i}` }));
+    const result = reduceIdCandidates(rows);
+    expect(result.get('subject_id')!.size).toBe(2);
+  });
+
+  it('ignores empty, whitespace-only, null, and undefined values', () => {
+    const result = reduceIdCandidates([
+      { subject_id: 'P01' },
+      { subject_id: '' },
+      { subject_id: '   ' },
+      { subject_id: null },
+      { rt: 500 },
+    ]);
+    expect(result.get('subject_id')).toEqual(new Set(['P01']));
+  });
+
+  it('leaves an absent column as an empty set', () => {
+    const result = reduceIdCandidates([{ rt: 500 }]);
+    expect(result.get('subject_id')).toEqual(new Set());
+  });
+});
+
 describe('findIdentifierColumn', () => {
-  // Converts row-style test data to the per-file unique-value sets expected by findIdentifierColumn.
+  // Converts row-style test data to the per-file shape findIdentifierColumn takes,
+  // using the same production reduction the scan in index.ts uses.
   const asUniques = (rowsByFile: Map<string, Array<Record<string, any>>>) => {
     const result = new Map<string, Map<string, Set<string>>>();
     for (const [fp, rows] of rowsByFile) {
-      const colUniques = new Map<string, Set<string>>();
-      const allCols = new Set(rows.flatMap((r) => Object.keys(r)));
-      for (const col of allCols) {
-        const unique = new Set<string>();
-        for (const row of rows) {
-          const v = row[col];
-          if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
-        }
-        colUniques.set(col, unique);
-      }
-      result.set(fp, colUniques);
+      result.set(fp, reduceIdCandidates(rows));
     }
     return result;
   };
