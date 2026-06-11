@@ -186,7 +186,7 @@ cd packages/frontend
 npm test
 ```
 
-Tests live in `packages/frontend/tests/` and use Jest + jsdom + Testing Library. See PR #96 for the full setup. The `psychds-validator/web/` bundle is mocked via `moduleNameMapper` (Node cannot load it — it is blocked by the package's exports map). `@jspsych/metadata` is mapped to its `src/` directory so tests run without a prior build.
+Tests live in `packages/frontend/tests/` and use Jest + jsdom + Testing Library. The `psychds-validator/web/` bundle is mocked via `moduleNameMapper` (Node cannot load it — it is blocked by the package's exports map). `@jspsych/metadata` is mapped to its `src/` directory so tests run without a prior build.
 
 ---
 
@@ -200,11 +200,11 @@ npm install
 cd packages/frontend
 npm run dev        # http://localhost:5173
 
-# type-check only (does not run Vite)
+# type-check + production build → dist/
 npm run build
 
 # lint
 npm run lint
 ```
 
-The metadata package is referenced as a local workspace dependency (`@jspsych/metadata: ^0.0.3`) and resolved from `packages/metadata/src` at dev time — no separate build step needed when iterating on the metadata package alongside the frontend.
+The metadata package is a local workspace dependency resolved from `packages/metadata/src` at dev time — no separate build step needed when iterating on the metadata package alongside the frontend.
