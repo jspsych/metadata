@@ -228,7 +228,7 @@ Tests live in `packages/cli/tests/`. Each test file targets one source module:
 | `handlefiles.test.ts` | `handlefiles.ts` |
 | `validate-integration.test.ts` | Full `validatePsychDS` integration against real fixture datasets |
 
-`index.ts` is not directly tested because it requires `@inquirer/prompts` to be mocked. Interactive flows are covered through the CLI's integration with real datasets (see `dev/smoke-test/` and `dev/smoke-test-2/` at the repo root).
+`index.ts` is not directly tested because it requires `@inquirer/prompts` to be mocked. The end-to-end validation path is covered by `validate-integration.test.ts`, which runs `validatePsychDS` against the tracked fixture datasets in `dev/e2e/` (`valid-project/` and `invalid-project/`).
 
 ---
 
