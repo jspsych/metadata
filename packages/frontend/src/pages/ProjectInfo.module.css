@@ -5,6 +5,13 @@
   padding-top: 1rem;
 }
 
+.subtext {
+  margin: 0 0 1.5rem;
+  font-size: 0.86rem;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+}
+
 .loadedBanner {
   display: inline-flex;
   align-items: center;

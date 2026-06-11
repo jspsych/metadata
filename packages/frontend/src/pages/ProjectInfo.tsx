@@ -168,6 +168,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
     <>
       <PageHeader title="Project Info" />
       <div className={styles.page}>
+      <p className={styles.subtext}>Name your dataset and describe what it contains.</p>
 
       {loadStatus === 'loaded' && (
         <p className={styles.loadedBanner}>

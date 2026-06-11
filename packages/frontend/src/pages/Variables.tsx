@@ -233,6 +233,7 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
       />
 
       <div className={styles.page}>
+        <p className={styles.subtext}>Review and edit the variables detected from your data.</p>
         {needDescSection.length > 0 && (
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
