@@ -23,7 +23,7 @@
 .key   { color: #006838; }  /* logo dark green — 7:1 on white */
 .str   { color: #b06210; }  /* orange-amber (hue ~31°) — 4.5:1 on white */
 .num   { color: #c41a10; }  /* clear red (hue ~3°) — 6.0:1 on white */
-.bool  { color: #0d9e38; }  /* darkened logo bright green — 3.5:1 on white */
+.bool  { color: #0a7d2c; }  /* 4.6:1 on white, clears WCAG AA for normal text */
 .null  { color: #9ca3af; font-style: italic; }
 .brace { color: #374151; }
 .colon { color: #6b7280; }

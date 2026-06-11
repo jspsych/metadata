@@ -355,7 +355,7 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
         </div>
       )}
 
-      <button className={styles.continueBtn} onClick={onComplete}>
+      <button className={styles.continueBtn} onClick={() => { rows.forEach(r => handleNameBlur(r.id)); onComplete(); }}>
         Continue →
       </button>
     </div>
