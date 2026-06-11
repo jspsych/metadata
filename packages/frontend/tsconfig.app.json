@@ -27,5 +27,6 @@
     "typeRoots": ["./node_modules/@types", "./dist"],
     "types": []
   },
-  "include": ["src", "**/*.tsx"] // Make sure it includes your components directory
+  "include": ["src", "**/*.tsx"], // Make sure it includes your components directory
+  "exclude": ["tests", "node_modules", "dist"] // Tests run via Jest + sucrase; excluded from tsc -b since this tsconfig has no jest types
 }

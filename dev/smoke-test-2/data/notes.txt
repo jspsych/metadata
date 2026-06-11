@@ -1,0 +1,2 @@
+Experiment notes - this file should be skipped by the metadata generator (unsupported file type).
+Collected 2026-06-08. Three subjects ran the survey-multi-choice task.

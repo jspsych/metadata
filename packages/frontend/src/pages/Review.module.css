@@ -1,0 +1,270 @@
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  padding-top: 1rem;
+}
+
+.subtext {
+  margin: 0 0 1.25rem;
+  font-size: 0.86rem;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+}
+
+.code {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.84em;
+  background: var(--c-border-sub);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  color: var(--c-ink);
+}
+
+/* JSON block */
+
+.jsonBlock {
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 420px;
+  margin-bottom: 1.25rem;
+}
+
+/* Actions */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.actionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* The One Amber Button — output download, appears once per session */
+.downloadBtn {
+  align-self: flex-start;
+  background-color: var(--c-amber);
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  padding: 0.7em 2em;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.downloadBtn:hover {
+  background-color: var(--c-amber-hover);
+}
+
+.saveJsonBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  padding: 0.5em 1.4em;
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.saveJsonBtn:hover {
+  border-color: var(--c-accent);
+  color: var(--c-ink);
+}
+
+.saveHint {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: var(--c-ink-3);
+  line-height: 1.5;
+  max-width: 480px;
+}
+
+.saveError {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--c-danger);
+}
+
+/* Validator note */
+
+.validatorNote {
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+}
+
+.validatorTitle {
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--c-ink-2);
+}
+
+.validatorText {
+  margin: 0 0 0.55rem;
+  font-size: 0.85rem;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+}
+
+.cliBlock {
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--c-border-sub);
+  border: 1px solid var(--c-border);
+  border-radius: 5px;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+  color: var(--c-ink-2);
+}
+
+.cliBlock:last-child {
+  margin-bottom: 0;
+}
+
+/* In-browser validation */
+
+.validateBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--c-accent);
+  border-radius: 7px;
+  padding: 0.5em 1.4em;
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--c-accent);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.validateBtn:hover:not(:disabled) {
+  background-color: var(--c-accent);
+  color: #ffffff;
+}
+
+.validateBtn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.resultBanner {
+  margin-top: 0.85rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.resultValid {
+  color: var(--c-success-text);
+  background: var(--c-success-bg);
+  border-color: var(--c-success-border);
+}
+
+.resultInvalid {
+  color: var(--c-danger);
+  background: var(--c-danger-bg);
+  border-color: var(--c-danger-border);
+}
+
+.resultUnavailable {
+  color: var(--c-warn-text);
+  background: var(--c-warn-bg);
+  border-color: var(--c-warn-border);
+  font-weight: 500;
+}
+
+.issueGroupLabel {
+  margin: 0.85rem 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--c-ink-3);
+}
+
+.issueList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.issueItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 5px;
+  background: var(--c-danger-bg);
+  border-left: 3px solid var(--c-danger);
+}
+
+.issueItem.issueWarn {
+  background: var(--c-warn-bg);
+  border-left-color: var(--c-warn-icon);
+}
+
+.issueKey {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+.issueReason {
+  font-size: 0.83rem;
+  color: var(--c-ink-2);
+  line-height: 1.45;
+}
+
+.issueEvidence {
+  margin-top: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  background: var(--c-border-sub);
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.76rem;
+  color: var(--c-ink);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cliAlt {
+  margin-top: 1rem;
+  border-top: 1px solid var(--c-border);
+  padding-top: 0.85rem;
+}
+
+.cliAltSummary {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--c-ink-3);
+  cursor: pointer;
+  margin-bottom: 0.6rem;
+}
+
+.cliAltSummary:hover {
+  color: var(--c-ink-2);
+}
