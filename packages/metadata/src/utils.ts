@@ -1,5 +1,13 @@
 import { parse } from 'csv-parse';
 
+// When raw jsPsych originals are preserved under data/raw/, the Psych-DS validator flags them
+// as FILE_NOT_CHECKED. A .psychds-ignore file at the dataset root tells it to skip them. The
+// pattern is `**/raw/` (not `data/raw/`) because the validator tests leading-slash paths, against
+// which an anchored pattern won't match; the self-reference works around the validator only
+// hard-excluding the legacy ".bidsignore". Shared so the CLI and frontend stay in sync.
+export const PSYCHDS_IGNORE_FILENAME = '.psychds-ignore';
+export const PSYCHDS_IGNORE_CONTENT = '**/raw/\n.psychds-ignore\n';
+
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
   const blobToSave = new Blob([textstr], {

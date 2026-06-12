@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -291,11 +291,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
     }
 
     // When we preserved raw originals, tell the validator to skip data/raw/ so they don't
-    // surface as FILE_NOT_CHECKED. The pattern is `**/raw/` (not `data/raw/`) because the
-    // validator tests leading-slash paths, against which an anchored pattern won't match; the
-    // self-reference works around the validator only hard-excluding the legacy ".bidsignore".
+    // surface as FILE_NOT_CHECKED (shared definition with the CLI in @jspsych/metadata).
     if (usedRawFilenames.size > 0) {
-      converted.set('.psychds-ignore', '**/raw/\n.psychds-ignore\n');
+      converted.set(PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT);
     }
 
     setConvertedFiles(converted);

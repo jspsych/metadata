@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -446,6 +446,14 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
     for (const { dirPath, name } of files) {
       total += 1;
       if (!await processFile(metadata, dirPath, name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1;
+    }
+
+    // When raw originals were preserved under data/raw/, drop a .psychds-ignore at the dataset
+    // root so the validator skips them (otherwise FILE_NOT_CHECKED). targetDirectoryPath is the
+    // data/ dir, so its parent is the dataset root. Shared definition with the frontend.
+    if (usedRawFilenames.size > 0 && targetDirectoryPath) {
+      const ignorePath = path.join(path.dirname(targetDirectoryPath), PSYCHDS_IGNORE_FILENAME);
+      await fs.promises.writeFile(ignorePath, PSYCHDS_IGNORE_CONTENT, 'utf8');
     }
   } else {
     failed += 1;
