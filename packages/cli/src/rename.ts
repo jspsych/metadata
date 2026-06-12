@@ -5,6 +5,8 @@
  * index.ts (resolveFilenameNormalization).
  */
 
+import { deriveArrayFilename, disambiguateArrayFilename } from '@jspsych/metadata';
+
 /**
  * Official Psych-DS filename keywords (psychds-validator schema), in the order the
  * keyword-picker menu presents them, with the menu descriptions. Using any other
@@ -161,38 +163,74 @@ export function sequentialBases(example: string, count: number): string[] | null
   return Array.from({ length: count }, (_, i) => `${prefix}${String(start + i).padStart(width, '0')}`);
 }
 
-/**
- * Resolves duplicate proposed bases. The first file keeps the base; later
- * duplicates get a counter appended directly to the final value (subject-1 →
- * subject-12, subject-13, …), following disambiguateArrayFilename's convention:
- * no separator, because a hyphen or underscore would break the keyword-value
- * grammar. Returns the final bases plus the set of paths whose base was
- * adjusted, so the preview table can flag them.
- *
- * KEEP IN SYNC: @jspsych/metadata's disambiguateArrayFilename
- * (packages/metadata/src/utils.ts) applies the same no-separator counter at
- * write time (this one previews, that one writes — different input shapes keep
- * them separate implementations). If the counter convention ever changes, both
- * must change together or previewed and written names will diverge.
- */
-export function resolveCollisions(
-  proposals: Map<string, string>,
-  keptBases?: Iterable<string>
-): { bases: Map<string, string>; adjusted: Set<string> } {
-  const bases = new Map<string, string>();
-  const adjusted = new Set<string>();
-  const used = new Set<string>(keptBases);
+/** One file's extracted-column inventory, the input to {@link planRenames}. */
+export interface FileColumns {
+  /** Stable file id (the caller uses `path.resolve(filePath)`). */
+  key: string;
+  /** The chosen Psych-DS base (keyword-value sequence before "_data.csv"). */
+  base: string;
+  /** Array-of-objects columns extracted to sidecar CSVs, in write order. */
+  arrayColumns?: string[];
+  /** Plain-object columns expanded to sidecar CSVs, in write order. */
+  objectColumns?: string[];
+}
 
-  for (const [filePath, base] of proposals) {
-    let candidate = base;
-    let n = 2;
-    while (used.has(candidate)) {
-      candidate = `${base}${n}`;
-      n += 1;
-    }
-    if (candidate !== base) adjusted.add(filePath);
-    used.add(candidate);
-    bases.set(filePath, candidate);
+/** A planned sidecar output for one extracted column. */
+export interface PlannedSidecar {
+  column: string;
+  kind: 'array' | 'object';
+  filename: string;
+  /** True when the derived name collided and a counter was appended. */
+  adjusted: boolean;
+}
+
+/** The complete set of output filenames one source file will produce. */
+export interface PlannedFile {
+  key: string;
+  base: string;
+  mainName: string;
+  /** True when the main name collided and a counter was appended. */
+  mainAdjusted: boolean;
+  sidecars: PlannedSidecar[];
+}
+
+/**
+ * Single source of truth for every output filename a run produces — the main
+ * Psych-DS CSV for each source file plus one sidecar per extracted array/object
+ * column. Names are resolved against ONE shared `used` set in the exact order
+ * the writer emits them (per file: main, then array sidecars, then object
+ * sidecars; files in the caller's canonical order), so the preview and the
+ * writer can never disagree.
+ *
+ * Disambiguation reuses @jspsych/metadata's `disambiguateArrayFilename` and
+ * `deriveArrayFilename` directly — the same functions the writer calls — so
+ * there is no second counter implementation to drift out of sync. Pass EVERY
+ * output file (already-compliant ones included), because a compliant file's
+ * sidecar can collide with a renamed file's main name and vice versa.
+ */
+export function planRenames(files: FileColumns[]): Map<string, PlannedFile> {
+  const used = new Set<string>();
+  const plan = new Map<string, PlannedFile>();
+
+  for (const { key, base, arrayColumns = [], objectColumns = [] } of files) {
+    const desiredMain = `${base}_data.csv`;
+    const mainName = disambiguateArrayFilename(desiredMain, used);
+    used.add(mainName);
+
+    const sidecars: PlannedSidecar[] = [];
+    const addSidecars = (columns: string[], kind: 'array' | 'object') => {
+      for (const column of columns) {
+        const desired = deriveArrayFilename(base, column);
+        const filename = disambiguateArrayFilename(desired, used);
+        used.add(filename);
+        sidecars.push({ column, kind, filename, adjusted: filename !== desired });
+      }
+    };
+    addSidecars(arrayColumns, 'array');
+    addSidecars(objectColumns, 'object');
+
+    plan.set(key, { key, base, mainName, mainAdjusted: mainName !== desiredMain, sidecars });
   }
-  return { bases, adjusted };
+
+  return plan;
 }

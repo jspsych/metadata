@@ -2,7 +2,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import JsPsychMetadata from "@jspsych/metadata";
-import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, enumerateDataFiles } from "../src/data";
+import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
+import { planRenames } from "../src/rename";
 
 // Each describe block gets its own temp directory.
 let tmpDir: string;
@@ -427,5 +428,67 @@ describe("processDirectory JSON → CSV conversion", () => {
 
     // value is camelCased (no hyphens) and keyed by the unofficial "measure" keyword
     expect(fs.existsSync(path.join(dataDir, "subject-1_measure-mouseTracking_data.csv"))).toBe(true);
+  });
+
+  test("analyzeOutputColumns reports each file's extracted sidecar columns without writing", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    fs.mkdirSync(srcDir);
+    const rows = [
+      { trial_index: 0, mouse_tracking: [{ x: 1, y: 2 }], rt: 5 },
+      { trial_index: 1, mouse_tracking: [{ x: 3, y: 4 }], rt: 6 },
+    ];
+    fs.writeFileSync(path.join(srcDir, "01.json"), JSON.stringify(rows));
+
+    const columns = await analyzeOutputColumns(srcDir);
+    expect(columns).toHaveLength(1);
+    expect(columns[0].key).toBe(path.resolve(srcDir, "01.json"));
+    expect(columns[0].arrayColumns).toEqual(["mouse_tracking"]);
+    expect(columns[0].objectColumns).toEqual([]);
+    // Nothing was written.
+    expect(fs.readdirSync(srcDir)).toEqual(["01.json"]);
+  });
+
+  test("honors a supplied rename plan for the main and sidecar names", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const rows = [
+      { trial_index: 0, mouse_tracking: [{ x: 1, y: 2 }] },
+      { trial_index: 1, mouse_tracking: [{ x: 3, y: 4 }] },
+    ];
+    fs.writeFileSync(path.join(srcDir, "raw-export.json"), JSON.stringify(rows));
+
+    const key = path.resolve(srcDir, "raw-export.json");
+    const columns = await analyzeOutputColumns(srcDir);
+    const normalizedBases = new Map([[key, "subject-7"]]);
+    const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-7", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan });
+
+    expect(failed).toBe(0);
+    const written = fs.readdirSync(dataDir).filter((f) => f.endsWith(".csv")).sort();
+    expect(written).toEqual(["subject-7_data.csv", "subject-7_measure-mouseTracking_data.csv"]);
+  });
+
+  test("aborts with RenamePlanError when the data produces a column the plan didn't approve", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const rows = [
+      { trial_index: 0, mouse_tracking: [{ x: 1, y: 2 }] },
+      { trial_index: 1, mouse_tracking: [{ x: 3, y: 4 }] },
+    ];
+    fs.writeFileSync(path.join(srcDir, "raw-export.json"), JSON.stringify(rows));
+
+    const key = path.resolve(srcDir, "raw-export.json");
+    // A plan that knows the main name but NOT the mouse_tracking sidecar (e.g. stale preview).
+    const renamePlan = planRenames([{ key, base: "subject-7" }]);
+    const normalizedBases = new Map([[key, "subject-7"]]);
+
+    await expect(
+      processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan })
+    ).rejects.toThrow(RenamePlanError);
   });
 });

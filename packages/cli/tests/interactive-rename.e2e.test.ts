@@ -130,10 +130,13 @@ describe("interactive rename flow (pty E2E)", () => {
 
     // Source data: two non-compliant filenames whose contents carry a
     // subject_id with exactly one unique value per file, so the data-id
-    // strategy is offered (and recommended, i.e. first in the menu).
+    // strategy is offered (and recommended, i.e. first in the menu). Each trial
+    // also carries an array-of-objects column (mouse_tracking) that is extracted
+    // to a sidecar CSV — so the preview must show, and the writer must produce,
+    // that sidecar under the renamed base.
     const rows = (id: string) => [
-      { trial_type: "jsPsych-html-keyboard-response", trial_index: 0, time_elapsed: 500, rt: 450, subject_id: id },
-      { trial_type: "jsPsych-html-keyboard-response", trial_index: 1, time_elapsed: 1000, rt: 512, subject_id: id },
+      { trial_type: "jsPsych-html-keyboard-response", trial_index: 0, time_elapsed: 500, rt: 450, subject_id: id, mouse_tracking: [{ x: 1, y: 2 }, { x: 3, y: 4 }] },
+      { trial_type: "jsPsych-html-keyboard-response", trial_index: 1, time_elapsed: 1000, rt: 512, subject_id: id, mouse_tracking: [{ x: 5, y: 6 }] },
     ];
     dataDir = path.join(tmpDir, "source");
     fs.mkdirSync(dataDir);
@@ -160,10 +163,13 @@ describe("interactive rename flow (pty E2E)", () => {
     await cli.waitFor('Use the "subject_id" value found inside each file');
     await cli.send(ENTER);
 
-    // Preview shows the exact old → new mapping, with no collision flags.
+    // Preview shows the exact old → new mapping, including the extracted sidecar
+    // each file will produce, with no collision flags.
     await cli.waitFor("Proposed renames:");
     await cli.waitFor("01.json → subject-P01_data.csv");
+    await cli.waitFor('+ subject-P01_measure-mouseTracking_data.csv  (array column "mouse_tracking")');
     await cli.waitFor("02.json → subject-P02_data.csv");
+    await cli.waitFor('+ subject-P02_measure-mouseTracking_data.csv  (array column "mouse_tracking")');
 
     // Apply is the first choice.
     await cli.waitFor("Apply these names?");
@@ -180,11 +186,13 @@ describe("interactive rename flow (pty E2E)", () => {
     const exitCode = await cli.waitForExit();
     expect(exitCode).toBe(0);
 
-    // The names the user approved in the preview are the names on disk.
+    // The names the user approved in the preview — mains AND sidecars — are the names on disk.
     const written = fs.readdirSync(path.join(projectDir, "data")).sort();
     expect(written).toContain("subject-P01_data.csv");
     expect(written).toContain("subject-P02_data.csv");
-    expect(written.filter((f) => f.endsWith(".csv"))).toHaveLength(2);
+    expect(written).toContain("subject-P01_measure-mouseTracking_data.csv");
+    expect(written).toContain("subject-P02_measure-mouseTracking_data.csv");
+    expect(written.filter((f) => f.endsWith(".csv"))).toHaveLength(4);
 
     // Originals are preserved under data/raw/ with their old names.
     const raw = fs.readdirSync(path.join(projectDir, "data", "raw")).sort();

@@ -6,11 +6,11 @@ import { input, select, checkbox, Separator } from '@inquirer/prompts';
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
 import fs from 'fs';
 import path from 'path';
-import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles } from "./data";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, OutputColumns } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
-import { extractVaryingMiddles, findIdentifierColumn, reduceIdCandidates, sequentialBases, resolveCollisions, unofficialKeywords, PSYCH_DS_KEYWORDS } from './rename';
+import { extractVaryingMiddles, findIdentifierColumn, reduceIdCandidates, sequentialBases, planRenames, PlannedFile, FileColumns, unofficialKeywords, PSYCH_DS_KEYWORDS } from './rename';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -512,11 +512,29 @@ async function buildRenameStrategies(
  * When `canPrompt` is false (non-interactive run), a non-compliant filename is a hard error —
  * we never silently invent a keyword.
  */
-async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean): Promise<Map<string, string>> {
+interface FilenameNormalization {
+  /** Resolved source path → chosen Psych-DS base (keyword-value sequence). */
+  bases: Map<string, string>;
+  /**
+   * Complete approved output-name plan (main + sidecars) when a rename happened, else null.
+   * When non-null it is the single source of truth the writer must honor exactly.
+   */
+  plan: Map<string, PlannedFile> | null;
+}
+
+async function resolveFilenameNormalization(
+  dataDir: string,
+  canPrompt: boolean,
+  columns: OutputColumns[]
+): Promise<FilenameNormalization> {
   const files = await enumerateDataFiles(dataDir);
   const bases = new Map<string, string>();
   const nonCompliant: Array<{ filePath: string; name: string }> = [];
   const unofficial: Array<{ filePath: string; name: string; keywords: string[] }> = [];
+
+  // Extracted-column inventory per file, used to show (and reserve names for) sidecars in
+  // the preview. Files in `columns` are in the writer's canonical order.
+  const columnsByKey = new Map(columns.map((c) => [c.key, c]));
 
   for (const { filePath, name } of files) {
     if (name === 'dataset_description.json') continue;
@@ -580,9 +598,23 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
     }
   }
 
-  if (nonCompliant.length === 0) return bases;
+  if (nonCompliant.length === 0) return { bases, plan: null };
 
   const strategies = await buildRenameStrategies(nonCompliant);
+
+  // Builds the complete output-name plan for the whole directory from the current proposed
+  // bases. Every output file is included (already-compliant ones too) and listed in the
+  // writer's canonical order, so collisions between a renamed file's main name and another
+  // file's sidecar are resolved here exactly as they will be on disk.
+  const buildPlan = (proposals: Map<string, string>): Map<string, PlannedFile> => {
+    const ordered: FileColumns[] = [];
+    for (const { key, arrayColumns, objectColumns } of columns) {
+      const base = proposals.get(key) ?? bases.get(key);
+      if (base === undefined) continue; // not a resolved output file
+      ordered.push({ key, base, arrayColumns, objectColumns });
+    }
+    return planRenames(ordered);
+  };
 
   while (true) {
     const chosen = await select({
@@ -591,14 +623,19 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
     });
     const proposals = await strategies.find((s) => s.value === chosen)!.propose();
 
-    // Preview / edit loop: show every rename, then apply, edit one, or go back.
+    // Preview / edit loop: show every rename (with the sidecar CSVs each will generate),
+    // then apply, edit one, or go back.
     while (true) {
-      const { bases: resolved, adjusted } = resolveCollisions(proposals, bases.values());
+      const plan = buildPlan(proposals);
       console.log('\nProposed renames:');
       for (const { filePath, name } of nonCompliant) {
-        const base = resolved.get(path.resolve(filePath))!;
-        const flag = adjusted.has(path.resolve(filePath)) ? '  (adjusted to avoid a name collision)' : '';
-        console.log(`    ${name} → ${base}_data.csv${flag}`);
+        const planned = plan.get(path.resolve(filePath))!;
+        const flag = planned.mainAdjusted ? '  (adjusted to avoid a name collision)' : '';
+        console.log(`    ${name} → ${planned.mainName}${flag}`);
+        for (const s of planned.sidecars) {
+          const sflag = s.adjusted ? '  (adjusted to avoid a name collision)' : '';
+          console.log(`        + ${s.filename}  (${s.kind} column "${s.column}")${sflag}`);
+        }
       }
 
       const action = await select({
@@ -611,8 +648,9 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
       });
 
       if (action === 'apply') {
-        for (const [filePath, base] of resolved) bases.set(filePath, base);
-        return bases;
+        // Record each renamed file's chosen base; the writer derives final names from `plan`.
+        for (const [filePath, base] of proposals) bases.set(filePath, base);
+        return { bases, plan };
       }
 
       if (action === 'back') break;
@@ -620,13 +658,13 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
       const target = await select({
         message: 'Which file?',
         choices: nonCompliant.map(({ filePath, name }) => ({
-          name: `${name} → ${resolved.get(path.resolve(filePath))!}_data.csv`,
+          name: `${name} → ${plan.get(path.resolve(filePath))!.mainName}`,
           value: path.resolve(filePath),
         })),
       });
       const edited = await input({
         message: 'New name (the part before "_data.csv", e.g. subject-001):',
-        default: resolved.get(target),
+        default: proposals.get(target),
         validate: validateBase,
       });
       proposals.set(target, edited);
@@ -678,11 +716,17 @@ const main = async () => {
 
   if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
 
+  // Dry run: discover which array/object columns each file will extract to sidecar CSVs, so
+  // the rename preview can show every output name (main + sidecars). Column names don't depend
+  // on the join keys, so the defaults are fine before the join-key prompt below.
+  const outputColumns = await analyzeOutputColumns(dataDir, { arrayJoinKeys: ['trial_index'] });
+
   // Pre-pass: resolve Psych-DS-compliant output names, prompting once for any non-compliant
   // filenames. Without an interactive terminal we cannot prompt, so this fails rather than
-  // inventing a keyword.
+  // inventing a keyword. When a rename happens this also returns the complete, approved
+  // output-name plan the writer must honor exactly.
   const canPrompt = !isNonInteractive && !!process.stdin.isTTY && !!process.stdout.isTTY;
-  const normalizedBases = await resolveFilenameNormalization(dataDir, canPrompt);
+  const { bases: normalizedBases, plan: renamePlan } = await resolveFilenameNormalization(dataDir, canPrompt, outputColumns);
 
   // Pre-flight: check whether default join key (trial_index) is unique; prompt if not
   const initialKeys = ['trial_index'];
@@ -694,7 +738,7 @@ const main = async () => {
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
   // user, so suppress the library's per-file warning to avoid repeating it.
-  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases });
+  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases, renamePlan: renamePlan ?? undefined });
 
   // check if it's a valid path and then prompt the options
   if (argv['metadata-options'] && validateJson(argv['metadata-options'])){
@@ -741,4 +785,9 @@ const main = async () => {
   }
 };
 
-main();
+main().catch((err) => {
+  // Surface aborts (e.g. a rename-plan mismatch) cleanly with a non-zero exit instead of an
+  // unhandled-rejection stack trace.
+  console.error(`\n✘ ${err instanceof Error ? err.message : err}`);
+  process.exit(1);
+});

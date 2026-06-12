@@ -3,7 +3,7 @@ import {
   findIdentifierColumn,
   reduceIdCandidates,
   sequentialBases,
-  resolveCollisions,
+  planRenames,
   unofficialKeywords,
   ID_COLUMNS,
 } from '../src/rename';
@@ -194,54 +194,88 @@ describe('findIdentifierColumn', () => {
   });
 });
 
-describe('resolveCollisions', () => {
-  it('leaves unique bases untouched', () => {
-    const { bases, adjusted } = resolveCollisions(
-      new Map([
-        ['/a', 'subject-1'],
-        ['/b', 'subject-2'],
-      ])
-    );
-    expect(bases.get('/a')).toBe('subject-1');
-    expect(bases.get('/b')).toBe('subject-2');
-    expect(adjusted.size).toBe(0);
+describe('planRenames', () => {
+  it('leaves unique main names untouched', () => {
+    const plan = planRenames([
+      { key: '/a', base: 'subject-1' },
+      { key: '/b', base: 'subject-2' },
+    ]);
+    expect(plan.get('/a')!.mainName).toBe('subject-1_data.csv');
+    expect(plan.get('/b')!.mainName).toBe('subject-2_data.csv');
+    expect(plan.get('/a')!.mainAdjusted).toBe(false);
+    expect(plan.get('/b')!.mainAdjusted).toBe(false);
   });
 
-  it('appends a counter to later duplicates and flags them', () => {
-    const { bases, adjusted } = resolveCollisions(
-      new Map([
-        ['/a', 'subject-1'],
-        ['/b', 'subject-1'],
-        ['/c', 'subject-1'],
-      ])
-    );
-    expect(bases.get('/a')).toBe('subject-1');
-    expect(bases.get('/b')).toBe('subject-12');
-    expect(bases.get('/c')).toBe('subject-13');
-    expect(adjusted).toEqual(new Set(['/b', '/c']));
+  it('appends a counter to later duplicate main names and flags them', () => {
+    const plan = planRenames([
+      { key: '/a', base: 'subject-1' },
+      { key: '/b', base: 'subject-1' },
+      { key: '/c', base: 'subject-1' },
+    ]);
+    expect(plan.get('/a')!.mainName).toBe('subject-1_data.csv');
+    expect(plan.get('/b')!.mainName).toBe('subject-12_data.csv');
+    expect(plan.get('/c')!.mainName).toBe('subject-13_data.csv');
+    expect(plan.get('/a')!.mainAdjusted).toBe(false);
+    expect(plan.get('/b')!.mainAdjusted).toBe(true);
+    expect(plan.get('/c')!.mainAdjusted).toBe(true);
   });
 
-  it('avoids colliding with an existing base that matches the counter form', () => {
-    const { bases } = resolveCollisions(
-      new Map([
-        ['/a', 'subject-12'],
-        ['/b', 'subject-1'],
-        ['/c', 'subject-1'],
-      ])
-    );
-    expect(bases.get('/b')).toBe('subject-1');
-    expect(bases.get('/c')).toBe('subject-13');
+  it('avoids colliding with an existing main name that matches the counter form', () => {
+    const plan = planRenames([
+      { key: '/a', base: 'subject-12' },
+      { key: '/b', base: 'subject-1' },
+      { key: '/c', base: 'subject-1' },
+    ]);
+    expect(plan.get('/b')!.mainName).toBe('subject-1_data.csv');
+    // subject-12 is taken by /a, so /c skips to subject-13.
+    expect(plan.get('/c')!.mainName).toBe('subject-13_data.csv');
   });
 
-  it('avoids colliding with already-compliant kept bases passed as keptBases', () => {
-    // subject-1 is already taken by a kept (non-renamed) file; the proposal for /b
-    // should be disambiguated even though /b is the first in proposals.
-    const kept = ['subject-1'];
-    const { bases, adjusted } = resolveCollisions(
-      new Map([['/b', 'subject-1']]),
-      kept
-    );
-    expect(bases.get('/b')).toBe('subject-12');
-    expect(adjusted.has('/b')).toBe(true);
+  it('disambiguates a renamed main name against an already-compliant file', () => {
+    // /a is already compliant (subject-1); the renamed /b proposes the same base.
+    const plan = planRenames([
+      { key: '/a', base: 'subject-1' },
+      { key: '/b', base: 'subject-1' },
+    ]);
+    expect(plan.get('/a')!.mainName).toBe('subject-1_data.csv');
+    expect(plan.get('/b')!.mainName).toBe('subject-12_data.csv');
+    expect(plan.get('/b')!.mainAdjusted).toBe(true);
+  });
+
+  it('reserves names for array and object sidecars', () => {
+    const plan = planRenames([
+      { key: '/a', base: 'subject-1', arrayColumns: ['responses'], objectColumns: ['view'] },
+    ]);
+    expect(plan.get('/a')!.sidecars).toEqual([
+      { column: 'responses', kind: 'array', filename: 'subject-1_measure-responses_data.csv', adjusted: false },
+      { column: 'view', kind: 'object', filename: 'subject-1_measure-view_data.csv', adjusted: false },
+    ]);
+  });
+
+  it('bumps a main name that collides with an earlier file\'s sidecar (the cross-file gap)', () => {
+    // /a emits sidecar "subject-1_measure-responses_data.csv"; /b's base is exactly that
+    // sidecar's stem, so its main name must be disambiguated — the case the mains-only
+    // preview used to miss, silently writing a name the user never approved.
+    const plan = planRenames([
+      { key: '/a', base: 'subject-1', arrayColumns: ['responses'] },
+      { key: '/b', base: 'subject-1_measure-responses' },
+    ]);
+    expect(plan.get('/a')!.sidecars[0].filename).toBe('subject-1_measure-responses_data.csv');
+    expect(plan.get('/b')!.mainName).toBe('subject-1_measure-responses2_data.csv');
+    expect(plan.get('/b')!.mainAdjusted).toBe(true);
+  });
+
+  it('bumps a sidecar that collides with another file\'s sidecar of the same base', () => {
+    // Two files resolve to base subject-1 (mains disambiguate to subject-1 / subject-12),
+    // but both derive their "x" sidecar from the shared base, so the second is bumped —
+    // matching how the writer derives sidecar names from the base, not the bumped main.
+    const plan = planRenames([
+      { key: '/a', base: 'subject-1', arrayColumns: ['x'] },
+      { key: '/b', base: 'subject-1', arrayColumns: ['x'] },
+    ]);
+    expect(plan.get('/a')!.sidecars[0].filename).toBe('subject-1_measure-x_data.csv');
+    expect(plan.get('/b')!.mainName).toBe('subject-12_data.csv');
+    expect(plan.get('/b')!.sidecars[0].filename).toBe('subject-1_measure-x2_data.csv');
+    expect(plan.get('/b')!.sidecars[0].adjusted).toBe(true);
   });
 });
