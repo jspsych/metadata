@@ -1,0 +1,377 @@
+.page {
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+  padding-top: 1rem;
+}
+
+.subtext {
+  margin: 0 0 1.5rem;
+  font-size: 0.86rem;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+}
+
+.count {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--c-ink-2);
+  background: var(--c-border-sub);
+  border-radius: 10px;
+  padding: 0.1em 0.55em;
+}
+
+/* ─── iOS-style toggle switch ──────────────────────────────────────────────── */
+
+.toggleSwitch {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggleLabel {
+  font-size: 0.82rem;
+  color: var(--c-ink-2);
+}
+
+.toggleInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleTrack {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--c-border);
+  border-radius: 10px;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.toggleInput:checked + .toggleTrack {
+  background: var(--c-accent);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+
+.toggleInput:checked + .toggleTrack .toggleThumb {
+  transform: translateX(16px);
+}
+
+/* ─── Sections ─────────────────────────────────────────────────────────────── */
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--c-ink-2);
+}
+
+.sectionProgress {
+  font-size: 0.78rem;
+  color: var(--c-ink-3);
+}
+
+.sectionCount {
+  font-size: 0.78rem;
+  color: var(--c-ink-3);
+}
+
+.sectionOptional {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--c-ink-4);
+}
+
+/* ─── Variable list ─────────────────────────────────────────────────────────── */
+
+.list {
+  list-style: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.row {
+  border-bottom: 1px solid var(--c-border-sub);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowUnknown {}
+.rowKnown {}
+
+/* ─── Row header ────────────────────────────────────────────────────────────── */
+
+.rowHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  gap: 0.75rem;
+  transition: background 0.1s;
+}
+
+.rowHeader:hover {
+  background: rgba(0, 103, 56, 0.03);
+}
+
+.rowName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--c-ink);
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+}
+
+.rowRight {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.typeBadge {
+  font-size: 0.73rem;
+  padding: 0.15em 0.5em;
+  border-radius: 4px;
+  background: var(--c-badge-bg);
+  color: var(--c-badge-text);
+  border: 1px solid var(--c-badge-border);
+}
+
+.typeBadgeUnknown {
+  background: var(--c-border-sub);
+  color: var(--c-ink-3);
+  border-color: var(--c-border);
+}
+
+.warnBadge {
+  font-size: 0.72rem;
+  color: var(--c-warn-icon);
+  white-space: nowrap;
+}
+
+.doneBadge {
+  font-size: 0.72rem;
+  color: var(--c-forest-bright);
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 0.68rem;
+  color: var(--c-ink-4);
+  width: 12px;
+  text-align: center;
+}
+
+/* ─── Expanded row body ─────────────────────────────────────────────────────── */
+
+.rowBody {
+  padding: 0.6rem 0.9rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: var(--c-bg-raised);
+  border-top: 1px solid var(--c-border-sub);
+}
+
+/* 2-column layout: description (left, flexible) + type (right, fixed) */
+
+.bodyMain {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.descCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.typeCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* ─── Shared field wrapper ──────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--c-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ─── Description textarea ──────────────────────────────────────────────────── */
+
+.textarea {
+  width: 100%;
+  background: var(--c-bg-input);
+  border: 1px solid var(--c-border);
+  border-bottom: 2px solid var(--c-border);
+  border-radius: 2px 2px 0 0;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+  color: var(--c-ink);
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.textarea:focus {
+  outline: none;
+  border-bottom-color: var(--c-forest-bright);
+  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
+}
+
+.textarea::placeholder {
+  color: var(--c-ink-3);
+}
+
+.descCaption {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--c-ink-3);
+  font-style: italic;
+}
+
+/* ─── Type select ───────────────────────────────────────────────────────────── */
+
+.select {
+  width: 100%;
+  background: var(--c-bg-input);
+  border: 1px solid var(--c-border);
+  border-bottom: 2px solid var(--c-border);
+  border-radius: 2px 2px 0 0;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.88rem;
+  color: var(--c-ink);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.select:focus {
+  outline: none;
+  border-bottom-color: var(--c-forest-bright);
+  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
+}
+
+/* ─── Levels ────────────────────────────────────────────────────────────────── */
+
+.levelsField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.level {
+  font-size: 0.78rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  background: var(--c-border-sub);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 0.15em 0.5em;
+  color: var(--c-ink-2);
+}
+
+.levelsToggle {
+  background: none;
+  border: none;
+  padding: 0.1em 0.25em;
+  font-size: 0.78rem;
+  font-family: inherit;
+  color: var(--c-accent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.levelsToggle:hover {
+  opacity: 0.75;
+}
+
+/* ─── Range ─────────────────────────────────────────────────────────────────── */
+
+.rangeText {
+  font-size: 0.88rem;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  color: var(--c-ink-2);
+}
+
+/* ─── Continue ──────────────────────────────────────────────────────────────── */
+
+.continueBtn {
+  background-color: var(--c-amber);
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  padding: 0.7em 2em;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.continueBtn:hover {
+  background-color: var(--c-amber-hover);
+}

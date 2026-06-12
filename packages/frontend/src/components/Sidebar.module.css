@@ -1,0 +1,241 @@
+.sidebar {
+  width: 210px;
+  min-width: 210px;
+  background-color: var(--c-bg-sidebar);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0 1rem;
+  border-right: 1px solid var(--c-border);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0 1.25rem 1.5rem;
+}
+
+.logo {
+  height: 28px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.appTitle {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--c-ink-2);
+}
+
+.stepList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 1.25rem 0.55rem calc(1.25rem - 3px);
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  color: var(--c-ink-2);
+  font-size: 0.88rem;
+  font-weight: 400;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+.step:hover:not(:disabled) {
+  color: var(--c-ink);
+  background-color: var(--c-bg-card-hover);
+}
+
+.active {
+  border-left-color: var(--c-amber-text);
+  background-color: rgba(247, 143, 30, 0.12);
+  color: var(--c-amber-text);
+  font-weight: 600;
+}
+
+.completed {
+  color: var(--c-ink-2);
+}
+
+.locked {
+  color: var(--c-ink-3);
+  cursor: not-allowed;
+}
+
+.indicator {
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--c-forest-bright);
+}
+
+.dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--c-ink-4);
+}
+
+.active .dot {
+  background-color: var(--c-amber-text);
+}
+
+.locked .dot {
+  background-color: var(--c-ink-3);
+}
+
+.footer {
+  padding: 1rem 1.25rem 0;
+  border-top: 1px solid var(--c-border);
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.psychdsLink {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--c-ink-3);
+  text-decoration: none;
+  padding: 0.3rem 0;
+  transition: color 0.15s;
+}
+
+.psychdsLink:hover {
+  color: var(--c-forest-bright);
+}
+
+.startOver {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--c-danger-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--c-danger);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.startOver:hover {
+  background-color: var(--c-danger-bg);
+  border-color: var(--c-danger);
+}
+
+/* Light mode: locked steps need to look clearly faded vs the dark base step color.
+   --c-ink-3 (oklch 52%) is too close to --c-ink-2 (oklch 37%) on the pale sidebar. */
+:global([data-theme="light"]) .locked { color: oklch(66% 0.008 155); }
+:global([data-theme="light"]) .locked .dot { background-color: oklch(66% 0.008 155); }
+
+/* Light mode: Start Over border (--c-danger-border at oklch 88%) is near-invisible on the
+   pale sidebar (oklch 94%). Give it a tinted background and a readable border. */
+:global(:root:not([data-theme="dark"])) .startOver {
+  background-color: rgba(217, 48, 37, 0.07);
+  border-color: oklch(82% 0.09 27);
+}
+
+/* Dark mode: match the light-mode tinted background so the button has presence in both themes. */
+:global([data-theme="dark"]) .startOver {
+  background-color: var(--c-danger-bg);
+}
+
+/* Dark mode: increase contrast of sidebar text and border */
+:global([data-theme="dark"]) .sidebar { border-right-color: #4e5f57; }
+:global([data-theme="dark"]) .appTitle { color: var(--c-ink); }
+:global([data-theme="dark"]) .step:not(.active):not(.locked) { color: oklch(82% 0.012 155); }
+:global([data-theme="dark"]) .psychdsLink { color: var(--c-ink-2); }
+:global([data-theme="dark"]) .psychdsLink:hover { color: var(--c-forest-bright); }
+
+/* Start over confirmation modal — native <dialog> for free focus trap + Escape */
+
+.dialog {
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+.dialogText {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+}
+
+.dialogButtons {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.confirmYes {
+  flex: 1;
+  background-color: var(--c-danger-bg);
+  border: 1px solid var(--c-danger-border);
+  border-radius: 7px;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--c-danger);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.confirmYes:hover {
+  border-color: var(--c-danger);
+}
+
+.confirmCancel {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.confirmCancel:hover {
+  border-color: var(--c-accent);
+  color: var(--c-ink);
+}

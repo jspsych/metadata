@@ -1,0 +1,64 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 30;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: calc(100vw - var(--sidebar-w)); /* never wider than the content area */
+  background: var(--c-bg-raised);
+  border-left: 1px solid var(--c-border);
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 6rem 0.85rem 1.25rem; /* right: clear of fixed theme toggle */
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--c-ink-3);
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.closeBtn:hover {
+  color: var(--c-ink);
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--c-bg);
+}
