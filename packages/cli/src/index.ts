@@ -3,12 +3,14 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { input, select, checkbox, Separator } from '@inquirer/prompts';
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
+import fs from 'fs';
 import path from 'path';
-import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles } from "./data";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, OutputColumns } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
+import { extractVaryingMiddles, findIdentifierColumn, reduceIdCandidates, sequentialBases, planRenames, PlannedFile, FileColumns, unofficialKeywords, PSYCH_DS_KEYWORDS } from './rename';
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -301,69 +303,12 @@ const promptUnknownDescriptions = async (metadata: JsPsychMetadata) => {
   }
 };
 
-// Official Psych-DS keywords (psychds-validator schema). Using one of these as the keyword
-// for a non-compliant filename avoids the FILENAME_UNOFFICIAL_KEYWORD_WARNING; custom
-// keywords are allowed but emit that warning.
-const PSYCH_DS_KEYWORDS: Array<{ name: string; value: string; description: string }> = [
-  { name: 'subject', value: 'subject', description: 'The participant/subject the data belongs to' },
-  { name: 'session', value: 'session', description: 'A session of data collection' },
-  { name: 'task', value: 'task', description: 'The task in which the data was collected' },
-  { name: 'condition', value: 'condition', description: 'The experimental condition' },
-  { name: 'trial', value: 'trial', description: 'The trial the data belongs to' },
-  { name: 'stimulus', value: 'stimulus', description: 'The stimulus item' },
-  { name: 'study', value: 'study', description: 'The study the data belongs to' },
-  { name: 'site', value: 'site', description: 'The site where the data was collected' },
-  { name: 'description', value: 'description', description: 'A free-form label describing the file' },
-];
-
-/**
- * Pre-pass: resolves a Psych-DS-compliant base (the keyword-value sequence before "_data.csv")
- * for every data file in `dataDir`. Already-compliant filenames keep their base; non-compliant
- * ones are wrapped under a single keyword chosen via one shared prompt, with the file's current
- * stem becoming the value. Returns a map of absolute source path → base.
- *
- * When `canPrompt` is false (non-interactive run), a non-compliant filename is a hard error —
- * we never silently invent a keyword.
- */
-async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean): Promise<Map<string, string>> {
-  const files = await enumerateDataFiles(dataDir);
-  const bases = new Map<string, string>();
-  const nonCompliant: Array<{ filePath: string; name: string }> = [];
-
-  for (const { filePath, name } of files) {
-    if (name === 'dataset_description.json') continue;
-    const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
-
-    const stem = fileStem(name);
-    if (isValidPsychDSDataFilename(`${stem}_data.csv`)) {
-      bases.set(path.resolve(filePath), stem);
-    } else {
-      nonCompliant.push({ filePath, name });
-    }
-  }
-
-  if (nonCompliant.length === 0) return bases;
-
-  const fileList = nonCompliant.map((f) => `    ${f.name}`).join('\n');
-
-  if (!canPrompt) {
-    console.error(
-      `\n✘ ${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
-      `([keyword-value_]+data.csv), and this is a non-interactive run:\n${fileList}\n` +
-      `  Rename them to a compliant name (e.g. subject-001_data.csv) and re-run.`
-    );
-    process.exit(1);
-  }
-
-  console.log(
-    `\n${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
-    `([keyword-value_]+data.csv):\n${fileList}`
-  );
-
+/** Prompts for a Psych-DS keyword: official ones from a list (PSYCH_DS_KEYWORDS, the same
+ * set unofficialKeywords() checks against), or a custom (warning-emitting) one. */
+async function promptKeyword(): Promise<string> {
   const CUSTOM = '__custom__';
   let keyword = await select({
-    message: 'Choose a Psych-DS keyword to label these files (their current name becomes the value):',
+    message: 'Choose a Psych-DS keyword to label these files:',
     choices: [
       ...PSYCH_DS_KEYWORDS,
       new Separator(),
@@ -377,14 +322,354 @@ async function resolveFilenameNormalization(dataDir: string, canPrompt: boolean)
       validate: (v) => /^[a-z]+$/.test(v) ? true : 'Keyword must be one or more lowercase letters (a–z) — no digits, spaces, or symbols.',
     });
   }
+  return keyword;
+}
 
-  for (const { filePath, name } of nonCompliant) {
-    const base = `${keyword}-${toPsychDSValue(fileStem(name))}`;
-    bases.set(path.resolve(filePath), base);
-    console.log(`    ${name} → ${base}_data.csv`);
+/**
+ * Parses a data file into rows for the "read ID from the data" strategy.
+ * Returns null when the file is unparseable or a JSON file is not an array —
+ * the strategy is simply not offered in that case, never a hard error.
+ */
+async function parseDataRows(filePath: string): Promise<Array<Record<string, any>> | null> {
+  try {
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    if (path.extname(filePath).toLowerCase() === '.json') {
+      const raw = JSON.parse(content);
+      return Array.isArray(raw) ? (raw as Array<Record<string, any>>) : null;
+    }
+    return (await parseCSV(content)) as Array<Record<string, any>>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validates a proposed Psych-DS base (the keyword-value sequence before "_data.csv").
+ * Shared by every prompt that accepts a base, so the rule and its error message live
+ * in one place.
+ */
+const validateBase = (v: string): true | string =>
+  isValidPsychDSDataFilename(`${v}_data.csv`)
+    ? true
+    : 'Must be one or more keyword-value pairs joined by "_" (keyword: lowercase letters; value: letters/digits), e.g. subject-001_session-2.';
+
+/** Maps each file to the base computed by `baseFor`, keyed by absolute source path. */
+function buildProposals(
+  files: Array<{ filePath: string; name: string }>,
+  baseFor: (f: { filePath: string; name: string }, i: number) => string
+): Map<string, string> {
+  const proposals = new Map<string, string>();
+  files.forEach((f, i) => proposals.set(path.resolve(f.filePath), baseFor(f, i)));
+  return proposals;
+}
+
+interface RenameStrategy {
+  /** Menu label, including an example rename of the first file. */
+  name: string;
+  value: string;
+  description: string;
+  /** Computes proposed bases (path → base). May prompt (e.g. for a keyword). */
+  propose: () => Promise<Map<string, string>>;
+}
+
+/**
+ * Builds the list of rename strategies applicable to the given non-compliant
+ * files. The fallback strategy (keyword + full stem as the value) is always
+ * present; the smarter ones are offered only when they apply to *every* file,
+ * so a strategy choice never leaves some files unhandled.
+ */
+async function buildRenameStrategies(
+  nonCompliant: Array<{ filePath: string; name: string }>
+): Promise<RenameStrategy[]> {
+  const strategies: RenameStrategy[] = [];
+
+  // Sample preview rendered under the highlighted menu option: old → new for
+  // the first few files, so the choice can be judged on real names instead of
+  // a single abstract example.
+  const sampleFiles = nonCompliant.slice(0, 3);
+  const remaining = nonCompliant.length - sampleFiles.length;
+  const samplePreview = (baseFor: (f: { filePath: string; name: string }, i: number) => string): string => {
+    const lines = sampleFiles.map((f, i) => `      ${f.name} → ${baseFor(f, i)}_data.csv`);
+    if (remaining > 0) lines.push(`      … and ${remaining} more`);
+    return lines.join('\n');
+  };
+
+  // 1. Read ID from the data: an identifier column with one unique value per file.
+  // The most reliable option — the name comes from the data itself, not the old filename.
+  // Process one file at a time so full row arrays can be GC'd before reading the next;
+  // reduceIdCandidates keeps only capped per-column unique-value sets, bounding memory
+  // to one file's rows. Large datasets make this scan take a few seconds, hence the
+  // progress log.
+  console.log(`\nScanning ${nonCompliant.length} data file(s) for identifier columns…`);
+  const uniquesByFile = new Map<string, Map<string, Set<string>>>();
+  for (const { filePath } of nonCompliant) {
+    const rows = await parseDataRows(filePath);
+    if (!rows) break;
+    const colUniques = reduceIdCandidates(rows);
+    // A column qualifies only when it has exactly one unique value in *every* file,
+    // so a file where no ID column qualifies rules the strategy out dataset-wide —
+    // stop scanning and skip parsing the remaining files entirely.
+    if (![...colUniques.values()].some((unique) => unique.size === 1)) break;
+    uniquesByFile.set(path.resolve(filePath), colUniques);
+  }
+  if (uniquesByFile.size === nonCompliant.length) {
+    const id = findIdentifierColumn(uniquesByFile);
+    if (id) {
+      strategies.push({
+        name: `Use the "${id.column}" value found inside each file`,
+        value: 'data-id',
+        description:
+          `Most reliable: the ID is read from the data itself, so it works even when the old filenames are meaningless.\n` +
+          samplePreview((f) => `subject-${toPsychDSValue(id.values.get(path.resolve(f.filePath))!)}`),
+        propose: async () => {
+          const proposals = new Map<string, string>();
+          for (const [filePath, value] of id.values) {
+            proposals.set(filePath, `subject-${toPsychDSValue(value)}`);
+          }
+          return proposals;
+        },
+      });
+    }
   }
 
-  return bases;
+  // 2. Pattern extraction: shared prefix/suffix stripped, varying middle becomes the value.
+  const pattern = extractVaryingMiddles(nonCompliant.map((f) => fileStem(f.name)));
+  if (pattern) {
+    const shared = `"${pattern.prefix}"${pattern.suffix ? ` and "${pattern.suffix}"` : ''}`;
+    strategies.push({
+      name: 'Keep only the part that differs between the filenames',
+      value: 'pattern',
+      description:
+        `All the filenames share ${shared}; the part in between becomes the value. <keyword> is the keyword you'll pick next.\n` +
+        samplePreview((f) => `<keyword>-${toPsychDSValue(pattern.middles.get(fileStem(f.name))!)}`),
+      propose: async () => {
+        const keyword = await promptKeyword();
+        return buildProposals(nonCompliant, ({ name }) => `${keyword}-${toPsychDSValue(pattern.middles.get(fileStem(name))!)}`);
+      },
+    });
+  }
+
+  // 3. Sequential labels: the user names the first file (e.g. subject-001) and
+  // the rest continue the numbering, in the order the files are listed. Useful
+  // when the real IDs are long/messy — the ID column inside the data and the
+  // originals under data/raw/ keep the mapping, so nothing is lost.
+  strategies.push({
+    name: 'Give the files fresh numbered names (subject-001, subject-002, …)',
+    value: 'sequence',
+    description:
+      `Replaces messy names with clean numbers, in the order listed — you'll type the first name next (preview shows the default). ` +
+      `Any ID column inside the data is untouched and the originals are kept under data/raw/, so the mapping survives.\n` +
+      samplePreview((_f, i) => sequentialBases('subject-001', nonCompliant.length)![i]),
+    propose: async () => {
+      const example = await input({
+        message: 'Name for the first file (the part before "_data.csv", must end in a number):',
+        default: 'subject-001',
+        validate: (v) => {
+          const valid = validateBase(v);
+          if (valid !== true) return valid;
+          if (!/\d$/.test(v)) return 'Must end in a number so the remaining files can continue the sequence.';
+          return true;
+        },
+      });
+      const labels = sequentialBases(example, nonCompliant.length)!;
+      return buildProposals(nonCompliant, (_f, i) => labels[i]);
+    },
+  });
+
+  // 4. Fallback: the whole stem becomes the value under one prompted keyword.
+  // (No regex/custom-rule option on purpose: individual names can be hand-edited
+  // in the preview step, which covers the odd cases without regex knowledge.)
+  strategies.push({
+    name: 'Keep the whole old filename as the value',
+    value: 'stem',
+    description:
+      `Safe but verbose: nothing from the old name is lost, it's just squashed into one value. <keyword> is the keyword you'll pick next.\n` +
+      samplePreview((f) => `<keyword>-${toPsychDSValue(fileStem(f.name))}`),
+    propose: async () => {
+      const keyword = await promptKeyword();
+      return buildProposals(nonCompliant, ({ name }) => `${keyword}-${toPsychDSValue(fileStem(name))}`);
+    },
+  });
+
+  // Mark the best available automatic strategy as recommended. data-id (already
+  // first when present) beats pattern; the manual options are never recommended.
+  const recommended = strategies.find((s) => s.value === 'data-id') ?? strategies.find((s) => s.value === 'pattern');
+  if (recommended) recommended.name += '   (recommended)';
+
+  return strategies;
+}
+
+/**
+ * Pre-pass: resolves a Psych-DS-compliant base (the keyword-value sequence before "_data.csv")
+ * for every data file in `dataDir`. Already-compliant filenames keep their base — except ones
+ * using unofficial keywords (e.g. "data-xyz"), which are legal but draw a validator warning;
+ * those get an opt-in to join the rename flow. Non-compliant ones must go through it: pick a
+ * strategy (ID column from the data, pattern extraction, sequential labels, or keyword + full
+ * stem), review the full old → new
+ * preview (collisions are flagged and auto-disambiguated), then apply, edit individual names,
+ * or switch strategy. Returns a map of absolute source path → base.
+ *
+ * When `canPrompt` is false (non-interactive run), a non-compliant filename is a hard error —
+ * we never silently invent a keyword.
+ */
+interface FilenameNormalization {
+  /** Resolved source path → chosen Psych-DS base (keyword-value sequence). */
+  bases: Map<string, string>;
+  /**
+   * Complete approved output-name plan (main + sidecars) when a rename happened, else null.
+   * When non-null it is the single source of truth the writer must honor exactly.
+   */
+  plan: Map<string, PlannedFile> | null;
+}
+
+async function resolveFilenameNormalization(
+  dataDir: string,
+  canPrompt: boolean,
+  columns: OutputColumns[]
+): Promise<FilenameNormalization> {
+  const files = await enumerateDataFiles(dataDir);
+  const bases = new Map<string, string>();
+  const nonCompliant: Array<{ filePath: string; name: string }> = [];
+  const unofficial: Array<{ filePath: string; name: string; keywords: string[] }> = [];
+
+  // Extracted-column inventory per file, used to show (and reserve names for) sidecars in
+  // the preview. Files in `columns` are in the writer's canonical order.
+  const columnsByKey = new Map(columns.map((c) => [c.key, c]));
+
+  for (const { filePath, name } of files) {
+    if (name === 'dataset_description.json') continue;
+    const ext = path.extname(name).toLowerCase();
+    if (ext !== '.json' && ext !== '.csv') continue;
+
+    const stem = fileStem(name);
+    if (!isValidPsychDSDataFilename(`${stem}_data.csv`)) {
+      nonCompliant.push({ filePath, name });
+      continue;
+    }
+    const offKeywords = unofficialKeywords(stem);
+    if (offKeywords.length > 0 && canPrompt) {
+      // Legal name, but the validator will warn about the keyword(s) — offer a rename.
+      unofficial.push({ filePath, name, keywords: offKeywords });
+    } else {
+      bases.set(path.resolve(filePath), stem);
+    }
+  }
+
+  if (!canPrompt && nonCompliant.length > 0) {
+    const fileList = nonCompliant.map((f) => `    ${f.name}`).join('\n');
+    console.error(
+      `\n✘ ${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
+      `([keyword-value_]+data.csv), and this is a non-interactive run:\n${fileList}\n` +
+      `  Rename them to a compliant name (e.g. subject-001_data.csv) and re-run.`
+    );
+    process.exit(1);
+  }
+
+  if (nonCompliant.length > 0) {
+    console.log(
+      `\n${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
+      `([keyword-value_]+data.csv):\n${nonCompliant.map((f) => `    ${f.name}`).join('\n')}`
+    );
+  }
+
+  if (unofficial.length > 0) {
+    console.log(
+      `\n${unofficial.length} data file(s) have technically valid names that use unofficial ` +
+      `keywords (the validator warns about these):\n` +
+      unofficial.map((f) => `    ${f.name}  (keyword: ${f.keywords.join(', ')})`).join('\n')
+    );
+    const renameThem = await select({
+      message: 'Rename these files too?',
+      choices: [
+        {
+          name: 'Yes, rename them — suggested naming strategies will be provided',
+          value: true,
+          description: 'You will pick from suggested strategies and see a preview of every rename before anything is written.',
+        },
+        { name: 'No, keep their current names', value: false, description: 'Legal names — the validator will emit a warning per file.' },
+      ],
+    });
+    if (renameThem) {
+      nonCompliant.push(...unofficial.map(({ filePath, name }) => ({ filePath, name })));
+    } else {
+      for (const { filePath, name } of unofficial) {
+        bases.set(path.resolve(filePath), fileStem(name));
+      }
+    }
+  }
+
+  if (nonCompliant.length === 0) return { bases, plan: null };
+
+  const strategies = await buildRenameStrategies(nonCompliant);
+
+  // Builds the complete output-name plan for the whole directory from the current proposed
+  // bases. Every output file is included (already-compliant ones too) and listed in the
+  // writer's canonical order, so collisions between a renamed file's main name and another
+  // file's sidecar are resolved here exactly as they will be on disk.
+  const buildPlan = (proposals: Map<string, string>): Map<string, PlannedFile> => {
+    const ordered: FileColumns[] = [];
+    for (const { key, arrayColumns, objectColumns } of columns) {
+      const base = proposals.get(key) ?? bases.get(key);
+      if (base === undefined) continue; // not a resolved output file
+      ordered.push({ key, base, arrayColumns, objectColumns });
+    }
+    return planRenames(ordered);
+  };
+
+  while (true) {
+    const chosen = await select({
+      message: 'How should these files be renamed?',
+      choices: strategies.map(({ name, value, description }) => ({ name, value, description })),
+    });
+    const proposals = await strategies.find((s) => s.value === chosen)!.propose();
+
+    // Preview / edit loop: show every rename (with the sidecar CSVs each will generate),
+    // then apply, edit one, or go back.
+    while (true) {
+      const plan = buildPlan(proposals);
+      console.log('\nProposed renames:');
+      for (const { filePath, name } of nonCompliant) {
+        const planned = plan.get(path.resolve(filePath))!;
+        const flag = planned.mainAdjusted ? '  (adjusted to avoid a name collision)' : '';
+        console.log(`    ${name} → ${planned.mainName}${flag}`);
+        for (const s of planned.sidecars) {
+          const sflag = s.adjusted ? '  (adjusted to avoid a name collision)' : '';
+          console.log(`        + ${s.filename}  (${s.kind} column "${s.column}")${sflag}`);
+        }
+      }
+
+      const action = await select({
+        message: 'Apply these names?',
+        choices: [
+          { name: 'Apply', value: 'apply' },
+          { name: 'Edit one filename', value: 'edit' },
+          { name: 'Choose a different strategy', value: 'back' },
+        ],
+      });
+
+      if (action === 'apply') {
+        // Record each renamed file's chosen base; the writer derives final names from `plan`.
+        for (const [filePath, base] of proposals) bases.set(filePath, base);
+        return { bases, plan };
+      }
+
+      if (action === 'back') break;
+
+      const target = await select({
+        message: 'Which file?',
+        choices: nonCompliant.map(({ filePath, name }) => ({
+          name: `${name} → ${plan.get(path.resolve(filePath))!.mainName}`,
+          value: path.resolve(filePath),
+        })),
+      });
+      const edited = await input({
+        message: 'New name (the part before "_data.csv", e.g. subject-001):',
+        default: proposals.get(target),
+        validate: validateBase,
+      });
+      proposals.set(target, edited);
+    }
+  }
 }
 
 // can seperate the process argv's out into seperate function
@@ -433,11 +718,17 @@ const main = async () => {
 
   if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
 
+  // Dry run: discover which array/object columns each file will extract to sidecar CSVs, so
+  // the rename preview can show every output name (main + sidecars). Column names don't depend
+  // on the join keys, so the defaults are fine before the join-key prompt below.
+  const outputColumns = await analyzeOutputColumns(dataDir, { arrayJoinKeys: ['trial_index'] });
+
   // Pre-pass: resolve Psych-DS-compliant output names, prompting once for any non-compliant
   // filenames. Without an interactive terminal we cannot prompt, so this fails rather than
-  // inventing a keyword.
+  // inventing a keyword. When a rename happens this also returns the complete, approved
+  // output-name plan the writer must honor exactly.
   const canPrompt = !isNonInteractive && !!process.stdin.isTTY && !!process.stdout.isTTY;
-  const normalizedBases = await resolveFilenameNormalization(dataDir, canPrompt);
+  const { bases: normalizedBases, plan: renamePlan } = await resolveFilenameNormalization(dataDir, canPrompt, outputColumns);
 
   // Pre-flight: check whether default join key (trial_index) is unique; prompt if not
   const initialKeys = ['trial_index'];
@@ -449,7 +740,7 @@ const main = async () => {
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
   // user, so suppress the library's per-file warning to avoid repeating it.
-  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases });
+  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases, renamePlan: renamePlan ?? undefined });
 
   // check if it's a valid path and then prompt the options
   if (argv['metadata-options'] && validateJson(argv['metadata-options'])){
@@ -496,4 +787,9 @@ const main = async () => {
   }
 };
 
-main();
+main().catch((err) => {
+  // Surface aborts (e.g. a rename-plan mismatch) cleanly with a non-zero exit instead of an
+  // unhandled-rejection stack trace.
+  console.error(`\n✘ ${err instanceof Error ? err.message : err}`);
+  process.exit(1);
+});
