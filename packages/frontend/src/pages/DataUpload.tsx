@@ -290,6 +290,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
       }
     }
 
+    // When we preserved raw originals, tell the validator to skip data/raw/ so they don't
+    // surface as FILE_NOT_CHECKED. The pattern is `**/raw/` (not `data/raw/`) because the
+    // validator tests leading-slash paths, against which an anchored pattern won't match; the
+    // self-reference works around the validator only hard-excluding the legacy ".bidsignore".
+    if (usedRawFilenames.size > 0) {
+      converted.set('.psychds-ignore', '**/raw/\n.psychds-ignore\n');
+    }
+
     setConvertedFiles(converted);
     setPhase('done');
   };
