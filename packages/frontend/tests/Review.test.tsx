@@ -118,6 +118,37 @@ describe("Review", () => {
     expect(screen.getByText("MISSING_README")).toBeInTheDocument();
   });
 
+  test("explains that README/CHANGES warnings are resolved by the zip download", async () => {
+    mockValidate.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: [
+        { key: "MISSING_README_DOC", reason: "include a README", evidence: [] },
+        { key: "MISSING_CHANGES_DOC", reason: "include a CHANGES", evidence: [] },
+      ],
+    });
+    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
+    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
+    await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
+
+    expect(await screen.findByText(/already includes/)).toHaveTextContent(
+      /README\.md.*CHANGES\.md/,
+    );
+  });
+
+  test("omits the README/CHANGES note when there is no zip (no data files)", async () => {
+    mockValidate.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: [{ key: "MISSING_README_DOC", reason: "include a README", evidence: [] }],
+    });
+    render(<Review jsPsychMetadata={makeMetadata()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
+
+    await screen.findByText("MISSING_README_DOC");
+    expect(screen.queryByText(/already includes/)).not.toBeInTheDocument();
+  });
+
   test("shows the validator's own message when validation is unavailable", async () => {
     const err = new Error("The validator could not reach the schema server.");
     err.name = "ValidationUnavailableError";

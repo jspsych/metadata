@@ -29,6 +29,11 @@ function blobDownload(blob: Blob, filename: string) {
 
 type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
 
+// Warnings the downloadable zip already resolves: it ships a README.md and CHANGES.md the
+// in-browser validator can't see (it only checks the metadata + data files). When these show
+// up, we reassure the user rather than letting them think the dataset is incomplete.
+const ZIP_RESOLVED_WARNINGS = new Set(['MISSING_README_DOC', 'MISSING_CHANGES_DOC']);
+
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
@@ -216,6 +221,17 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
             {valResult.warnings.length > 0 && (
               <>
                 <p className={styles.issueGroupLabel}>Warnings</p>
+                {hasDataFiles && valResult.warnings.some((w) => ZIP_RESOLVED_WARNINGS.has(w.key)) && (
+                  <p className={styles.warnNote}>
+                    Heads up: warnings about a missing <code className={styles.code}>README</code> or{' '}
+                    <code className={styles.code}>CHANGES</code> file are expected here — in-browser
+                    validation only checks the metadata and your data files. The{' '}
+                    <code className={styles.code}>{projectName}.zip</code> download already includes{' '}
+                    <code className={styles.code}>README.md</code> and{' '}
+                    <code className={styles.code}>CHANGES.md</code>, so these clear once you validate
+                    the downloaded dataset (e.g. with <code className={styles.code}>npx @jspsych/cli validate</code>).
+                  </p>
+                )}
                 <ul className={styles.issueList}>
                   {valResult.warnings.map((issue, i) => (
                     <li key={`w${i}`} className={`${styles.issueItem} ${styles.issueWarn}`}>
