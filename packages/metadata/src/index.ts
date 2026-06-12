@@ -596,17 +596,11 @@ export default class JsPsychMetadata {
    * @returns {*}
    */
   private async generateMetadata(variable, value, pluginType, version, extension?) {
-    if (!pluginType) { 
-      return;
-    }
-    // probably should work in a call to the plugin here
-    const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
-    const description = pluginInfo["description"];
-    const new_description = description
-      ? { [pluginType]: description }
-      : { [pluginType]: "unknown" };
-    var type = typeof value;
+    const type = typeof value;
 
+    // Register the column (or upgrade a value:"unknown" placeholder) with its concrete type. This is
+    // independent of the plugin: a row without a trial_type still has typed columns whose values must
+    // feed min/max and levels — only the human-readable description (below) comes from the plugin.
     if (!this.containsVariable(variable)) {
       const new_var = {
         "@type": "PropertyValue",
@@ -622,8 +616,17 @@ export default class JsPsychMetadata {
       if (existing.value === "unknown") this.updateVariable(variable, "value", type);
     }
 
-    // hit the update variable decription fields
-    this.updateVariable(variable, "description", new_description);
+    // Plugin/extension description lookup needs a plugin type. Rows without one (e.g. a row missing
+    // trial_type) keep the default "unknown" description but are still typed and counted.
+    if (pluginType) {
+      const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
+      const description = pluginInfo["description"];
+      const new_description = description
+        ? { [pluginType]: description }
+        : { [pluginType]: "unknown" };
+      this.updateVariable(variable, "description", new_description);
+    }
+
     this.updateFields(variable, value, type);
   }
 
@@ -682,6 +685,13 @@ export default class JsPsychMetadata {
         delete existing.minValue;
         delete existing.maxValue;
         this.updateVariable(variable, "value", "string");
+      }
+      // F2: a column already typed boolean (a genuine true/false was seen) may also receive the
+      // STRING "true"/"false" — e.g. the same field encoded as text in another row. Treat it as the
+      // same boolean rather than recording a misleading categorical level. Any other string still
+      // accumulates as a level (a real mix).
+      if (existing.value === "boolean" && (value === "true" || value === "false")) {
+        return;
       }
       this.updateVariable(variable, "levels", value);
     }
@@ -953,7 +963,8 @@ export default class JsPsychMetadata {
     if (this.containsVariable(name) && (this.getVariable(name) as VariableFields).value !== "unknown") return;
     await this.generateMetadata(name, value, pluginType, version);
     if (!this.containsVariable(name)) {
-      // generateMetadata is a no-op without a pluginType — declare the column anyway.
+      // Defensive: generateMetadata registers the column itself (even without a pluginType), but
+      // declare it here too in case it is ever reached without registration.
       this.setVariable({ "@type": "PropertyValue", name, description: { default: "unknown" }, value: type });
     } else {
       this.updateVariable(name, "value", type); // typeof {}/[] === "object"; pin the intended type
