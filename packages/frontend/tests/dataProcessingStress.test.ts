@@ -5,13 +5,19 @@ import { validatorOutput } from "./helpers";
 
 const mockValidateWeb = validateWeb as jest.Mock;
 
-// Silence PluginCache npm fetches and join-key warnings — not under test here.
-const mockFetch = jest.fn().mockResolvedValue({ text: () => Promise.resolve("") });
+interface VariableMeta {
+  minValue?: number;
+  maxValue?: number;
+  levels?: unknown[];
+  value?: string;
+}
+
+// Mock PluginCache npm fetches — ok:true prevents the "source not found" warn path.
+const mockFetch = jest.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve("") });
 beforeEach(() => {
-  (global as any).fetch = mockFetch;
+  (global as VariableMeta).fetch = mockFetch;
   mockFetch.mockClear();
   mockValidateWeb.mockReset();
-  jest.spyOn(console, "warn").mockImplementation(() => {});
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -50,7 +56,7 @@ describe("Scale: large CSV (1,000 rows)", () => {
     const rows = Array.from({ length: 1000 }, (_, i) => baseRow({ trial_index: i, rt: i + 1 }));
     const meta = new JsPsychMetadata();
     await meta.generate(makeCsv(rows), {}, "csv");
-    const rt = meta.getVariable("rt") as any;
+    const rt = meta.getVariable("rt") as VariableMeta;
     expect(rt.minValue).toBe(1);
     expect(rt.maxValue).toBe(1000);
   });
@@ -109,11 +115,10 @@ describe("Multi-file: CSV + JSON accumulation", () => {
     await meta.generate(makeCsv(csvRows), {}, "csv");
     await meta.generate(JSON.stringify(jsonRows), {}, "json");
 
-    const rt = meta.getVariable("rt") as any;
+    const rt = meta.getVariable("rt") as VariableMeta;
     expect(rt.minValue).toBe(100);
     expect(rt.maxValue).toBe(800);
   });
-
 });
 
 // ─── Type inference ──────────────────────────────────────────────────────────
@@ -126,7 +131,7 @@ describe("Type inference", () => {
     ]);
     const meta = new JsPsychMetadata();
     await meta.generate(data, {}, "json");
-    expect((meta.getVariable("correct") as any).value).toBe("boolean");
+    expect((meta.getVariable("correct") as VariableMeta).value).toBe("boolean");
   });
 
   test("null values in a numeric CSV column do not affect range detection", async () => {
@@ -137,7 +142,7 @@ describe("Type inference", () => {
     ];
     const meta = new JsPsychMetadata();
     await meta.generate(makeCsv(rows), {}, "csv");
-    const rt = meta.getVariable("rt") as any;
+    const rt = meta.getVariable("rt") as VariableMeta;
     expect(rt.minValue).toBe(500);
     expect(rt.maxValue).toBe(800);
   });
@@ -152,7 +157,7 @@ describe("Many levels", () => {
     const rows = Array.from({ length: 50 }, (_, i) => baseRow({ trial_index: i, stimulus: `stimulus-${i}` }));
     const meta = new JsPsychMetadata();
     await meta.generate(makeCsv(rows), {}, "csv");
-    const stim = meta.getVariable("stimulus") as any;
+    const stim = meta.getVariable("stimulus") as VariableMeta;
     expect(stim.levels).toHaveLength(50);
   });
 });
