@@ -1,0 +1,236 @@
+/**
+ * Smart rename strategies for data files whose names don't follow the Psych-DS
+ * pattern ([keyword-value_]+data.csv). Everything here is pure (no prompting,
+ * no filesystem) so it can be unit-tested; the interactive flow lives in
+ * index.ts (resolveFilenameNormalization).
+ */
+
+import { deriveArrayFilename, disambiguateArrayFilename } from '@jspsych/metadata';
+
+/**
+ * Official Psych-DS filename keywords (psychds-validator schema), in the order the
+ * keyword-picker menu presents them, with the menu descriptions. Using any other
+ * keyword in a filename is legal but triggers FILENAME_UNOFFICIAL_KEYWORD_WARNING.
+ * Single source of truth: OFFICIAL_KEYWORDS is derived from this list, so a schema
+ * change only needs to be made here.
+ */
+export const PSYCH_DS_KEYWORDS: Array<{ name: string; value: string; description: string }> = [
+  { name: 'subject', value: 'subject', description: 'The participant/subject the data belongs to' },
+  { name: 'session', value: 'session', description: 'A session of data collection' },
+  { name: 'task', value: 'task', description: 'The task in which the data was collected' },
+  { name: 'condition', value: 'condition', description: 'The experimental condition' },
+  { name: 'trial', value: 'trial', description: 'The trial the data belongs to' },
+  { name: 'stimulus', value: 'stimulus', description: 'The stimulus item' },
+  { name: 'study', value: 'study', description: 'The study the data belongs to' },
+  { name: 'site', value: 'site', description: 'The site where the data was collected' },
+  { name: 'description', value: 'description', description: 'A free-form label describing the file' },
+];
+
+export const OFFICIAL_KEYWORDS = new Set(PSYCH_DS_KEYWORDS.map((k) => k.name));
+
+/**
+ * Lists the unofficial keywords in an otherwise-compliant Psych-DS base:
+ * "data-pmlfboigs" → ["data"], "subject-01_session-2" → []. Used to offer the
+ * rename flow for files that are technically valid but would emit warnings.
+ */
+export function unofficialKeywords(base: string): string[] {
+  return base
+    .split('_')
+    .map((pair) => pair.split('-')[0])
+    .filter((kw) => !OFFICIAL_KEYWORDS.has(kw));
+}
+
+/**
+ * Finds the longest common prefix and suffix shared by all stems and returns
+ * them along with each stem's varying middle part. Returns null unless there
+ * are at least two stems and the middles are all non-empty and pairwise
+ * distinct (otherwise the "pattern" would collapse files onto the same name or
+ * an empty value). The prefix is matched greedily; the suffix only consumes
+ * what the shortest remaining middle allows, so the two never overlap.
+ */
+export function extractVaryingMiddles(
+  stems: string[]
+): { prefix: string; suffix: string; middles: Map<string, string> } | null {
+  if (stems.length < 2) return null;
+
+  let prefixLen = 0;
+  const first = stems[0];
+  while (prefixLen < first.length && stems.every((s) => s[prefixLen] === first[prefixLen])) {
+    prefixLen += 1;
+  }
+
+  const shortestRemainder = Math.min(...stems.map((s) => s.length - prefixLen));
+  let suffixLen = 0;
+  while (
+    suffixLen < shortestRemainder &&
+    stems.every((s) => s[s.length - 1 - suffixLen] === first[first.length - 1 - suffixLen])
+  ) {
+    suffixLen += 1;
+  }
+
+  const middles = new Map<string, string>();
+  const used = new Set<string>();
+  for (const stem of stems) {
+    const middle = stem.slice(prefixLen, stem.length - suffixLen);
+    if (middle.length === 0 || used.has(middle)) return null;
+    used.add(middle);
+    middles.set(stem, middle);
+  }
+  return {
+    prefix: first.slice(0, prefixLen),
+    suffix: suffixLen > 0 ? first.slice(first.length - suffixLen) : '',
+    middles,
+  };
+}
+
+/**
+ * Identifier columns recognised by the "read ID from the data" strategy, in
+ * priority order. All map to the `subject` keyword.
+ */
+export const ID_COLUMNS = ['subject_id', 'participant_id', 'subject', 'participant', 'PROLIFIC_PID', 'prolific_pid'];
+
+/**
+ * Reduces one file's parsed rows to the per-ID-column unique-value sets that
+ * findIdentifierColumn consumes. Each set is capped at 2 entries: downstream
+ * only cares whether a column has *exactly one* unique value (and what it is),
+ * so a second distinct value already disqualifies the column and further
+ * values need not be stored. The row scan stops early once every ID column
+ * is disqualified.
+ */
+export function reduceIdCandidates(rows: Array<Record<string, any>>): Map<string, Set<string>> {
+  const colUniques = new Map<string, Set<string>>();
+  for (const col of ID_COLUMNS) colUniques.set(col, new Set<string>());
+
+  for (const row of rows) {
+    let undecided = 0;
+    for (const col of ID_COLUMNS) {
+      const unique = colUniques.get(col)!;
+      if (unique.size >= 2) continue;
+      const v = row[col];
+      if (v !== undefined && v !== null && String(v).trim() !== '') unique.add(String(v).trim());
+      if (unique.size < 2) undecided += 1;
+    }
+    if (undecided === 0) break;
+  }
+  return colUniques;
+}
+
+/**
+ * Searches per-file unique-value sets for an identifier column usable as a filename
+ * value. A column qualifies only if every file has it with exactly one unique
+ * non-empty value (a file mixing several subject IDs can't be named after one
+ * of them). Returns the first qualifying column from ID_COLUMNS plus each
+ * file's value, or null when none qualifies.
+ *
+ * Accepts pre-reduced unique-value sets (Map<filePath, Map<column, Set<value>>>)
+ * so callers can process one file at a time and discard full row arrays before
+ * moving to the next file, keeping memory bounded to a single file's rows.
+ */
+export function findIdentifierColumn(
+  uniquesByFile: Map<string, Map<string, Set<string>>>
+): { column: string; values: Map<string, string> } | null {
+  if (uniquesByFile.size === 0) return null;
+
+  for (const column of ID_COLUMNS) {
+    const values = new Map<string, string>();
+    let ok = true;
+    for (const [filePath, colUniques] of uniquesByFile) {
+      const unique = colUniques.get(column) ?? new Set<string>();
+      if (unique.size !== 1) {
+        ok = false;
+        break;
+      }
+      values.set(filePath, unique.values().next().value as string);
+    }
+    if (ok) return { column, values };
+  }
+  return null;
+}
+
+/**
+ * Generates `count` sequential bases following a user-supplied example for the
+ * first file: "subject-001" → ["subject-001", "subject-002", …]. The trailing
+ * digits are incremented and their zero-padding preserved (rolling past the
+ * width simply grows the number: "subject-99" → "subject-100"). Returns null
+ * when the example doesn't end in digits, so there is no number to continue.
+ */
+export function sequentialBases(example: string, count: number): string[] | null {
+  const m = /^(.*?)(\d+)$/.exec(example);
+  if (!m) return null;
+  const [, prefix, digits] = m;
+  const start = parseInt(digits, 10);
+  const width = digits.length;
+  return Array.from({ length: count }, (_, i) => `${prefix}${String(start + i).padStart(width, '0')}`);
+}
+
+/** One file's extracted-column inventory, the input to {@link planRenames}. */
+export interface FileColumns {
+  /** Stable file id (the caller uses `path.resolve(filePath)`). */
+  key: string;
+  /** The chosen Psych-DS base (keyword-value sequence before "_data.csv"). */
+  base: string;
+  /** Array-of-objects columns extracted to sidecar CSVs, in write order. */
+  arrayColumns?: string[];
+  /** Plain-object columns expanded to sidecar CSVs, in write order. */
+  objectColumns?: string[];
+}
+
+/** A planned sidecar output for one extracted column. */
+export interface PlannedSidecar {
+  column: string;
+  kind: 'array' | 'object';
+  filename: string;
+  /** True when the derived name collided and a counter was appended. */
+  adjusted: boolean;
+}
+
+/** The complete set of output filenames one source file will produce. */
+export interface PlannedFile {
+  key: string;
+  base: string;
+  mainName: string;
+  /** True when the main name collided and a counter was appended. */
+  mainAdjusted: boolean;
+  sidecars: PlannedSidecar[];
+}
+
+/**
+ * Single source of truth for every output filename a run produces — the main
+ * Psych-DS CSV for each source file plus one sidecar per extracted array/object
+ * column. Names are resolved against ONE shared `used` set in the exact order
+ * the writer emits them (per file: main, then array sidecars, then object
+ * sidecars; files in the caller's canonical order), so the preview and the
+ * writer can never disagree.
+ *
+ * Disambiguation reuses @jspsych/metadata's `disambiguateArrayFilename` and
+ * `deriveArrayFilename` directly — the same functions the writer calls — so
+ * there is no second counter implementation to drift out of sync. Pass EVERY
+ * output file (already-compliant ones included), because a compliant file's
+ * sidecar can collide with a renamed file's main name and vice versa.
+ */
+export function planRenames(files: FileColumns[]): Map<string, PlannedFile> {
+  const used = new Set<string>();
+  const plan = new Map<string, PlannedFile>();
+
+  for (const { key, base, arrayColumns = [], objectColumns = [] } of files) {
+    const desiredMain = `${base}_data.csv`;
+    const mainName = disambiguateArrayFilename(desiredMain, used);
+    used.add(mainName);
+
+    const sidecars: PlannedSidecar[] = [];
+    const addSidecars = (columns: string[], kind: 'array' | 'object') => {
+      for (const column of columns) {
+        const desired = deriveArrayFilename(base, column);
+        const filename = disambiguateArrayFilename(desired, used);
+        used.add(filename);
+        sidecars.push({ column, kind, filename, adjusted: filename !== desired });
+      }
+    };
+    addSidecars(arrayColumns, 'array');
+    addSidecars(objectColumns, 'object');
+
+    plan.set(key, { key, base, mainName, mainAdjusted: mainName !== desiredMain, sidecars });
+  }
+
+  return plan;
+}

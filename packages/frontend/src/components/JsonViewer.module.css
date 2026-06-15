@@ -1,0 +1,85 @@
+.viewer {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  overflow: auto;
+}
+
+.node {
+  display: block;
+}
+
+.line {
+  display: block;
+  word-break: break-word;
+}
+
+.children {
+  padding-left: 1.5rem;
+}
+
+/* Syntax token colors — light mode (jsPsych logo palette, darkened for contrast on white) */
+.key   { color: #006838; }  /* logo dark green — 7:1 on white */
+.str   { color: #b06210; }  /* orange-amber (hue ~31°) — 4.5:1 on white */
+.num   { color: #c41a10; }  /* clear red (hue ~3°) — 6.0:1 on white */
+.bool  { color: #0a7d2c; }  /* 4.6:1 on white, clears WCAG AA for normal text */
+.null  { color: #9ca3af; font-style: italic; }
+.brace { color: #374151; }
+.colon { color: #6b7280; }
+.punct { color: #9ca3af; }
+
+.summary {
+  margin: 0 0.4em;
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.78rem;
+}
+
+.toggle {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0.2em 0 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: inherit;
+  vertical-align: baseline;
+  transition: color 0.1s;
+}
+
+.toggle:hover {
+  color: #13b24b;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Dark mode token overrides — media query covers OS dark mode, data-theme covers manual toggle */
+@media (prefers-color-scheme: dark) {
+  .key   { color: #13b24b; }  /* logo bright green — readable on dark bg */
+  .str   { color: #f78f1e; }  /* logo amber (hue ~34°) — full brightness on dark */
+  .num   { color: #f03d2a; }  /* clear red (hue ~5°) — 3.3:1 on dark bg */
+  .bool  { color: #4bd172; }  /* lighter green, distinct from key — 6.6:1 on dark bg */
+  .null  { color: #6b7280; }
+  .brace { color: #d1d5db; }
+  .colon { color: #9ca3af; }
+  .punct { color: #6b7280; }
+  .summary { color: #6b7280; }
+  .toggle { color: #6b7280; }
+}
+
+:global([data-theme="dark"]) .key   { color: #13b24b; }
+:global([data-theme="dark"]) .str   { color: #f78f1e; }
+:global([data-theme="dark"]) .num   { color: #f03d2a; }
+:global([data-theme="dark"]) .bool  { color: #4bd172; }
+:global([data-theme="dark"]) .null  { color: #6b7280; }
+:global([data-theme="dark"]) .brace { color: #d1d5db; }
+:global([data-theme="dark"]) .colon { color: #9ca3af; }
+:global([data-theme="dark"]) .punct { color: #6b7280; }
+:global([data-theme="dark"]) .summary { color: #6b7280; }
+:global([data-theme="dark"]) .toggle { color: #6b7280; }

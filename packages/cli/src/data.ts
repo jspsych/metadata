@@ -2,6 +2,20 @@ import fs from "fs";
 import path from "path";
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV, isValidPsychDSDataFilename } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
+import { PlannedFile } from "./rename";
+
+/**
+ * Thrown when the data a file produces doesn't match the output-name plan the user approved
+ * (a column appears/disappears, or an approved name is already taken). Distinct from an
+ * ordinary per-file read/parse failure so it aborts the run loudly instead of being counted
+ * as a skipped file — the names on disk must always be the ones the user saw.
+ */
+export class RenamePlanError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RenamePlanError";
+  }
+}
 
 export interface GenerateOptions {
   arrayJoinKeys?: string[];
@@ -14,6 +28,15 @@ export interface GenerateOptions {
    * the file is skipped (processFile never invents a keyword — that is the pre-pass's job).
    */
   normalizedBases?: Map<string, string>;
+  /**
+   * Maps an absolute source-file path to its complete, pre-resolved output-name plan (main
+   * CSV + one sidecar per extracted column), produced by {@link planRenames} and shown to the
+   * user before anything is written. When present, processFile writes exactly these names and
+   * throws if the data produces a different set of columns — so the names on disk always match
+   * the ones the user approved. Absent for direct/test calls, which fall back to on-the-fly
+   * disambiguation.
+   */
+  renamePlan?: Map<string, PlannedFile>;
 }
 
 /**
@@ -121,6 +144,74 @@ export async function enumerateDataFiles(directoryPath: string): Promise<Array<{
   return collected ? collected.files : [];
 }
 
+/** One source file's extracted-column inventory, in the order processDirectory will write them. */
+export interface OutputColumns {
+  key: string;
+  name: string;
+  arrayColumns: string[];
+  objectColumns: string[];
+}
+
+/**
+ * Dry run that discovers, per data file, which array/object columns will be extracted to
+ * sidecar CSVs — without writing anything. Runs the same generate() pipeline as
+ * processDirectory on a throwaway metadata instance, in the same canonical order (so the
+ * results line up with the real run and with {@link planRenames}). The *names* of extracted
+ * columns don't depend on the join keys, so the caller's defaults are fine here even before
+ * the join-key prompt has run. Used so the interactive preview can show — and reserve names
+ * for — sidecars before the user approves a rename.
+ */
+export async function analyzeOutputColumns(
+  directoryPath: string,
+  options: GenerateOptions = {}
+): Promise<OutputColumns[]> {
+  directoryPath = expandHomeDir(directoryPath);
+  const collected = await collectDataFiles(directoryPath);
+  if (!collected) return [];
+
+  const { files } = collected;
+  // dataset_description.json first, mirroring processDirectory so accumulated state matches.
+  files.sort((a, b) => {
+    if (a.name === 'dataset_description.json') return -1;
+    if (b.name === 'dataset_description.json') return 1;
+    return 0;
+  });
+
+  const metadata = new JsPsychMetadata();
+  const result: OutputColumns[] = [];
+
+  for (const { filePath, name } of files) {
+    const ext = path.extname(name).toLowerCase();
+    if (ext !== '.json' && ext !== '.csv') continue;
+
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      if (name === 'dataset_description.json') {
+        metadata.loadMetadata(content);
+        continue;
+      }
+      if (ext === '.json') {
+        if (!Array.isArray(JSON.parse(content))) continue; // non-array JSON is skipped by the writer too
+        await metadata.generate(content, {}, 'json', options);
+      } else {
+        await metadata.generate(content, {}, 'csv', options);
+      }
+      result.push({
+        key: path.resolve(filePath),
+        name,
+        arrayColumns: [...metadata.getExtractedArrays().keys()],
+        objectColumns: [...metadata.getExtractedObjects().keys()],
+      });
+    } catch {
+      // A file that fails analysis will also fail (with its error) in the real run; here it
+      // simply contributes no sidecars to the plan.
+      result.push({ key: path.resolve(filePath), name, arrayColumns: [], objectColumns: [] });
+    }
+  }
+
+  return result;
+}
+
 // creating path -> handles the absolute vs non-absolute paths
 export const generatePath = (inputPath: string): string => {
   if (path.isAbsolute(inputPath)) {
@@ -199,13 +290,33 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // called directly (e.g. in tests). Never invent a keyword here — if the resolved base
       // would not yield a Psych-DS-compliant filename, skip the file rather than writing an
       // invalid name. The CLI's pre-pass is the single place that prompts to fix such names.
-      const base = options.normalizedBases?.get(path.resolve(filePath)) ?? fileStem(file);
+      const key = path.resolve(filePath);
+      const planned = options.renamePlan?.get(key);
+      const base = options.normalizedBases?.get(key) ?? fileStem(file);
       if (!isValidPsychDSDataFilename(`${base}_data.csv`)) {
         console.error(`"${file}" does not follow the Psych-DS naming pattern ([keyword-value_]+data.csv) and no compliant name was provided; skipping. Run via the CLI (which prompts for a keyword) or supply options.normalizedBases.`);
         return false;
       }
-      const mainName = disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames);
-      usedArrayFilenames.add(mainName);
+
+      // Reserve an output name in the directory-wide set, refusing to reuse one. When a
+      // rename plan is supplied (the CLI's interactive flow) the names were resolved and
+      // shown to the user up front, so a clash here means the plan and the data disagree —
+      // fail loudly rather than silently writing a name the user never approved.
+      const reserve = (name: string, what: string): string => {
+        if (usedArrayFilenames.has(name)) {
+          throw new RenamePlanError(
+            `Rename-plan collision: "${name}" (${what} for "${file}") is already taken; ` +
+            `refusing to overwrite an approved output. The rename plan is out of sync with ` +
+            `the data — re-run so the preview reflects it.`
+          );
+        }
+        usedArrayFilenames.add(name);
+        return name;
+      };
+
+      const mainName = planned
+        ? reserve(planned.mainName, 'main output')
+        : reserve(disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames), 'main output');
 
       if (parsed) {
         // Keep the original JSON under data/raw/, write a converted, Psych-DS-named CSV to data/.
@@ -228,39 +339,74 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
       }
 
-      // Write a separate Psych-DS CSV for each array-of-objects column detected during generate()
+      // Sidecar CSVs: one per array-of-objects column and one per plain-object column
+      // detected during generate(). Arrays get element_index in their priority columns;
+      // objects get one row per trial (join keys only).
       const extractedArrays = metadata.getExtractedArrays();
+      const extractedObjects = metadata.getExtractedObjects();
       const joinKeys = metadata.getArrayJoinKeys();
       const priorityCols = [...joinKeys, 'element_index'];
-      for (const [colName, rows] of extractedArrays) {
-        const derivedFilename = deriveArrayFilename(base, colName);
-        const outFilename = disambiguateArrayFilename(derivedFilename, usedArrayFilenames);
-        if (outFilename !== derivedFilename) {
-          console.log(`  ! "${derivedFilename}" already exists; writing array data for "${colName}" as "${outFilename}" instead.`);
+
+      // With a rename plan, the preview reserved a name for each extracted column up front.
+      // Verify — in both directions — that the columns generate() actually produced are exactly
+      // the ones the user approved, before writing anything, so an approved run can never write
+      // an unapproved (or miss an approved) sidecar.
+      if (planned) {
+        const approved = new Set(planned.sidecars.map((s) => `${s.kind}:${s.column}`));
+        const produced = new Set([
+          ...[...extractedArrays.keys()].map((c) => `array:${c}`),
+          ...[...extractedObjects.keys()].map((c) => `object:${c}`),
+        ]);
+        for (const id of produced) {
+          if (!approved.has(id)) {
+            throw new RenamePlanError(
+              `Rename-plan mismatch for "${file}": column "${id.slice(id.indexOf(':') + 1)}" was ` +
+              `extracted but has no approved output name; aborting before writing an unapproved file.`
+            );
+          }
         }
-        usedArrayFilenames.add(outFilename);
-        const outPath = path.join(targetDirectoryPath, outFilename);
+        for (const id of approved) {
+          if (!produced.has(id)) {
+            throw new RenamePlanError(
+              `Rename-plan mismatch for "${file}": an output name was approved for "${id.slice(id.indexOf(':') + 1)}" ` +
+              `but the data did not produce that column; aborting.`
+            );
+          }
+        }
+      }
+
+      // Single place that turns an extracted column into its on-disk name: the approved plan
+      // name when present, otherwise the legacy on-the-fly disambiguation (direct calls/tests).
+      const resolveSidecar = (kind: 'array' | 'object', colName: string): string => {
+        if (planned) {
+          const match = planned.sidecars.find((s) => s.kind === kind && s.column === colName)!;
+          return reserve(match.filename, `${kind} sidecar "${colName}"`);
+        }
+        const derived = deriveArrayFilename(base, colName);
+        const name = disambiguateArrayFilename(derived, usedArrayFilenames);
+        if (name !== derived) {
+          console.log(`  ! "${derived}" already exists; writing ${kind} data for "${colName}" as "${name}" instead.`);
+        }
+        usedArrayFilenames.add(name);
+        return name;
+      };
+
+      for (const [colName, rows] of extractedArrays) {
+        const outPath = path.join(targetDirectoryPath, resolveSidecar('array', colName));
         await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
         if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
       }
 
-      // Write a separate Psych-DS CSV for each plain-object column expanded during generate().
-      // Same per-file naming and join keys as the array sidecars above, but one row per trial
-      // (no element_index), so the dotted sub-variables in variableMeasured become real columns.
-      const extractedObjects = metadata.getExtractedObjects();
       for (const [colName, rows] of extractedObjects) {
-        const derivedFilename = deriveArrayFilename(base, colName);
-        const outFilename = disambiguateArrayFilename(derivedFilename, usedArrayFilenames);
-        if (outFilename !== derivedFilename) {
-          console.log(`  ! "${derivedFilename}" already exists; writing object data for "${colName}" as "${outFilename}" instead.`);
-        }
-        usedArrayFilenames.add(outFilename);
-        const outPath = path.join(targetDirectoryPath, outFilename);
+        const outPath = path.join(targetDirectoryPath, resolveSidecar('object', colName));
         await fs.promises.writeFile(outPath, objectsToCSV(rows, joinKeys), 'utf8');
         if (verbose) console.log(`  → wrote object data for "${colName}" to ${outPath}`);
       }
     }
   } catch (err) {
+    // A plan mismatch means we'd write a name the user never approved — that is not a
+    // recoverable "skip this file" condition, so let it abort the whole run.
+    if (err instanceof RenamePlanError) throw err;
     console.error(`Error reading file ${file}: ${err} Please ensure this is data generated by JsPsych.`);
     return false;
   }

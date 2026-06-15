@@ -1,0 +1,158 @@
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  background-color: var(--c-bg-sidebar);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.logo {
+  height: 56px;
+  width: auto;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 2.2rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: var(--c-ink);
+  text-wrap: balance;
+}
+
+.description {
+  font-size: 1.05rem;
+  color: var(--c-ink-2);
+  margin: 0;
+}
+
+.cards {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 260px;
+  padding: 2rem;
+  background-color: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background-color 0.2s;
+  color: inherit;
+  font-family: inherit;
+}
+
+.card:hover {
+  border-color: var(--c-accent);
+  background-color: var(--c-bg-card-hover);
+}
+
+:global(:root:not([data-theme="dark"])) .card {
+  border-color: #c2d0ca;
+}
+
+:global([data-theme="dark"]) .card {
+  border-color: #607870;
+}
+
+.cardIcon {
+  font-size: 1.6rem;
+  color: var(--c-accent);
+  line-height: 1;
+}
+
+.cardIconAmber {
+  font-size: 1.6rem;
+  color: var(--c-amber-text);
+  line-height: 1;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+.cardDesc {
+  font-size: 0.85rem;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+}
+
+.cardDesc code {
+  font-size: 0.8rem;
+  color: var(--c-ink);
+  background-color: var(--c-border-sub);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+/* What is Psych-DS collapsible */
+
+.psychDs {
+  width: 540px;
+  max-width: 100%;
+}
+
+.psychDsToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--c-border);
+  padding: 0.75rem 0;
+  font-size: 0.88rem;
+  color: var(--c-ink-3);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.psychDsToggle:hover {
+  color: var(--c-ink-2);
+}
+
+:global(:root:not([data-theme="dark"])) .psychDsToggle {
+  border-top-color: #c2d0ca;
+}
+
+:global([data-theme="dark"]) .psychDsToggle {
+  border-top-color: #607870;
+}
+
+.chevron {
+  font-size: 0.65rem;
+  color: var(--c-ink-4);
+}
+
+.psychDsText {
+  font-size: 0.88rem;
+  color: var(--c-ink-2);
+  line-height: 1.6;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.psychDsText code {
+  font-size: 0.82rem;
+  color: var(--c-ink);
+  background-color: var(--c-border-sub);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}

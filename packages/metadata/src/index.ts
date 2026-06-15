@@ -561,7 +561,18 @@ export default class JsPsychMetadata {
           // override the stored type to "array" (generateMetadata would infer "object"
           // because typeof [] === "object" in JS).
           await this.generateMetadata(variable, value, pluginType, version);
-          this.updateVariable(variable, "value", "array");
+          // Only force "array" if the existing type is not a concrete primitive type.
+          // Avoids overwriting e.g. "string" on mixed-type jsPsych columns like `response`
+          // (string in keyboard trials, array/object in survey trials), while still correctly
+          // upgrading "unknown" and "object" (typeof [] === "object" in JS) to "array"
+          // for pure array-typed columns.
+          const existingVar = this.containsVariable(variable)
+            ? (this.getVariable(variable) as VariableFields)
+            : null;
+          const existingType = existingVar?.value;
+          if (existingType !== "string" && existingType !== "number" && existingType !== "boolean") {
+            this.updateVariable(variable, "value", "array");
+          }
           await this.accumulateArrayColumn(variable, value as any[], joinValues, pluginType, version);
         } else {
           await this.generateMetadata(variable, value, pluginType, version);

@@ -7,6 +7,10 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "declaration": true,
+    // esbuild (esbuild.config.mjs) produces all runtime JS bundles; tsc runs only to emit
+    // type declarations. Without this, tsc also writes dist/index.js — clobbering esbuild's
+    // bundle with extensionless relative imports that Node ESM cannot resolve.
+    "emitDeclarationOnly": true,
     "outDir": "./dist", // Output directory for compiled files
     "rootDir": "./src", // Root directory of input files
     "declarationDir": "./dist", // Directory for declaration files

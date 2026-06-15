@@ -1,0 +1,30 @@
+/* position: fixed, flush to the top of the viewport, starting at the sidebar's right edge. */
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  z-index: 20;
+  background: var(--c-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 8rem 0.85rem 2rem; /* right: clear of the fixed theme toggle (~6.75rem from right) */
+  border-bottom: 1px solid var(--c-border);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+}
