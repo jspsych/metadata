@@ -15,7 +15,7 @@ interface VariableMeta {
 // Mock PluginCache npm fetches — ok:true prevents the "source not found" warn path.
 const mockFetch = jest.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve("") });
 beforeEach(() => {
-  (global as VariableMeta).fetch = mockFetch;
+  (global as typeof globalThis & { fetch: jest.Mock }).fetch = mockFetch;
   mockFetch.mockClear();
   mockValidateWeb.mockReset();
 });
