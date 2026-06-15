@@ -1,6 +1,7 @@
 import JsPsychMetadata from "@jspsych/metadata";
 import { validateWeb } from "psychds-validator/web/psychds-validator.js";
 import { validatePsychDS } from "../src/validation/validatePsychDS";
+import { validatorOutput } from "./helpers";
 
 const mockValidateWeb = validateWeb as jest.Mock;
 
@@ -57,8 +58,8 @@ describe("Scale: large CSV (1,000 rows)", () => {
 
 // ─── Scale: wide CSV ─────────────────────────────────────────────────────────
 
-describe("Scale: wide CSV (30 columns)", () => {
-  test("detects all 30 columns", async () => {
+describe("Scale: wide CSV (31 columns)", () => {
+  test("detects all 31 columns", async () => {
     const cols = Array.from({ length: 30 }, (_, i) => `col_${i}`);
     const rows = Array.from({ length: 5 }, (_, i) =>
       Object.fromEntries([["trial_index", i], ...cols.map((c) => [c, i])]),
@@ -66,6 +67,7 @@ describe("Scale: wide CSV (30 columns)", () => {
     const meta = new JsPsychMetadata();
     await meta.generate(makeCsv(rows), {}, "csv");
     const names = meta.getVariableNames();
+    expect(names).toContain("trial_index");
     for (const col of cols) expect(names).toContain(col);
   });
 });
@@ -112,16 +114,6 @@ describe("Multi-file: CSV + JSON accumulation", () => {
     expect(rt.maxValue).toBe(800);
   });
 
-  test("non-CSV/JSON files are skipped without affecting output", async () => {
-    const csvRows = [baseRow({ response: "f" })];
-    const meta = new JsPsychMetadata();
-    await meta.generate(makeCsv(csvRows), {}, "csv");
-    // Simulate the DataUpload skip — .txt files never reach generate(); variable count unchanged.
-    const namesAfterCsv = meta.getVariableNames().length;
-    expect(namesAfterCsv).toBeGreaterThan(0);
-    // No second generate() call — count stays the same.
-    expect(meta.getVariableNames().length).toBe(namesAfterCsv);
-  });
 });
 
 // ─── Type inference ──────────────────────────────────────────────────────────
@@ -169,29 +161,9 @@ describe("Many levels", () => {
 // Regression guard for the mixed CSV + JSON case. JSON-only variables (subject,
 // response.Q0, response.Q1, element_index, response.value) appear in variableMeasured
 // but not in any CSV column, so the validator must report VARIABLE_MISSING_FROM_CSV_COLUMNS.
-// This reflects the known state before PR #103 lands.
+// PR #103 (fix/frontend-missing-datafile) will resolve this; guard remains until merged.
 
 describe("Smoke-test-2 regression: VARIABLE_MISSING_FROM_CSV_COLUMNS", () => {
-  function validatorOutput(
-    issues: { key: string; reason: string; severity: "error" | "warning"; evidence?: string[] }[],
-  ) {
-    return {
-      issues: new Map(
-        issues.map((issue) => [
-          issue.key,
-          {
-            key: issue.key,
-            reason: issue.reason,
-            severity: issue.severity,
-            files: new Map(
-              (issue.evidence ?? []).map((evidence, i) => [`file${i}`, { evidence }]),
-            ),
-          },
-        ]),
-      ),
-    };
-  }
-
   test("JSON-only variables surface as VARIABLE_MISSING_FROM_CSV_COLUMNS", async () => {
     mockValidateWeb.mockResolvedValue(
       validatorOutput([
