@@ -124,20 +124,20 @@ describe("Multi-file: CSV + JSON accumulation", () => {
   });
 });
 
-// ─── Boolean column inference ─────────────────────────────────────────────────
+// ─── Type inference ──────────────────────────────────────────────────────────
 
-describe("Boolean column inference", () => {
-  test("true/false CSV values are typed as boolean", async () => {
-    const rows = [
-      baseRow({ correct: "true", rt: 500 }),
-      baseRow({ trial_index: 1, correct: "false", rt: 600 }),
-    ];
+describe("Type inference", () => {
+  test("native boolean values in JSON are typed as boolean", async () => {
+    const data = JSON.stringify([
+      { ...baseRow(), correct: true },
+      { ...baseRow({ trial_index: 1 }), correct: false },
+    ]);
     const meta = new JsPsychMetadata();
-    await meta.generate(makeCsv(rows), {}, "csv");
+    await meta.generate(data, {}, "json");
     expect((meta.getVariable("correct") as any).value).toBe("boolean");
   });
 
-  test("null values in a numeric column do not affect range detection", async () => {
+  test("null values in a numeric CSV column do not affect range detection", async () => {
     const rows = [
       baseRow({ rt: "null" }),
       baseRow({ trial_index: 1, rt: 500 }),
