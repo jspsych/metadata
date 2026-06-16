@@ -510,6 +510,43 @@ describe("system variables register lazily (#109)", () => {
     const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
     expect(names).toContain("time_elapsed");
   });
+
+  // extension_type / extension_version share the orphan-seeding hazard: an eager
+  // generateDefaultExtensionVariables() call used to register BOTH whenever extension_type was
+  // present, so a dataset with extension_type but no extension_version column got an orphan
+  // extension_version entry. They now register lazily per-column like the other system variables.
+  test("extension_version is omitted when only extension_type is present", async () => {
+    const csv = [
+      "trial_type,trial_index,extension_type",
+      "html-keyboard-response,0,mock-extension",
+      "html-keyboard-response,1,mock-extension",
+    ].join("\n");
+
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+
+    const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    expect(names).toContain("extension_type");
+    expect(names).not.toContain("extension_version");
+
+    const csvColumns = new Set(csv.split("\n")[0].split(","));
+    for (const name of names) expect(csvColumns.has(name)).toBe(true);
+  });
+
+  test("both extension variables are included when both columns are present", async () => {
+    const csv = [
+      "trial_type,trial_index,extension_type,extension_version",
+      "html-keyboard-response,0,mock-extension,1.0.0",
+      "html-keyboard-response,1,mock-extension,1.0.0",
+    ].join("\n");
+
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+
+    const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    expect(names).toContain("extension_type");
+    expect(names).toContain("extension_version");
+  });
 });
 
 describe("mixed-type column handling (#71)", () => {

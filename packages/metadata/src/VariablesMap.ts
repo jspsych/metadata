@@ -39,11 +39,6 @@ export class VariablesMap {
   private variables: { [key: string]: VariableFields };
 
   /**
-   * Flag that determines if the extension variables' default descriptions have been generated in the metadata.
-   **/
-  extensionDefaultFlag: boolean = false;
-
-  /**
    *  Creates the VariablesMap by initialising an empty variable map. The jsPsych system
    * variables (trial_type, trial_index, time_elapsed, extension_*) are NOT seeded here — they
    * are registered lazily when their column is actually observed in the data (see
@@ -121,17 +116,6 @@ export class VariablesMap {
     if (!template) return false;
     this.setVariable(template);
     return true;
-  }
-
-  generateDefaultExtensionVariables(): void {
-    if (this.extensionDefaultFlag) {
-      return;
-    }
-
-    this.registerSystemVariable("extension_type");
-    this.registerSystemVariable("extension_version");
-
-    this.extensionDefaultFlag = true;
   }
 
   /**

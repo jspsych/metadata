@@ -178,14 +178,6 @@ export default class JsPsychMetadata {
     }
 
   /**
-   * Generates the default descriptions for extension_type and extension_version in metadata. Should be called after
-   * default metadata is generated, and only should be called once.
-   **/
-  generateDefaultExtensionVariables(): void {
-    this.variables.generateDefaultExtensionVariables();
-  }
-
-  /**
    * Method that creates an author. This method can also be used to overwrite existing authors
    * with the same name in order to update fields.
    *
@@ -490,7 +482,11 @@ export default class JsPsychMetadata {
     const extensionType = observation["extension_type"]; // fix for non-list (single item extension)
     const extensionVersion = observation["extension_version"];
 
-    if (extensionType) this.generateDefaultExtensionVariables(); // After first call, generation is stopped
+    // extension_type / extension_version are jsPsych system columns and register lazily in the
+    // column loop below (registerSystemVariable), exactly like trial_type / trial_index /
+    // time_elapsed. We deliberately do NOT seed them eagerly here: doing so registered both vars
+    // whenever extension_type appeared, orphaning extension_version in variableMeasured for any
+    // dataset that lacks that column (the #109 VARIABLE_MISSING_FROM_CSV_COLUMNS failure mode).
 
     // Join key values for this row, shared by every array column (top-level or nested)
     // extracted into a separate CSV during this observation.
