@@ -755,9 +755,11 @@ const main = async () => {
     if (verbose) console.log("\n\n-------------------------- Reading and writing metadata-option --------------------------n\n");
     await processOptions(metadata, argv['metadata-options'], verbose);
   }
-  else await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
+  else if (canPrompt) await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
+  // No options file and no terminal to prompt at: don't block — keep the generated defaults.
+  else console.log('ℹ  No --metadata-options provided and no terminal to prompt — using generated defaults. Pass --metadata-options to customize.');
 
-  if (!isNonInteractive) await promptUnknownDescriptions(metadata);
+  if (canPrompt) await promptUnknownDescriptions(metadata);
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
@@ -767,7 +769,7 @@ const main = async () => {
     const validation = await validatePsychDS(project_path, verbose);
 
     if (validation.missingRequiredFields.length > 0) {
-      if (!isNonInteractive) {
+      if (canPrompt) {
         console.log('\nSome required fields are missing. Please provide values:');
         for (const field of validation.missingRequiredFields) {
           const value = await input({ message: `Value for required field "${field}":` });
