@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
 import JsPsychMetadata, { analyzeJoinKeys } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
+import { normalizeDataContent } from '../normalizeData';
 import styles from './DataUpload.module.css';
 
 type JoinKeyCandidate = { column: string; makesUnique: boolean };
@@ -135,7 +136,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
     const textMap = new Map<string, { content: string; type: string }>();
     for (const file of files) {
       const type = file.name.split('.').pop()?.toLowerCase() || '';
-      const content = await readFileAsText(file);
+      const raw = await readFileAsText(file);
+      // Normalize once here so generate(), the zip download, and in-browser validation all
+      // see the same bytes (drops R-style unnamed row-index columns from CSVs).
+      const { content } = await normalizeDataContent(raw, type);
       textMap.set(file.webkitRelativePath || file.name, { content, type });
     }
     setFileTexts(textMap);
