@@ -44,8 +44,12 @@ export class VariablesMap {
   extensionDefaultFlag: boolean = false;
 
   /**
-   *  Creates the VariablesMap bycalling generateDefaultVariables() method to
-   * generate the basic metadata common to every dataset_description.json file.
+   *  Creates the VariablesMap by initialising an empty variable map. The jsPsych system
+   * variables (trial_type, trial_index, time_elapsed, extension_*) are NOT seeded here — they
+   * are registered lazily when their column is actually observed in the data (see
+   * {@link registerSystemVariable}). Seeding them unconditionally produced orphan
+   * variableMeasured entries (e.g. time_elapsed) for datasets that omit those columns, which
+   * fails Psych-DS validation (VARIABLE_MISSING_FROM_CSV_COLUMNS).
    *
    * @constructor
    */
@@ -53,77 +57,89 @@ export class VariablesMap {
     this.generateDefaultVariables();
   }
 
+  /**
+   * The fixed jsPsych definition for a system column, or null if `name` is not a known system
+   * variable. Returns a fresh object on each call so callers never share/mutate one template.
+   */
+  private static systemVariableTemplate(name: string): VariableFields | null {
+    switch (name) {
+      case "trial_type":
+        return {
+          "@type": "PropertyValue",
+          name: "trial_type",
+          description: { default: "unknown", jsPsych: "The name of the plugin used to run the trial." },
+          value: "string",
+        };
+      case "trial_index":
+        return {
+          "@type": "PropertyValue",
+          name: "trial_index",
+          description: { default: "unknown", jsPsych: "The index of the current trial across the whole experiment." },
+          value: "number",
+        };
+      case "time_elapsed":
+        return {
+          "@type": "PropertyValue",
+          name: "time_elapsed",
+          description: {
+            default: "unknown",
+            jsPsych: "The number of milliseconds between the start of the experiment and when the trial ended.",
+          },
+          value: "number",
+        };
+      case "extension_type":
+        return {
+          "@type": "PropertyValue",
+          name: "extension_type",
+          description: { default: "unknown", jsPsych: "The name(s) of the extension(s) used in the trial." },
+          value: "string",
+        };
+      case "extension_version":
+        return {
+          "@type": "PropertyValue",
+          name: "extension_version",
+          description: { default: "unknown", jsPsych: "The version(s) of the extension(s) used in the trial." },
+          value: "number",
+        };
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Lazily registers the default jsPsych definition for a system column the first time it is
+   * observed in the data. No-op (returns false) when `name` is not a known system variable or
+   * is already present; returns true when a new variable was registered. This is what keeps a
+   * system variable out of variableMeasured unless the data actually contains that column.
+   *
+   * @param {string} name - The column / system-variable name.
+   * @returns {boolean} - True if a variable was registered, false otherwise.
+   */
+  registerSystemVariable(name: string): boolean {
+    if (this.containsVariable(name)) return false;
+    const template = VariablesMap.systemVariableTemplate(name);
+    if (!template) return false;
+    this.setVariable(template);
+    return true;
+  }
+
   generateDefaultExtensionVariables(): void {
     if (this.extensionDefaultFlag) {
       return;
     }
 
-    const extension_type_var: VariableFields = {
-      "@type": "PropertyValue",
-      name: "extension_type",
-      description: {
-        default: "unknown",
-        jsPsych: "The name(s) of the extension(s) used in the trial.",
-      },
-      value: "string",
-    };
-    this.setVariable(extension_type_var);
-
-    const extension_version_var: VariableFields = {
-      "@type": "PropertyValue",
-      name: "extension_version",
-      description: {
-        default: "unknown",
-        jsPsych: "The version(s) of the extension(s) used in the trial.",
-      },
-      value: "number",
-    };
-
-    this.setVariable(extension_version_var);
+    this.registerSystemVariable("extension_type");
+    this.registerSystemVariable("extension_version");
 
     this.extensionDefaultFlag = true;
   }
 
   /**
-   * Generates the default variables shared between every JsPsych experiment and fills in
-   * with default descriptions according to JsPsych documentation.
+   * Initialises the variable map. System variables are registered lazily (see the constructor
+   * and {@link registerSystemVariable}), so this just resets the map to empty.
    */
   generateDefaultVariables(): void {
     this.variables = {};
-
-    const trial_type_var: VariableFields = {
-      "@type": "PropertyValue",
-      name: "trial_type",
-      description: {
-        default: "unknown",
-        jsPsych: "The name of the plugin used to run the trial.",
-      },
-      value: "string",
-    };
-    this.setVariable(trial_type_var);
-
-    const trial_index_var: VariableFields = {
-      "@type": "PropertyValue",
-      name: "trial_index",
-      description: {
-        default: "unknown",
-        jsPsych: "The index of the current trial across the whole experiment.",
-      },
-      value: "number",
-    };
-    this.setVariable(trial_index_var);
-
-    const time_elapsed_var: VariableFields = {
-      "@type": "PropertyValue",
-      name: "time_elapsed",
-      description: {
-        default: "unknown",
-        jsPsych:
-          "The number of milliseconds between the start of the experiment and when the trial ended.",
-      },
-      value: "number",
-    };
-    this.setVariable(time_elapsed_var);
   }
 
   /**

@@ -503,13 +503,21 @@ export default class JsPsychMetadata {
       // Ensure every column header appears in variableMeasured even if all its values are null/empty.
       // Columns that never get a real value keep value:"unknown" and no levels, which satisfies the
       // Psych-DS requirement that every CSV column header has a corresponding variableMeasured entry.
-      if (!this.containsVariable(variable) && !this.ignored_variables.has(variable)) {
-        this.setVariable({
-          "@type": "PropertyValue",
-          name: variable,
-          description: { default: "unknown" },
-          value: "unknown",
-        });
+      if (!this.containsVariable(variable)) {
+        if (this.ignored_variables.has(variable)) {
+          // System columns (trial_type, time_elapsed, …) carry fixed jsPsych descriptions and are
+          // registered lazily here — only when the column actually appears in the data. This keeps
+          // datasets that omit a system column (e.g. processed exports without time_elapsed) from
+          // getting an orphan variableMeasured entry that fails Psych-DS validation.
+          this.variables.registerSystemVariable(variable);
+        } else {
+          this.setVariable({
+            "@type": "PropertyValue",
+            name: variable,
+            description: { default: "unknown" },
+            value: "unknown",
+          });
+        }
       }
 
       if (value === null || value === undefined || value === '' || value === "null"){
