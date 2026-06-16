@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import JsPsychMetadata from "@jspsych/metadata";
+import JsPsychMetadata, { stripUnnamedColumns } from "@jspsych/metadata";
 import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
 import { planRenames } from "../src/rename";
 
@@ -490,5 +490,66 @@ describe("processDirectory JSON → CSV conversion", () => {
     await expect(
       processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan })
     ).rejects.toThrow(RenamePlanError);
+  });
+
+  // #109 finding 2: R's write.csv prepends an unnamed row-index column (header starts with a
+  // bare comma). generate() drops it from variableMeasured, so the written CSV must drop it too
+  // or the dataset fails validation with CSV_COLUMN_MISSING_FROM_METADATA.
+  test("drops an unnamed leading column from the written CSV so it matches variableMeasured", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    // Leading bare comma => empty-string header, exactly as R's write.csv(row.names=TRUE) emits.
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1_data.csv"),
+      ",trial_type,rt\n1,jsPsych-html-keyboard-response,450\n2,jsPsych-html-keyboard-response,512",
+    );
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    const csv = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    const header = csv.split(/\r?\n/)[0].split(",");
+    // No empty column name survives, and the real columns remain.
+    expect(header).not.toContain("");
+    expect(header).toEqual(expect.arrayContaining(["trial_type", "rt"]));
+
+    // The on-disk header and variableMeasured agree (the whole point — a validating dataset).
+    const names = (metadata.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    for (const col of header) expect(names).toContain(col);
+  });
+
+  test("copies a well-formed CSV byte-for-byte (no unnamed columns to drop)", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const original = "trial_type,rt\njsPsych-html-keyboard-response,450\njsPsych-html-keyboard-response,512";
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.csv"), original);
+
+    await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+
+    expect(fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8")).toBe(original);
+  });
+});
+
+describe("stripUnnamedColumns", () => {
+  test("removes empty and whitespace-only keys from every row and reports them", () => {
+    const rows = [
+      { "": "1", " ": "x", trial_index: 0, rt: 200 },
+      { "": "2", " ": "y", trial_index: 1, rt: 350 },
+    ];
+    const { rows: out, dropped } = stripUnnamedColumns(rows);
+    expect(dropped.sort()).toEqual(["", " "]);
+    expect(out).toBe(rows); // mutates in place, returns same reference
+    expect(Object.keys(out[0])).toEqual(["trial_index", "rt"]);
+  });
+
+  test("is a no-op (empty dropped list) when all columns are named", () => {
+    const rows = [{ trial_index: 0, rt: 200 }];
+    const { dropped } = stripUnnamedColumns(rows);
+    expect(dropped).toEqual([]);
+    expect(Object.keys(rows[0])).toEqual(["trial_index", "rt"]);
   });
 });

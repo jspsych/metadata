@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV, isValidPsychDSDataFilename } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV, isValidPsychDSDataFilename, stripUnnamedColumns } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -331,12 +331,29 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         }
         await fs.promises.writeFile(path.join(rawDir, rawName), content);
 
+        // Mirror generate()'s unnamed-column drop so the converted CSV matches variableMeasured.
+        stripUnnamedColumns(parsed);
         await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), objectsToCSV(parsed, ['trial_index']));
         if (verbose) console.log(`  → converted ${file} to ${mainName} (raw saved to raw/${rawName})`);
       } else {
-        // .csv input is already CSV; write it out under its Psych-DS-compliant name.
-        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), content);
-        if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
+        // .csv input is already CSV. R-style exports (write.csv with row.names=TRUE) prepend an
+        // unnamed row-index column whose empty header can't be represented in variableMeasured;
+        // generate() drops it from the metadata, so the written CSV must drop it too or the dataset
+        // fails validation (CSV_COLUMN_MISSING_FROM_METADATA). When unnamed columns are present we
+        // re-serialise the cleaned rows (preserving column order); otherwise we copy verbatim so
+        // well-formed files are written byte-for-byte unchanged.
+        const csvRows = (await parseCSV(content)) as Array<Record<string, any>>;
+        const { rows: cleanedRows, dropped } = stripUnnamedColumns(csvRows);
+        if (dropped.length > 0) {
+          console.log(
+            `  ! dropped ${dropped.length} unnamed column${dropped.length > 1 ? "s" : ""} from "${file}" ` +
+            `(row-index artifact); writing cleaned CSV as ${mainName}.`
+          );
+          await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), objectsToCSV(cleanedRows, []));
+        } else {
+          await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), content);
+          if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
+        }
       }
 
       // Sidecar CSVs: one per array-of-objects column and one per plain-object column

@@ -207,6 +207,72 @@ describe("variableMeasured completeness for CSV input", () => {
   });
 });
 
+describe("unnamed columns are dropped (#109 finding 2)", () => {
+  let jsPsychMetadata: JsPsychMetadata;
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jsPsychMetadata = new JsPsychMetadata();
+    warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  // R's write.csv(row.names=TRUE) prepends an unnamed row-index column, so the header
+  // starts with a bare comma -> an empty-string ("") column name.
+  test("an empty-header (row-index) column is excluded from variableMeasured", async () => {
+    const csv = [
+      ",trial_type,rt,response",
+      "1,jsPsych-html-keyboard-response,450,f",
+      "2,jsPsych-html-keyboard-response,512,j",
+      "3,jsPsych-html-keyboard-response,389,f",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const variableMeasured = jsPsychMetadata.getMetadata()["variableMeasured"] as any[];
+    const outputNames = variableMeasured.map((v) => v.name);
+
+    expect(outputNames).not.toContain("");
+    // The real columns are still present.
+    expect(outputNames).toEqual(expect.arrayContaining(["trial_type", "rt", "response"]));
+  });
+
+  test("warns once, not once per row, when an unnamed column is dropped", async () => {
+    const csv = [
+      ",trial_type,rt",
+      "1,jsPsych-html-keyboard-response,450",
+      "2,jsPsych-html-keyboard-response,512",
+      "3,jsPsych-html-keyboard-response,389",
+      "4,jsPsych-html-keyboard-response,401",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const dropWarnings = warnSpy.mock.calls.filter((args) =>
+      String(args[0]).includes("unnamed column")
+    );
+    expect(dropWarnings).toHaveLength(1);
+  });
+
+  test("well-formed CSV with no unnamed columns does not warn", async () => {
+    const csv = [
+      "trial_type,rt",
+      "jsPsych-html-keyboard-response,450",
+      "jsPsych-html-keyboard-response,512",
+    ].join("\n");
+
+    await jsPsychMetadata.generate(csv, {}, "csv");
+
+    const dropWarnings = warnSpy.mock.calls.filter((args) =>
+      String(args[0]).includes("unnamed column")
+    );
+    expect(dropWarnings).toHaveLength(0);
+  });
+});
+
 describe("JsPsychMetadata field operations", () => {
   let jsPsychMetadata: JsPsychMetadata;
 

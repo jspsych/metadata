@@ -251,6 +251,33 @@ export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: str
 }
 
 /**
+ * Removes columns whose name is empty or whitespace-only from every row, in place,
+ * and reports which names were dropped. R's `write.csv` (with the default
+ * `row.names = TRUE`) prepends an unnamed row-index column, which surfaces as an
+ * empty-string ("") header. Such a column can never be represented in a Psych-DS
+ * `variableMeasured` entry (a name is required), so leaving it in produces a dataset
+ * that fails validation with CSV_COLUMN_MISSING_FROM_METADATA. Dropping it up front —
+ * once, rather than warning per row — keeps the generated metadata and the written
+ * CSV consistent. Returns the same `rows` reference for convenient chaining.
+ */
+export function stripUnnamedColumns(
+  rows: Array<Record<string, any>>
+): { rows: Array<Record<string, any>>; dropped: string[] } {
+  const unnamed = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (key.trim() === "") unnamed.add(key);
+    }
+  }
+  if (unnamed.size > 0) {
+    for (const row of rows) {
+      for (const key of unnamed) delete row[key];
+    }
+  }
+  return { rows, dropped: [...unnamed] };
+}
+
+/**
  * Returns a filename not already present in `used`. If `base` is free it is
  * returned as-is; otherwise a counter is appended before the `_data.csv`
  * suffix (e.g. foo_measure-bar_data.csv → foo_measure-bar2_data.csv) until a
