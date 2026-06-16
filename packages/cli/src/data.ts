@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -350,6 +350,11 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         parsed = json;
       }
 
+      // Rows for the main table, fed to the shared builder / inline write. JSON is already
+      // parsed above; parse CSV here too so unnamed row-index columns can be stripped (a CSV's
+      // exact bytes are still preserved via mainContent when nothing is dropped).
+      const mainRows: Array<Record<string, any>> = parsed ?? ((await parseCSV(content)) as Array<Record<string, any>>);
+
       // Resolve the Psych-DS base (keyword-value sequence before "_data.csv"). The index.ts
       // pre-pass supplies a base for every source file; fall back to the file's own stem when
       // called directly (e.g. in tests). Never invent a keyword here — if the resolved base
@@ -436,9 +441,12 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         };
 
         const mainName = reserve(planned.mainName, 'main output');
+        // Drop R-style unnamed row-index columns (same as the shared builder / generate()). A clean
+        // CSV keeps its exact bytes; JSON or a dirty CSV is serialised from the cleaned rows.
+        const { rows: cleanedMain, dropped: droppedMain } = stripUnnamedColumns(mainRows);
         await fs.promises.writeFile(
           path.join(targetDirectoryPath, mainName),
-          parsed ? objectsToCSV(parsed, ['trial_index']) : content,
+          (parsed === null && droppedMain.length === 0) ? content : objectsToCSV(cleanedMain, ['trial_index']),
         );
         if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
 
@@ -458,7 +466,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         // disambiguation, and CSV building — the same implementation the browser flow uses.
         const built = buildPsychDSDataFiles({
           base,
-          mainRows: parsed ?? [],
+          mainRows,
           mainContent: parsed ? undefined : content,
           extractedArrays,
           extractedObjects,
