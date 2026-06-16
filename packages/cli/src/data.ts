@@ -133,6 +133,71 @@ export async function preAnalyzeDirectory(
   return worst;
 }
 
+/** Outcome of resolving join keys without a terminal (see {@link resolveJoinKeysNonInteractive}). */
+export interface NonInteractiveJoinKeyResult {
+  /** The join keys to use for array/object extraction. */
+  keys: string[];
+  /** Human-readable explanation of what was decided, for the caller to log. */
+  message: string;
+  /** True when the keys still don't uniquely identify rows (extracted CSVs may have duplicates). */
+  unresolved: boolean;
+}
+
+/**
+ * Picks join keys deterministically when there is no terminal to prompt at (a fully-flagged,
+ * headless run). Multi-subject jsPsych data always restarts trial_index per subject, so the
+ * default key is rarely unique — without this the run would block on an interactive checkbox
+ * and abort. Mirrors the choices {@link analyzeJoinKeys} surfaces to the interactive prompt:
+ *
+ *   - suggestedAdditionalKeys is a non-empty array → a minimal sufficient combination exists; use it.
+ *   - suggestedAdditionalKeys is [] → some single column alone suffices; add the first such column
+ *     (sorted for stable, reproducible output).
+ *   - suggestedAdditionalKeys is null → no combination achieves uniqueness; proceed with the
+ *     original keys and flag it so the caller can warn that extracted CSVs may have duplicate rows.
+ */
+export function resolveJoinKeysNonInteractive(
+  analysis: JoinKeyAnalysis,
+  initialKeys: string[],
+  fileName: string
+): NonInteractiveJoinKeyResult {
+  const { suggestedAdditionalKeys, candidates } = analysis;
+
+  if (suggestedAdditionalKeys && suggestedAdditionalKeys.length > 0) {
+    const keys = [...initialKeys, ...suggestedAdditionalKeys];
+    return {
+      keys,
+      message:
+        `[${initialKeys.join(', ')}] not unique in "${fileName}"; non-interactive run — ` +
+        `added [${suggestedAdditionalKeys.join(', ')}] so [${keys.join(', ')}] uniquely identifies all rows.`,
+      unresolved: false,
+    };
+  }
+
+  if (suggestedAdditionalKeys && suggestedAdditionalKeys.length === 0) {
+    const sufficient = candidates.filter(c => c.makesUnique).map(c => c.column).sort();
+    if (sufficient.length > 0) {
+      const chosen = sufficient[0];
+      const keys = [...initialKeys, chosen];
+      return {
+        keys,
+        message:
+          `[${initialKeys.join(', ')}] not unique in "${fileName}"; non-interactive run — ` +
+          `added "${chosen}" so [${keys.join(', ')}] uniquely identifies all rows.`,
+        unresolved: false,
+      };
+    }
+  }
+
+  return {
+    keys: initialKeys,
+    message:
+      `[${initialKeys.join(', ')}] not unique in "${fileName}" and no column makes it unique; ` +
+      `non-interactive run — proceeding with [${initialKeys.join(', ')}]. ` +
+      `Extracted array/object CSVs may contain duplicate rows.`,
+    unresolved: true,
+  };
+}
+
 /**
  * Lists candidate data files at the top level and one subdirectory deep, matching
  * processDirectory's traversal depth. Returns absolute-ready { filePath, name } pairs

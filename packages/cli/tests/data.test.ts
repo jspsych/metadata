@@ -1,8 +1,8 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import JsPsychMetadata from "@jspsych/metadata";
-import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
+import JsPsychMetadata, { analyzeJoinKeys } from "@jspsych/metadata";
+import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
 import { planRenames } from "../src/rename";
 
 // Each describe block gets its own temp directory.
@@ -490,5 +490,71 @@ describe("processDirectory JSON → CSV conversion", () => {
     await expect(
       processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan })
     ).rejects.toThrow(RenamePlanError);
+  });
+});
+
+// #109 finding #3: a fully-flagged headless run must not block on the interactive join-key prompt.
+// resolveJoinKeysNonInteractive picks deterministically from the same analysis the prompt uses.
+describe("resolveJoinKeysNonInteractive", () => {
+  // Two subjects, trial_index restarts per subject — the classic multi-subject case where the
+  // default join key is not unique but subject_id alone resolves it.
+  // rt repeats across subjects, so subject_id is the only single column that makes the rows unique.
+  const multiSubject = [
+    { trial_index: 0, subject_id: "s1", rt: 1 },
+    { trial_index: 1, subject_id: "s1", rt: 2 },
+    { trial_index: 0, subject_id: "s2", rt: 1 },
+    { trial_index: 1, subject_id: "s2", rt: 2 },
+  ];
+
+  test("adds a single sufficient column (subject_id) and reports resolved", () => {
+    const analysis = analyzeJoinKeys(multiSubject, ["trial_index"]);
+    expect(analysis.suggestedAdditionalKeys).toEqual([]); // a single column suffices
+
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "response.csv");
+    expect(result.keys).toEqual(["trial_index", "subject_id"]);
+    expect(result.unresolved).toBe(false);
+    expect(result.message).toContain("subject_id");
+  });
+
+  test("uses the greedy combination when no single column suffices", () => {
+    // Neither session nor block alone makes trial_index unique, but together they do.
+    const rows = [
+      { trial_index: 0, session: "a", block: 1 },
+      { trial_index: 0, session: "a", block: 2 },
+      { trial_index: 0, session: "b", block: 1 },
+      { trial_index: 0, session: "b", block: 2 },
+    ];
+    const analysis = analyzeJoinKeys(rows, ["trial_index"]);
+    expect(analysis.suggestedAdditionalKeys && analysis.suggestedAdditionalKeys.length).toBeGreaterThan(0);
+
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "data.csv");
+    expect(result.unresolved).toBe(false);
+    expect(new Set(result.keys)).toEqual(new Set(["trial_index", "session", "block"]));
+  });
+
+  test("proceeds with a warning when no column can make the rows unique", () => {
+    // Genuinely duplicate rows: no candidate column distinguishes them.
+    const rows = [
+      { trial_index: 0, kind: "x" },
+      { trial_index: 0, kind: "x" },
+    ];
+    const analysis = analyzeJoinKeys(rows, ["trial_index"]);
+    expect(analysis.suggestedAdditionalKeys).toBeNull();
+
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "dup.csv");
+    expect(result.keys).toEqual(["trial_index"]);
+    expect(result.unresolved).toBe(true);
+    expect(result.message).toMatch(/duplicate/i);
+  });
+
+  test("chosen single column is deterministic (stable across equivalent candidates)", () => {
+    // Both subject_id and uid alone make the rows unique; the lexicographically first wins.
+    const rows = [
+      { trial_index: 0, subject_id: "s1", uid: "u1" },
+      { trial_index: 0, subject_id: "s2", uid: "u2" },
+    ];
+    const analysis = analyzeJoinKeys(rows, ["trial_index"]);
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "data.csv");
+    expect(result.keys).toEqual(["trial_index", "subject_id"]); // "subject_id" < "uid"
   });
 });
