@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -59,6 +59,18 @@ const readFileAsText = (file: File): Promise<string> =>
 
 /** Filename without its extension (e.g. "sub01.json" → "sub01"). */
 const fileStem = (name: string): string => name.replace(/\.[^./]+$/, '');
+
+/**
+ * The Psych-DS base (keyword-value sequence before "_data.csv") of an already-compliant
+ * data filename, or null if the name isn't compliant. Lets us preserve a meaningful uploaded
+ * name (e.g. "sub-01_task-stroop_data.csv" → base "sub-01_task-stroop") instead of flattening
+ * it into a single subject-<stem> value, mirroring the CLI's non-rename path. JSON uploads are
+ * never compliant data filenames, so they always fall through to deriveFallbackBase.
+ */
+export const compliantBase = (name: string): string | null => {
+  const m = /^(.*)_data\.(csv|tsv)$/.exec(name);
+  return m && isValidPsychDSDataFilename(name) ? m[1] : null;
+};
 
 /**
  * Returns a name not already in `used`, appending a counter before the extension on collision
@@ -267,7 +279,8 @@ const DataUpload: React.FC<DataUploadProps> = ({
         }
 
         const built = buildPsychDSDataFiles({
-          base: deriveFallbackBase(fileStem(file.name)),
+          // Preserve an already-compliant uploaded CSV name; otherwise derive a subject-<stem> base.
+          base: compliantBase(file.name) ?? deriveFallbackBase(fileStem(file.name)),
           mainRows,
           mainContent,
           extractedArrays: jsPsychMetadata.getExtractedArrays(),
