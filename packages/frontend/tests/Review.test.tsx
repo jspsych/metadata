@@ -40,9 +40,8 @@ describe("Review", () => {
   });
 
   test("offers a zip download named after the project when data files exist", () => {
-    const dataFiles = new Map([
-      ["my-experiment/sub01.csv", { content: "a,b\n1,2", type: "csv" }],
-    ]);
+    // dataFiles is the converted Psych-DS payload (path -> contents), already built upstream.
+    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     expect(
       screen.getByRole("button", { name: "Download my-project.zip" }),
@@ -52,16 +51,12 @@ describe("Review", () => {
     ).toBeInTheDocument();
   });
 
-  test("ignores non-CSV/JSON files and uploaded dataset_description.json for the zip", () => {
-    const dataFiles = new Map([
-      ["my-experiment/notes.txt", { content: "notes", type: "txt" }],
-      ["my-experiment/dataset_description.json", { content: "{}", type: "json" }],
-    ]);
-    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
-    // Nothing zip-eligible, so the single-file save is shown instead.
+  test("offers only the single-file save when the converted payload is empty", () => {
+    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={new Map()} />);
     expect(
       screen.getByRole("button", { name: "Save dataset_description.json" }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /\.zip/ })).not.toBeInTheDocument();
   });
 
   test("saving the metadata file downloads it and confirms", async () => {
@@ -74,9 +69,7 @@ describe("Review", () => {
   });
 
   test("downloading the zip bundles metadata plus data files and confirms", async () => {
-    const dataFiles = new Map([
-      ["my-experiment/sub01.csv", { content: "a,b\n1,2", type: "csv" }],
-    ]);
+    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     await userEvent.click(screen.getByRole("button", { name: "Download my-project.zip" }));
 
@@ -84,19 +77,16 @@ describe("Review", () => {
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
   });
 
-  test("validates the metadata and eligible data files", async () => {
+  test("validates the metadata and passes the converted data payload through", async () => {
     mockValidate.mockResolvedValue({ valid: true, errors: [], warnings: [] });
-    const dataFiles = new Map([
-      ["my-experiment/sub01.csv", { content: "a,b\n1,2", type: "csv" }],
-      ["my-experiment/notes.txt", { content: "notes", type: "txt" }],
-    ]);
+    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
 
     expect(await screen.findByText("✓ Valid Psych-DS dataset")).toBeInTheDocument();
     expect(mockValidate).toHaveBeenCalledWith(
       expect.stringContaining('"my-project"'),
-      new Map([["my-experiment/sub01.csv", "a,b\n1,2"]]),
+      new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]),
     );
     // Button switches to re-validate after a run.
     expect(screen.getByRole("button", { name: "Re-validate" })).toBeInTheDocument();
@@ -126,6 +116,37 @@ describe("Review", () => {
     expect(screen.getByText("rt, stimulus")).toBeInTheDocument();
     expect(screen.getByText("Warnings")).toBeInTheDocument();
     expect(screen.getByText("MISSING_README")).toBeInTheDocument();
+  });
+
+  test("explains that README/CHANGES warnings are resolved by the zip download", async () => {
+    mockValidate.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: [
+        { key: "MISSING_README_DOC", reason: "include a README", evidence: [] },
+        { key: "MISSING_CHANGES_DOC", reason: "include a CHANGES", evidence: [] },
+      ],
+    });
+    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
+    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
+    await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
+
+    expect(await screen.findByText(/already includes/)).toHaveTextContent(
+      /README\.md.*CHANGES\.md/,
+    );
+  });
+
+  test("omits the README/CHANGES note when there is no zip (no data files)", async () => {
+    mockValidate.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: [{ key: "MISSING_README_DOC", reason: "include a README", evidence: [] }],
+    });
+    render(<Review jsPsychMetadata={makeMetadata()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
+
+    await screen.findByText("MISSING_README_DOC");
+    expect(screen.queryByText(/already includes/)).not.toBeInTheDocument();
   });
 
   test("shows the validator's own message when validation is unavailable", async () => {

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV, isValidPsychDSDataFilename } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -314,14 +314,11 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         return name;
       };
 
-      const mainName = planned
-        ? reserve(planned.mainName, 'main output')
-        : reserve(disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames), 'main output');
-
+      // Preserve the original JSON under data/raw/ (CSV inputs are already tabular, so they
+      // have no separate "raw" form). data/raw/ is flat (one level deep is flattened), so
+      // same-named originals from different source subdirectories must be disambiguated or
+      // they would overwrite one another.
       if (parsed) {
-        // Keep the original JSON under data/raw/, write a converted, Psych-DS-named CSV to data/.
-        // data/raw/ is flat (one level deep is flattened), so same-named originals from different
-        // source subdirectories must be disambiguated or they would overwrite one another.
         const rawDir = path.join(targetDirectoryPath, 'raw');
         await fs.promises.mkdir(rawDir, { recursive: true });
         const rawName = disambiguateFilename(file, usedRawFilenames);
@@ -330,13 +327,6 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
           console.log(`  ! raw/"${file}" already exists; saving original as raw/"${rawName}" instead.`);
         }
         await fs.promises.writeFile(path.join(rawDir, rawName), content);
-
-        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), objectsToCSV(parsed, ['trial_index']));
-        if (verbose) console.log(`  → converted ${file} to ${mainName} (raw saved to raw/${rawName})`);
-      } else {
-        // .csv input is already CSV; write it out under its Psych-DS-compliant name.
-        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), content);
-        if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
       }
 
       // Sidecar CSVs: one per array-of-objects column and one per plain-object column
@@ -345,13 +335,14 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       const extractedArrays = metadata.getExtractedArrays();
       const extractedObjects = metadata.getExtractedObjects();
       const joinKeys = metadata.getArrayJoinKeys();
-      const priorityCols = [...joinKeys, 'element_index'];
 
-      // With a rename plan, the preview reserved a name for each extracted column up front.
-      // Verify — in both directions — that the columns generate() actually produced are exactly
-      // the ones the user approved, before writing anything, so an approved run can never write
-      // an unapproved (or miss an approved) sidecar.
       if (planned) {
+        const priorityCols = [...joinKeys, 'element_index'];
+
+        // With a rename plan, the preview reserved a name for each extracted column up front.
+        // Verify — in both directions — that the columns generate() actually produced are exactly
+        // the ones the user approved, before writing anything, so an approved run can never write
+        // an unapproved (or miss an approved) sidecar.
         const approved = new Set(planned.sidecars.map((s) => `${s.kind}:${s.column}`));
         const produced = new Set([
           ...[...extractedArrays.keys()].map((c) => `array:${c}`),
@@ -373,34 +364,49 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
             );
           }
         }
-      }
 
-      // Single place that turns an extracted column into its on-disk name: the approved plan
-      // name when present, otherwise the legacy on-the-fly disambiguation (direct calls/tests).
-      const resolveSidecar = (kind: 'array' | 'object', colName: string): string => {
-        if (planned) {
+        const resolveSidecar = (kind: 'array' | 'object', colName: string): string => {
           const match = planned.sidecars.find((s) => s.kind === kind && s.column === colName)!;
           return reserve(match.filename, `${kind} sidecar "${colName}"`);
-        }
-        const derived = deriveArrayFilename(base, colName);
-        const name = disambiguateArrayFilename(derived, usedArrayFilenames);
-        if (name !== derived) {
-          console.log(`  ! "${derived}" already exists; writing ${kind} data for "${colName}" as "${name}" instead.`);
-        }
-        usedArrayFilenames.add(name);
-        return name;
-      };
+        };
 
-      for (const [colName, rows] of extractedArrays) {
-        const outPath = path.join(targetDirectoryPath, resolveSidecar('array', colName));
-        await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
-        if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
-      }
+        const mainName = reserve(planned.mainName, 'main output');
+        await fs.promises.writeFile(
+          path.join(targetDirectoryPath, mainName),
+          parsed ? objectsToCSV(parsed, ['trial_index']) : content,
+        );
+        if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
 
-      for (const [colName, rows] of extractedObjects) {
-        const outPath = path.join(targetDirectoryPath, resolveSidecar('object', colName));
-        await fs.promises.writeFile(outPath, objectsToCSV(rows, joinKeys), 'utf8');
-        if (verbose) console.log(`  → wrote object data for "${colName}" to ${outPath}`);
+        for (const [colName, rows] of extractedArrays) {
+          const outPath = path.join(targetDirectoryPath, resolveSidecar('array', colName));
+          await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
+          if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
+        }
+
+        for (const [colName, rows] of extractedObjects) {
+          const outPath = path.join(targetDirectoryPath, resolveSidecar('object', colName));
+          await fs.promises.writeFile(outPath, objectsToCSV(rows, joinKeys), 'utf8');
+          if (verbose) console.log(`  → wrote object data for "${colName}" to ${outPath}`);
+        }
+      } else {
+        // Non-interactive path (direct calls/tests): the shared converter owns naming,
+        // disambiguation, and CSV building — the same implementation the browser flow uses.
+        const built = buildPsychDSDataFiles({
+          base,
+          mainRows: parsed ?? [],
+          mainContent: parsed ? undefined : content,
+          extractedArrays,
+          extractedObjects,
+          joinKeys,
+          usedArrayFilenames,
+        });
+        for (const f of built) {
+          await fs.promises.writeFile(path.join(targetDirectoryPath, f.filename), f.content, 'utf8');
+          if (verbose) {
+            const what = f.kind === 'main' ? `${file} as ${f.filename}` : `${f.kind} data to ${f.filename}`;
+            console.log(`  → wrote ${what}`);
+          }
+        }
       }
     }
   } catch (err) {
@@ -440,6 +446,14 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
     for (const { dirPath, name } of files) {
       total += 1;
       if (!await processFile(metadata, dirPath, name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1;
+    }
+
+    // When raw originals were preserved under data/raw/, drop a .psychds-ignore at the dataset
+    // root so the validator skips them (otherwise FILE_NOT_CHECKED). targetDirectoryPath is the
+    // data/ dir, so its parent is the dataset root. Shared definition with the frontend.
+    if (usedRawFilenames.size > 0 && targetDirectoryPath) {
+      const ignorePath = path.join(path.dirname(targetDirectoryPath), PSYCHDS_IGNORE_FILENAME);
+      await fs.promises.writeFile(ignorePath, PSYCHDS_IGNORE_CONTENT, 'utf8');
     }
   } else {
     failed += 1;

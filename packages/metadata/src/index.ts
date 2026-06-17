@@ -1023,5 +1023,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename } from "./utils";
-export type { JoinKeyAnalysis } from "./utils";
+export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
+export type { JoinKeyAnalysis, PsychDSDataFile, BuildPsychDSDataFilesArgs } from "./utils";

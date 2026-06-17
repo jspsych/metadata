@@ -1,5 +1,13 @@
 import { parse } from 'csv-parse';
 
+// When raw jsPsych originals are preserved under data/raw/, the Psych-DS validator flags them
+// as FILE_NOT_CHECKED. A .psychds-ignore file at the dataset root tells it to skip them. The
+// pattern is `**/raw/` (not `data/raw/`) because the validator tests leading-slash paths, against
+// which an anchored pattern won't match; the self-reference works around the validator only
+// hard-excluding the legacy ".bidsignore". Shared so the CLI and frontend stay in sync.
+export const PSYCHDS_IGNORE_FILENAME = '.psychds-ignore';
+export const PSYCHDS_IGNORE_CONTENT = '**/raw/\n.psychds-ignore\n';
+
 // private function to save text file on local drive
 export function saveTextToFile(textstr: string, filename: string) {
   const blobToSave = new Blob([textstr], {
@@ -211,6 +219,21 @@ export function toPsychDSValue(name: string, fallback = 'value'): string {
 }
 
 /**
+ * Builds a Psych-DS-compliant filename *base* (the keyword-value sequence before
+ * `_data.csv`) from an arbitrary file stem, with no interactive input. Used by
+ * callers that lack a user-supplied/normalized base (e.g. the browser flow): the
+ * stem becomes the value of the official `subject` keyword, coerced to a valid
+ * value segment via {@link toPsychDSValue} (e.g. "sub01" → "subject-sub01",
+ * "subject 1.json".replace stem "subject 1" → "subject-subject1"). `subject` is an
+ * official Psych-DS keyword, so the resulting main datafile avoids the validator's
+ * unofficial-keyword warning. The result always satisfies
+ * {@link isValidPsychDSDataFilename} once `_data.csv` is appended.
+ */
+export function deriveFallbackBase(stem: string): string {
+  return `subject-${toPsychDSValue(stem, 'file')}`;
+}
+
+/**
  * Derives the Psych-DS filename for an extracted-array CSV from its parent
  * file's already-normalized base plus the column name:
  *   base "subject-subject1" + column "mouse_tracking"
@@ -275,6 +298,95 @@ export function disambiguateArrayFilename(base: string, used: Set<string>): stri
     candidate = `${root}${n}${suffix}`;
   }
   return candidate;
+}
+
+/** A single converted Psych-DS output file produced by {@link buildPsychDSDataFiles}. */
+export interface PsychDSDataFile {
+  /** Psych-DS-compliant filename, relative to the `data/` directory. */
+  filename: string;
+  /** RFC-4180 CSV contents. */
+  content: string;
+  /** Which source the rows came from: the main table, an array column, or an object column. */
+  kind: 'main' | 'array' | 'object';
+}
+
+export interface BuildPsychDSDataFilesArgs {
+  /** Compliant filename base (keyword-value sequence before `_data.csv`), e.g. "id-sub01". */
+  base: string;
+  /** Parsed rows of the main data file. Serialised to CSV unless `mainContent` is given. */
+  mainRows: Array<Record<string, any>>;
+  /**
+   * Pre-rendered CSV for the main file, used verbatim instead of serialising `mainRows`.
+   * Pass this when the source is already CSV so its exact bytes (column order, quoting) are
+   * preserved; `mainRows` may be empty in that case.
+   */
+  mainContent?: string;
+  /** Array-column rows keyed by column name (from `JsPsychMetadata.getExtractedArrays`). */
+  extractedArrays?: Map<string, Array<Record<string, any>>>;
+  /** Object-column rows keyed by column name (from `JsPsychMetadata.getExtractedObjects`). */
+  extractedObjects?: Map<string, Array<Record<string, any>>>;
+  /** Join keys used when extracting nested columns (from `JsPsychMetadata.getArrayJoinKeys`). */
+  joinKeys?: string[];
+  /**
+   * Set of already-used output filenames, shared across all files in a dataset so names are
+   * disambiguated against the whole `data/` directory. Mutated: every name returned is added.
+   */
+  usedArrayFilenames?: Set<string>;
+}
+
+/**
+ * Turns one parsed data file (plus any nested array/object columns extracted during
+ * `JsPsychMetadata.generate`) into its set of Psych-DS CSV outputs. Pure and
+ * filesystem-agnostic: the caller decides where the returned contents go (the CLI writes
+ * them to disk, the browser puts them in a file tree / zip). Mirrors the conversion the CLI
+ * performs inline so both share one implementation.
+ *
+ * The main table becomes `${base}_data.csv`; each extracted array/object column becomes a
+ * sidecar named via {@link deriveArrayFilename}, disambiguated against `usedArrayFilenames`.
+ * Throws if a resolved name isn't Psych-DS-compliant (an invalid `base` reaching here is a
+ * programming error — callers derive `base` with {@link deriveFallbackBase} or a validated plan).
+ */
+export function buildPsychDSDataFiles(args: BuildPsychDSDataFilesArgs): PsychDSDataFile[] {
+  const {
+    base,
+    mainRows,
+    mainContent,
+    extractedArrays = new Map(),
+    extractedObjects = new Map(),
+    joinKeys = ['trial_index'],
+    usedArrayFilenames = new Set<string>(),
+  } = args;
+
+  const out: PsychDSDataFile[] = [];
+
+  const reserve = (name: string): string => {
+    if (!isValidPsychDSDataFilename(name)) {
+      throw new Error(`Refusing to write non-Psych-DS-compliant data filename "${name}".`);
+    }
+    usedArrayFilenames.add(name);
+    return name;
+  };
+
+  // Main table. Disambiguate up front so a later file sharing this base doesn't overwrite it.
+  const mainName = reserve(disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames));
+  out.push({
+    filename: mainName,
+    content: mainContent ?? objectsToCSV(mainRows, ['trial_index']),
+    kind: 'main',
+  });
+
+  // Sidecars: arrays carry element_index alongside the join keys; objects are one row per trial.
+  const arrayPriority = [...joinKeys, 'element_index'];
+  for (const [colName, rows] of extractedArrays) {
+    const name = reserve(disambiguateArrayFilename(deriveArrayFilename(base, colName), usedArrayFilenames));
+    out.push({ filename: name, content: objectsToCSV(rows, arrayPriority), kind: 'array' });
+  }
+  for (const [colName, rows] of extractedObjects) {
+    const name = reserve(disambiguateArrayFilename(deriveArrayFilename(base, colName), usedArrayFilenames));
+    out.push({ filename: name, content: objectsToCSV(rows, joinKeys), kind: 'object' });
+  }
+
+  return out;
 }
 
 export async function parseCSV(input) {

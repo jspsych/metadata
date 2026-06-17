@@ -3,13 +3,17 @@ import JSZip from 'jszip';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
-import { DATASET_DESCRIPTION_FILENAME as FILENAME, dataFilePath } from '../datasetLayout';
+import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
 import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
 
 interface ReviewProps {
   jsPsychMetadata: JsPsychMetadata;
-  dataFiles?: Map<string, { content: string; type: string }>;
+  /**
+   * Psych-DS `data/` payload (dataset-relative path → contents, e.g. `data/subject-sub01_data.csv`),
+   * already converted to compliant CSV by the upload step. Drives both validation and the zip.
+   */
+  dataFiles?: Map<string, string>;
 }
 
 function blobDownload(blob: Blob, filename: string) {
@@ -24,6 +28,11 @@ function blobDownload(blob: Blob, filename: string) {
 }
 
 type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
+
+// Warnings the downloadable zip already resolves: it ships a README.md and CHANGES.md the
+// in-browser validator can't see (it only checks the metadata + data files). When these show
+// up, we reassure the user rather than letting them think the dataset is incomplete.
+const ZIP_RESOLVED_WARNINGS = new Set(['MISSING_README_DOC', 'MISSING_CHANGES_DOC']);
 
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [downloaded, setDownloaded] = useState(false);
@@ -41,19 +50,9 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
     return name?.trim() || 'dataset';
   }, []);
 
-  // Data files eligible for the zip: JSON/CSV that aren't dataset_description.json
-  const zipEligibleFiles = useMemo(() => {
-    if (!dataFiles || dataFiles.size === 0) return new Map<string, string>();
-    const out = new Map<string, string>();
-    for (const [path, { content, type }] of dataFiles) {
-      if (type !== 'json' && type !== 'csv') continue;
-      if (path === FILENAME || path.endsWith(`/${FILENAME}`)) continue;
-      out.set(path, content);
-    }
-    return out;
-  }, [dataFiles]);
-
-  const hasDataFiles = zipEligibleFiles.size > 0;
+  // Converted Psych-DS data/ payload (paths already include `data/`); drives validation + zip.
+  const dataPayload = useMemo(() => dataFiles ?? new Map<string, string>(), [dataFiles]);
+  const hasDataFiles = dataPayload.size > 0;
 
   const handleDownload = async () => {
     if ('showSaveFilePicker' in window) {
@@ -80,8 +79,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const handleDownloadZip = async () => {
     const zip = new JSZip();
     zip.file(FILENAME, metadataJson);
-    for (const [originalPath, content] of zipEligibleFiles) {
-      zip.file(dataFilePath(originalPath), content);
+    for (const [path, content] of dataPayload) {
+      zip.file(path, content); // path already includes the `data/` prefix
     }
     zip.file('README.md', `# ${projectName}\nHuman-readable description of the project and dataset.`);
     zip.file('CHANGES.md', 'For version tracking — if the dataset is updated after being uploaded/shared, changes (with human-readable descriptions) may be recorded here.');
@@ -96,7 +95,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
     try {
       // Lazy-loaded so the ~260 KB validator bundle stays out of the initial load.
       const { validatePsychDS } = await import('../validation/validatePsychDS');
-      const result = await validatePsychDS(metadataJson, zipEligibleFiles);
+      const result = await validatePsychDS(metadataJson, dataPayload);
       setValResult(result);
       setValStatus('done');
     } catch (err) {
@@ -222,6 +221,17 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
             {valResult.warnings.length > 0 && (
               <>
                 <p className={styles.issueGroupLabel}>Warnings</p>
+                {hasDataFiles && valResult.warnings.some((w) => ZIP_RESOLVED_WARNINGS.has(w.key)) && (
+                  <p className={styles.warnNote}>
+                    Heads up: warnings about a missing <code className={styles.code}>README</code> or{' '}
+                    <code className={styles.code}>CHANGES</code> file are expected here — in-browser
+                    validation only checks the metadata and your data files. The{' '}
+                    <code className={styles.code}>{projectName}.zip</code> download already includes{' '}
+                    <code className={styles.code}>README.md</code> and{' '}
+                    <code className={styles.code}>CHANGES.md</code>, so these clear once you validate
+                    the downloaded dataset (e.g. with <code className={styles.code}>npx @jspsych/cli validate</code>).
+                  </p>
+                )}
                 <ul className={styles.issueList}>
                   {valResult.warnings.map((issue, i) => (
                     <li key={`w${i}`} className={`${styles.issueItem} ${styles.issueWarn}`}>
