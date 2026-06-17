@@ -6,7 +6,7 @@ import { input, select, checkbox, Separator } from '@inquirer/prompts';
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
 import fs from 'fs';
 import path from 'path';
-import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, OutputColumns } from "./data";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, OutputColumns, isDataExt } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
@@ -539,7 +539,7 @@ async function resolveFilenameNormalization(
   for (const { filePath, name } of files) {
     if (name === 'dataset_description.json') continue;
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     const stem = fileStem(name);
     if (!isValidPsychDSDataFilename(`${stem}_data.csv`)) {

@@ -1,8 +1,16 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
+
+/**
+ * JSON-family data extensions. `.jsonl` (JSON-Lines) is treated exactly like `.json`:
+ * parseJsonData() accepts both a single array and one-JSON-value-per-line, so a `.jsonl`
+ * file flows through the same code path and generate('json') call as a `.json` file.
+ */
+export const isJsonDataExt = (ext: string): boolean => ext === '.json' || ext === '.jsonl';
+export const isDataExt = (ext: string): boolean => isJsonDataExt(ext) || ext === '.csv';
 
 /**
  * Thrown when the data a file produces doesn't match the output-name plan the user approved
@@ -107,14 +115,14 @@ export async function preAnalyzeDirectory(
     if (name === 'dataset_description.json') continue;
 
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf8');
       let parsedData: Array<Record<string, any>>;
 
-      if (ext === '.json') {
-        const raw = JSON.parse(content);
+      if (isJsonDataExt(ext)) {
+        const raw = parseJsonData(content); // single array or JSON-Lines
         if (!Array.isArray(raw)) continue;
         parsedData = raw as Array<Record<string, any>>;
       } else {
@@ -247,7 +255,7 @@ export async function analyzeOutputColumns(
 
   for (const { filePath, name } of files) {
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf8');
@@ -255,8 +263,8 @@ export async function analyzeOutputColumns(
         metadata.loadMetadata(content);
         continue;
       }
-      if (ext === '.json') {
-        if (!Array.isArray(JSON.parse(content))) continue; // non-array JSON is skipped by the writer too
+      if (isJsonDataExt(ext)) {
+        if (!Array.isArray(parseJsonData(content))) continue; // non-array JSON is skipped by the writer too
         await metadata.generate(content, {}, 'json', options);
       } else {
         await metadata.generate(content, {}, 'csv', options);
@@ -317,6 +325,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
 
     switch (fileExtension){
       case '.json':
+      case '.jsonl':
         if (file === "dataset_description.json") metadata.loadMetadata(content); // need to remove this for the files that are being called with the CLI
         else await metadata.generate(content, {}, 'json', options);
         break;
@@ -324,7 +333,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         await metadata.generate(content, {}, 'csv', options);
         break;
       default:
-        console.error(`"${file}" is not .csv or .json format.`);
+        console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
         return false;
     }
 
@@ -341,8 +350,8 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // skipped before it reserves an output name — otherwise it would needlessly disambiguate
       // a later valid file that maps to the same base.
       let parsed: Array<Record<string, any>> | null = null;
-      if (fileExtension === '.json') {
-        const json = JSON.parse(content);
+      if (isJsonDataExt(fileExtension)) {
+        const json = parseJsonData(content); // single array or JSON-Lines (flattened)
         if (!Array.isArray(json)) {
           console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
           return false;

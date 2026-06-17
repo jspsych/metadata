@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile, parseCSV, tryParseJSON, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS, stripUnnamedColumns } from "./utils";
+import { saveTextToFile, parseCSV, tryParseJSON, parseJsonData, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS, stripUnnamedColumns } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -439,7 +439,9 @@ export default class JsPsychMetadata {
     }
 
     if (ext === 'json') {
-      parsed_data = JSON.parse(data);
+      // Accepts both a single JSON array (standard jsPsych export) and JSON-Lines,
+      // where each line is its own JSON value (JATOS exports one participant array per line).
+      parsed_data = parseJsonData(data);
     }
 
     if (!Array.isArray(parsed_data)) {
@@ -1047,5 +1049,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
+export { analyzeJoinKeys, parseCSV, parseJsonData, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
 export type { JoinKeyAnalysis, PsychDSDataFile, BuildPsychDSDataFilesArgs } from "./utils";

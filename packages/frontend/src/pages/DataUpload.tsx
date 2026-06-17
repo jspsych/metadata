@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -173,7 +173,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
     const textMap = new Map<string, { content: string; type: string }>();
     for (const file of files) {
-      const type = file.name.split('.').pop()?.toLowerCase() || '';
+      const rawExt = file.name.split('.').pop()?.toLowerCase() || '';
+      // Treat JSON-Lines as JSON: parseJsonData() accepts both a single array and one
+      // JSON value per line, so .jsonl flows through the same path as .json downstream.
+      const type = rawExt === 'jsonl' ? 'json' : rawExt;
       const content = await readFileAsText(file);
       textMap.set(file.webkitRelativePath || file.name, { content, type });
     }
@@ -187,7 +190,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
       if (type !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
       try {
-        const parsed = JSON.parse(content);
+        const parsed = parseJsonData(content); // single array or JSON-Lines (flattened)
         if (!Array.isArray(parsed) || parsed.length === 0) continue;
         const analysis = analyzeJoinKeys(parsed, ['trial_index']);
         if (!analysis.isUnique) {
@@ -268,7 +271,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
         let mainRows: Array<Record<string, any>> = [];
         let mainContent: string | undefined;
         if (type === 'json') {
-          const json = JSON.parse(content);
+          const json = parseJsonData(content); // single array or JSON-Lines (flattened)
           if (!Array.isArray(json)) {
             update(i, { status: 'skipped', detail: 'not a jsPsych trial array' });
             continue;

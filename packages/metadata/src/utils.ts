@@ -78,6 +78,50 @@ export function tryParseJSON(value: string): any | null {
   }
 }
 
+/**
+ * Parses experiment data that is either a single JSON document (the standard jsPsych
+ * export — one array of trials, possibly pretty-printed) or JSON-Lines: one JSON value
+ * per line, as JATOS and several labs export it (typically one participant's trial
+ * array per line). Returns a flat array of observations in both cases.
+ *
+ * A well-formed single document is returned as-is (arrays untouched, so existing
+ * single-array callers see no change). Only when whole-string parsing fails do we fall
+ * back to line-by-line parsing, flattening any per-line arrays into one observation
+ * stream. Throws a descriptive error when the input is neither valid JSON nor valid JSONL.
+ */
+export function parseJsonData(content: string): any {
+  // Fast path: a single, well-formed JSON document. Covers the standard single array
+  // (including pretty-printed/multi-line) with no behaviour change for existing callers.
+  const whole = tryParseJSON(content);
+  if (whole !== null) return whole;
+
+  // Fallback: JSON-Lines. Each non-empty line must be its own JSON value; per-line
+  // arrays are concatenated so a multi-participant export becomes one observation array.
+  const lines = content.split(/\r?\n/);
+  const out: any[] = [];
+  let parsedAny = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    let value;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      throw new Error(
+        `Could not parse data as JSON or JSON-Lines: line ${i + 1} is not valid JSON.`
+      );
+    }
+    parsedAny = true;
+    if (Array.isArray(value)) out.push(...value);
+    else out.push(value);
+  }
+
+  if (!parsedAny) {
+    throw new Error("Could not parse data: input is empty or not valid JSON/JSON-Lines.");
+  }
+  return out;
+}
+
 /** System columns excluded from join-key candidate detection; also used to initialise ignored_variables in JsPsychMetadata. */
 export const SYSTEM_COLUMNS = new Set([
   'trial_type', 'trial_index', 'time_elapsed', 'extension_type', 'extension_version',

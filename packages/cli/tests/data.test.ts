@@ -113,6 +113,23 @@ describe("processDirectory", () => {
     expect(failed).toBe(0);
   });
 
+  test("processes a JSON-Lines (.jsonl) file with one participant array per line", async () => {
+    // JATOS-style export: each line is a full participant array, not one big array.
+    const p1 = JSON.stringify([{ trial_type: "html-keyboard-response", trial_index: 0, rt: 450 }]);
+    const p2 = JSON.stringify([{ trial_type: "html-keyboard-response", trial_index: 0, rt: 512 }]);
+    fs.writeFileSync(path.join(tmpDir, "raw.jsonl"), `${p1}\n${p2}\n`);
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, tmpDir);
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+    // rows from both lines were ingested (rt spans both participants).
+    const rt = metadata.getVariable("rt") as any;
+    expect(rt.minValue).toBe(450);
+    expect(rt.maxValue).toBe(512);
+  });
+
   test("counts unsupported file types as failed", async () => {
     fs.writeFileSync(path.join(tmpDir, "notes.txt"), "just a text file");
 
