@@ -101,7 +101,11 @@ async function collectDataFiles(
  */
 export async function preAnalyzeDirectory(
   directoryPath: string,
-  initialKeys: string[] = ['trial_index']
+  initialKeys: string[] = ['trial_index'],
+  // Optional out-param: set to true if any JSON-Lines file gets a synthesized source_record_id.
+  // Surfaced this way (rather than via the return value) so the existing return contract — and
+  // its "no problem found → null" callers — stays unchanged.
+  outStats?: { synthesizedSourceRecordId?: boolean }
 ): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null> {
   directoryPath = expandHomeDir(directoryPath);
 
@@ -122,23 +126,27 @@ export async function preAnalyzeDirectory(
       let parsedData: Array<Record<string, any>>;
 
       if (isJsonDataExt(ext)) {
-        // Tag a per-line participant_id for JSON-Lines (a no-op for a single array) so the
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
         // analysis below sees the same rows generate() will.
-        const raw = parseJsonData(content, { tagParticipantId: true });
+        const stats: { synthesizedSourceRecordId?: boolean } = {};
+        const raw = parseJsonData(content, { tagSourceRecordId: true }, stats);
         if (!Array.isArray(raw)) continue;
+        if (stats.synthesizedSourceRecordId && outStats) outStats.synthesizedSourceRecordId = true;
         parsedData = raw as Array<Record<string, any>>;
       } else {
         parsedData = (await parseCSV(content)) as Array<Record<string, any>>;
       }
 
       // Mirror generate()'s join-key promotion so the prompt is built from the keys generate()
-      // will actually use: a participant_id synthesized from JSON-Lines (or present in the
-      // export) becomes the leading join key, and the uniqueness check accounts for it.
-      const keys = (isJsonDataExt(ext) &&
-        !initialKeys.includes('participant_id') &&
-        parsedData.some((row) => row && typeof row === 'object' && 'participant_id' in row))
-        ? ['participant_id', ...initialKeys]
-        : initialKeys;
+      // will actually use: an identifier column — source_record_id synthesized from JSON-Lines,
+      // else a real participant_id already in the export — becomes the leading join key, and the
+      // uniqueness check accounts for it.
+      const idColumn = isJsonDataExt(ext)
+        ? (['source_record_id', 'participant_id'] as const).find((col) =>
+            !initialKeys.includes(col) &&
+            parsedData.some((row) => row && typeof row === 'object' && col in row))
+        : undefined;
+      const keys = idColumn ? [idColumn, ...initialKeys] : initialKeys;
 
       const analysis = analyzeJoinKeys(parsedData, keys);
       if (!analysis.isUnique && (worst === null || analysis.duplicateCount > worst.analysis.duplicateCount)) {
@@ -275,7 +283,7 @@ export async function analyzeOutputColumns(
         continue;
       }
       if (isJsonDataExt(ext)) {
-        if (!Array.isArray(parseJsonData(content, { tagParticipantId: true }))) continue; // non-array JSON is skipped by the writer too
+        if (!Array.isArray(parseJsonData(content, { tagSourceRecordId: true }))) continue; // non-array JSON is skipped by the writer too
         await metadata.generate(content, {}, 'json', options);
       } else {
         await metadata.generate(content, {}, 'csv', options);
@@ -362,9 +370,9 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // a later valid file that maps to the same base.
       let parsed: Array<Record<string, any>> | null = null;
       if (isJsonDataExt(fileExtension)) {
-        // Tag a per-line participant_id for JSON-Lines (a no-op for a single array) so the main
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the main
         // CSV carries the same join-key column generate() promotes for the sidecars.
-        const json = parseJsonData(content, { tagParticipantId: true });
+        const json = parseJsonData(content, { tagSourceRecordId: true });
         if (!Array.isArray(json)) {
           console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
           return false;

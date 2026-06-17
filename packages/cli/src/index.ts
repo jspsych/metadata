@@ -731,12 +731,13 @@ const main = async () => {
   const { bases: normalizedBases, plan: renamePlan } = await resolveFilenameNormalization(dataDir, canPrompt, outputColumns);
 
   // Pre-flight: check whether the join key is unique. preAnalyzeDirectory mirrors generate()'s
-  // participant_id promotion, so preResult.keys is the effective key set (e.g.
-  // ['participant_id', 'trial_index'] for multi-participant JSON-Lines) — use it as the basis for
+  // source_record_id promotion, so preResult.keys is the effective key set (e.g.
+  // ['source_record_id', 'trial_index'] for multi-record JSON-Lines) — use it as the basis for
   // resolution. If not unique, prompt the user when we have a terminal; otherwise (headless run)
   // resolve deterministically so the run never blocks on an interactive prompt it can't answer.
   const initialKeys = ['trial_index'];
-  const preResult = await preAnalyzeDirectory(dataDir, initialKeys);
+  const preStats: { synthesizedSourceRecordId?: boolean } = {};
+  const preResult = await preAnalyzeDirectory(dataDir, initialKeys, preStats);
   let arrayJoinKeys = preResult?.keys ?? initialKeys;
   if (preResult && !preResult.analysis.isUnique) {
     if (canPrompt) {
@@ -746,6 +747,15 @@ const main = async () => {
       arrayJoinKeys = resolved.keys;
       (resolved.unresolved ? console.warn : console.log)(`${resolved.unresolved ? '⚠' : 'ℹ'}  ${resolved.message}`);
     }
+  }
+
+  // Tell the user when we add the synthetic identifier, so the extra column in their output
+  // isn't a surprise. Only fires for JSON-Lines input that carried no id of its own.
+  if (preStats.synthesizedSourceRecordId) {
+    console.log(
+      'Detected JSON-Lines input; added synthetic source_record_id to preserve ' +
+      'source-record boundaries for extracted nested data.'
+    );
   }
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the

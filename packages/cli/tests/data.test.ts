@@ -233,6 +233,29 @@ describe("preAnalyzeDirectory", () => {
     expect(result!.analysis.isUnique).toBe(false);
   });
 
+  test("reports a synthesized source_record_id via the out-param for JSON-Lines input", async () => {
+    // JSON-Lines (one array per line) with no id column → source_record_id is synthesized.
+    fs.writeFileSync(
+      path.join(tmpDir, "jsonl.jsonl"),
+      `[{"trial_index":0},{"trial_index":1}]\n[{"trial_index":0}]`
+    );
+
+    const stats: { synthesizedSourceRecordId?: boolean } = {};
+    await preAnalyzeDirectory(tmpDir, ["trial_index"], stats);
+    expect(stats.synthesizedSourceRecordId).toBe(true);
+  });
+
+  test("does not report a synthesized source_record_id for a single JSON array", async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "single.json"),
+      JSON.stringify([{ trial_index: 0 }, { trial_index: 1 }])
+    );
+
+    const stats: { synthesizedSourceRecordId?: boolean } = {};
+    await preAnalyzeDirectory(tmpDir, ["trial_index"], stats);
+    expect(stats.synthesizedSourceRecordId).toBeUndefined();
+  });
+
   test("parses CSV data files as well as JSON", async () => {
     fs.writeFileSync(path.join(tmpDir, "dupes.csv"), "trial_index\n0\n0");
 
