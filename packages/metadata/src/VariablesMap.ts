@@ -134,44 +134,49 @@ export class VariablesMap {
   getList(): {}[] {
     var var_list = [];
 
-    // need to check that this works as intended
     for (const key of Object.keys(this.variables)) {
       const variable = this.variables[key];
-      const description = variable["description"];
-      const numKeys = Object.keys(description).length;
-
-      if (numKeys === 0) console.error("Empty description"); // error: description empty
-      else if (numKeys === 1) {
-        // description becomes single field (assumed to be default)
-        const key = Object.keys(description)[0];
-        variable["description"] = description[key];
-      } else if (numKeys == 2) {
-        delete description["default"]; // deletes default
-        // Delete the property if its value is "unknown"
-        for (const descKey in description as object) {
-          if (description[descKey] === "unknown") {
-            delete description[descKey];
-          }
-        }
-        if (Object.keys(description).length == 1) {
-          // error checking that it reduced to one key
-          const key = Object.keys(description)[0];
-          variable["description"] = description[key];
-        }
-      } else if (numKeys > 2) {
-        // deletes default
-        delete description["default"];
-        // Delete the property if its value is "unknown"
-        for (const descKey in description as object) {
-          if (description[descKey] === "unknown") {
-            delete description[descKey];
-          }
-        }
-      }
-
+      variable["description"] = this.collapseDescription(variable["description"]);
       var_list.push(variable);
     }
     return var_list;
+  }
+
+  /**
+   * Collapses an internal { pluginType: description } map into a single schema.org-valid
+   * Text value. Descriptions are stored per-plugin and only ever hold multiple keys when the
+   * texts genuinely differ (identical texts are merged upstream in updateDescription). Psych-DS /
+   * schema.org require `description` to be Text, so an object value triggers an OBJECT_TYPE_MISSING
+   * validator warning — this folds everything down to a string.
+   *
+   * @private
+   * @param {*} description - The description value (a { pluginType: text } map, or already a string).
+   * @returns {string} - A single Text description.
+   */
+  private collapseDescription(description): string {
+    // Already collapsed (string from a prior getList, or a user-set description) — leave untouched.
+    if (typeof description !== "object" || description === null) {
+      return description;
+    }
+
+    if (Object.keys(description).length === 0) {
+      console.error("Empty description");
+      return "unknown";
+    }
+
+    // Drop the synthetic "default" once real plugin descriptions exist.
+    if (Object.keys(description).length > 1 && "default" in description) {
+      delete description["default"];
+    }
+    // Drop placeholder "unknown" entries while at least one real description remains.
+    for (const descKey of Object.keys(description)) {
+      if (description[descKey] === "unknown" && Object.keys(description).length > 1) {
+        delete description[descKey];
+      }
+    }
+
+    // Join the remaining distinct descriptions into one Text value.
+    return (Object.values(description) as string[]).join(" | ");
   }
 
   /**
