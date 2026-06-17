@@ -244,8 +244,9 @@ describe("JsPsychMetadata field operations", () => {
     expect(fields["variableMeasured"]).toBeUndefined();
   });
 
-  test("#containsVariable returns true for a default variable and false for one never set", () => {
-    expect(jsPsychMetadata.containsVariable("trial_type")).toBe(true);
+  test("#containsVariable returns true for a set variable and false for one never set", () => {
+    // System variables are no longer seeded at construction; they appear only once observed in
+    // the data (covered by the lazy-registration regression test below).
     expect(jsPsychMetadata.containsVariable("custom_col")).toBe(false);
     jsPsychMetadata.setVariable({ name: "custom_col", value: "string" });
     expect(jsPsychMetadata.containsVariable("custom_col")).toBe(true);
@@ -398,6 +399,17 @@ describe("JsPsychMetadata", () => {
       value: "string",
     };
 
+    // trial_type is no longer seeded at construction, so register it first (a fresh copy, so the
+    // stored object isn't the same reference as the `trialType` we compare against).
+    jsPsychMetadata.setVariable({
+      "@type": "PropertyValue",
+      name: "trial_type",
+      description: {
+        default: "unknown",
+        jsPsych: "The name of the plugin used to run the trial.",
+      },
+      value: "string",
+    });
     jsPsychMetadata.updateVariable("trial_type", "levels", 100);
     trialType["levels"] = [100];
     expect(jsPsychMetadata.getVariable("trial_type")).toStrictEqual(trialType);
@@ -430,10 +442,8 @@ describe("JsPsychMetadata", () => {
   });
 
   test("#getVariableNames returns the names of all current variables", () => {
-    const names = jsPsychMetadata.getVariableNames();
-    expect(names).toContain("trial_type");
-    expect(names).toContain("trial_index");
-    expect(names).toContain("time_elapsed");
+    // No system variables are seeded at construction, so a fresh instance has none.
+    expect(jsPsychMetadata.getVariableNames()).toEqual([]);
 
     jsPsychMetadata.setVariable({ name: "custom_score", value: "number" });
     expect(jsPsychMetadata.getVariableNames()).toContain("custom_score");
@@ -442,16 +452,100 @@ describe("JsPsychMetadata", () => {
     expect(jsPsychMetadata.getVariableNames()).not.toContain("custom_score");
   });
 
-  test("#getVariableList returns all variable objects including defaults", () => {
-    const list = jsPsychMetadata.getVariableList();
-    const names = list.map((v: any) => v.name);
-    expect(names).toContain("trial_type");
-    expect(names).toContain("trial_index");
-    expect(names).toContain("time_elapsed");
+  test("#getVariableList returns all variable objects", () => {
+    // No system variables are seeded at construction, so a fresh instance has none.
+    expect(jsPsychMetadata.getVariableList()).toEqual([]);
 
     jsPsychMetadata.setVariable({ name: "rt", value: "number", description: "Reaction time in ms" });
     const updated = jsPsychMetadata.getVariableList();
     expect(updated.some((v: any) => v.name === "rt" && v.value === "number")).toBe(true);
+  });
+});
+
+// Regression for #109: jsPsych system variables (trial_type/trial_index/time_elapsed/extension_*)
+// used to be seeded into variableMeasured unconditionally, so a dataset whose CSVs lacked one —
+// e.g. a processed export without time_elapsed — produced an orphan variableMeasured entry that
+// fails Psych-DS validation (VARIABLE_MISSING_FROM_CSV_COLUMNS). They now register lazily, only
+// when the column is actually observed.
+describe("system variables register lazily (#109)", () => {
+  const mockFetch = jest.fn().mockResolvedValue({ text: () => Promise.resolve("") });
+  beforeEach(() => {
+    (global as any).fetch = mockFetch;
+    mockFetch.mockClear();
+  });
+
+  test("time_elapsed is omitted when the data has no such column, and every variable maps to a CSV column", async () => {
+    const csv = [
+      "trial_type,trial_index,response",
+      "html-keyboard-response,0,f",
+      "html-keyboard-response,1,j",
+    ].join("\n");
+
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+
+    const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    // Present system columns are still declared (with their jsPsych descriptions)…
+    expect(names).toContain("trial_type");
+    expect(names).toContain("trial_index");
+    expect(names).toContain("response");
+    // …but the absent system column does not appear.
+    expect(names).not.toContain("time_elapsed");
+
+    // Validation invariant: every declared variable corresponds to an actual CSV column.
+    const csvColumns = new Set(csv.split("\n")[0].split(","));
+    for (const name of names) expect(csvColumns.has(name)).toBe(true);
+  });
+
+  test("time_elapsed is included when the data does contain it", async () => {
+    const csv = [
+      "trial_type,trial_index,time_elapsed",
+      "html-keyboard-response,0,100",
+      "html-keyboard-response,1,250",
+    ].join("\n");
+
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+
+    const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    expect(names).toContain("time_elapsed");
+  });
+
+  // extension_type / extension_version share the orphan-seeding hazard: an eager
+  // generateDefaultExtensionVariables() call used to register BOTH whenever extension_type was
+  // present, so a dataset with extension_type but no extension_version column got an orphan
+  // extension_version entry. They now register lazily per-column like the other system variables.
+  test("extension_version is omitted when only extension_type is present", async () => {
+    const csv = [
+      "trial_type,trial_index,extension_type",
+      "html-keyboard-response,0,mock-extension",
+      "html-keyboard-response,1,mock-extension",
+    ].join("\n");
+
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+
+    const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    expect(names).toContain("extension_type");
+    expect(names).not.toContain("extension_version");
+
+    const csvColumns = new Set(csv.split("\n")[0].split(","));
+    for (const name of names) expect(csvColumns.has(name)).toBe(true);
+  });
+
+  test("both extension variables are included when both columns are present", async () => {
+    const csv = [
+      "trial_type,trial_index,extension_type,extension_version",
+      "html-keyboard-response,0,mock-extension,1.0.0",
+      "html-keyboard-response,1,mock-extension,1.0.0",
+    ].join("\n");
+
+    const meta = new JsPsychMetadata();
+    await meta.generate(csv, {}, "csv");
+
+    const names = (meta.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    expect(names).toContain("extension_type");
+    expect(names).toContain("extension_version");
   });
 });
 

@@ -98,6 +98,25 @@ describe("VariablesMap", () => {
 
   beforeEach(() => {
     variablesMap = new VariablesMap();
+    // System variables now register lazily (only when their column is observed in the data),
+    // so a fresh map is empty. The map-operation tests below predate that change and assume the
+    // jsPsych defaults are present, so seed them explicitly here. The lazy-registration behavior
+    // itself is covered by the dedicated test below.
+    for (const v of variable_data) variablesMap.registerSystemVariable(v["name"]);
+  });
+
+  test("system variables are not seeded at construction and register lazily", () => {
+    const fresh = new VariablesMap();
+    expect(fresh.getList().length).toBe(0);
+    expect(fresh.containsVariable("time_elapsed")).toBe(false);
+
+    expect(fresh.registerSystemVariable("time_elapsed")).toBe(true);
+    expect(fresh.getVariable("time_elapsed")).toStrictEqual(variable_data[2]);
+    // Already present → no-op.
+    expect(fresh.registerSystemVariable("time_elapsed")).toBe(false);
+    // Not a known system variable → not registered.
+    expect(fresh.registerSystemVariable("rt")).toBe(false);
+    expect(fresh.containsVariable("rt")).toBe(false);
   });
 
   test("#setAndGetVariable", () => {
