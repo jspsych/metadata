@@ -190,9 +190,16 @@ const DataUpload: React.FC<DataUploadProps> = ({
       if (type !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
       try {
-        const parsed = parseJsonData(content); // single array or JSON-Lines (flattened)
+        // Tag a per-line participant_id for JSON-Lines (a no-op for a single array).
+        const parsed = parseJsonData(content, { tagParticipantId: true });
         if (!Array.isArray(parsed) || parsed.length === 0) continue;
-        const analysis = analyzeJoinKeys(parsed, ['trial_index']);
+        // Mirror generate()'s join-key promotion so a multi-participant JSON-Lines file isn't
+        // wrongly flagged: trial_index alone repeats across participants, but a synthesized
+        // participant_id makes (participant_id, trial_index) unique.
+        const keys = parsed.some((row: any) => row && typeof row === 'object' && 'participant_id' in row)
+          ? ['participant_id', 'trial_index']
+          : ['trial_index'];
+        const analysis = analyzeJoinKeys(parsed, keys);
         if (!analysis.isUnique) {
           setJoinKeyProblemFile(name);
           setJoinKeyCandidates(analysis.candidates);
@@ -271,7 +278,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
         let mainRows: Array<Record<string, any>> = [];
         let mainContent: string | undefined;
         if (type === 'json') {
-          const json = parseJsonData(content); // single array or JSON-Lines (flattened)
+          // Tag a per-line participant_id for JSON-Lines (a no-op for a single array) so the
+          // main CSV carries the same join-key column generate() promotes for the sidecars.
+          const json = parseJsonData(content, { tagParticipantId: true });
           if (!Array.isArray(json)) {
             update(i, { status: 'skipped', detail: 'not a jsPsych trial array' });
             continue;

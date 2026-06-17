@@ -88,10 +88,21 @@ export function tryParseJSON(value: string): any | null {
  * single-array callers see no change). Only when whole-string parsing fails do we fall
  * back to line-by-line parsing, flattening any per-line arrays into one observation
  * stream. Throws a descriptive error when the input is neither valid JSON nor valid JSONL.
+ *
+ * When `tagParticipantId` is set, `stats.synthesizedParticipantId` is set to true iff a
+ * participant_id was actually stamped onto at least one row (i.e. the data did not already
+ * carry one). Callers use this to describe the column honestly — a synthesized id is not a
+ * real subject identifier and must not be presented as one.
  */
-export function parseJsonData(content: string): any {
+export function parseJsonData(
+  content: string,
+  options: { tagParticipantId?: boolean } = {},
+  stats?: { synthesizedParticipantId?: boolean }
+): any {
   // Fast path: a single, well-formed JSON document. Covers the standard single array
   // (including pretty-printed/multi-line) with no behaviour change for existing callers.
+  // Note: tagParticipantId never applies here — a single document has no line boundaries
+  // to identify participants by, so its rows are returned untouched.
   const whole = tryParseJSON(content);
   if (whole !== null) return whole;
 
@@ -100,6 +111,7 @@ export function parseJsonData(content: string): any {
   const lines = content.split(/\r?\n/);
   const out: any[] = [];
   let parsedAny = false;
+  let participantIndex = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
@@ -112,8 +124,23 @@ export function parseJsonData(content: string): any {
       );
     }
     parsedAny = true;
-    if (Array.isArray(value)) out.push(...value);
-    else out.push(value);
+    const observations = Array.isArray(value) ? value : [value];
+    // In JSON-Lines each line is one participant's submission (JATOS-style export). The line
+    // boundary is the only participant identifier these raw jsPsych exports carry, so — when
+    // asked — stamp every object observation from this line with a 0-based participant_id
+    // before that boundary is lost in the flattened stream. This lets nested array/object
+    // extraction form a unique (participant_id, trial_index) join key. Existing participant_id
+    // values are left untouched; non-object lines (bare primitives) can't carry the tag.
+    if (options.tagParticipantId) {
+      for (const obs of observations) {
+        if (obs !== null && typeof obs === "object" && !Array.isArray(obs) && !("participant_id" in obs)) {
+          obs.participant_id = participantIndex;
+          if (stats) stats.synthesizedParticipantId = true;
+        }
+      }
+    }
+    out.push(...observations);
+    participantIndex++;
   }
 
   if (!parsedAny) {

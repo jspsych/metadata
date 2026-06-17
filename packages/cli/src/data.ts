@@ -102,14 +102,14 @@ async function collectDataFiles(
 export async function preAnalyzeDirectory(
   directoryPath: string,
   initialKeys: string[] = ['trial_index']
-): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null> {
+): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null> {
   directoryPath = expandHomeDir(directoryPath);
 
   const collected = await collectDataFiles(directoryPath);
   if (!collected) return null;
   const { files: filePaths } = collected;
 
-  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null = null;
+  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null = null;
 
   for (const { filePath, name } of filePaths) {
     if (name === 'dataset_description.json') continue;
@@ -122,16 +122,27 @@ export async function preAnalyzeDirectory(
       let parsedData: Array<Record<string, any>>;
 
       if (isJsonDataExt(ext)) {
-        const raw = parseJsonData(content); // single array or JSON-Lines
+        // Tag a per-line participant_id for JSON-Lines (a no-op for a single array) so the
+        // analysis below sees the same rows generate() will.
+        const raw = parseJsonData(content, { tagParticipantId: true });
         if (!Array.isArray(raw)) continue;
         parsedData = raw as Array<Record<string, any>>;
       } else {
         parsedData = (await parseCSV(content)) as Array<Record<string, any>>;
       }
 
-      const analysis = analyzeJoinKeys(parsedData, initialKeys);
+      // Mirror generate()'s join-key promotion so the prompt is built from the keys generate()
+      // will actually use: a participant_id synthesized from JSON-Lines (or present in the
+      // export) becomes the leading join key, and the uniqueness check accounts for it.
+      const keys = (isJsonDataExt(ext) &&
+        !initialKeys.includes('participant_id') &&
+        parsedData.some((row) => row && typeof row === 'object' && 'participant_id' in row))
+        ? ['participant_id', ...initialKeys]
+        : initialKeys;
+
+      const analysis = analyzeJoinKeys(parsedData, keys);
       if (!analysis.isUnique && (worst === null || analysis.duplicateCount > worst.analysis.duplicateCount)) {
-        worst = { parsedData, analysis, fileName: name };
+        worst = { parsedData, analysis, fileName: name, keys };
       }
     } catch {
       continue;
@@ -264,7 +275,7 @@ export async function analyzeOutputColumns(
         continue;
       }
       if (isJsonDataExt(ext)) {
-        if (!Array.isArray(parseJsonData(content))) continue; // non-array JSON is skipped by the writer too
+        if (!Array.isArray(parseJsonData(content, { tagParticipantId: true }))) continue; // non-array JSON is skipped by the writer too
         await metadata.generate(content, {}, 'json', options);
       } else {
         await metadata.generate(content, {}, 'csv', options);
@@ -351,7 +362,9 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // a later valid file that maps to the same base.
       let parsed: Array<Record<string, any>> | null = null;
       if (isJsonDataExt(fileExtension)) {
-        const json = parseJsonData(content); // single array or JSON-Lines (flattened)
+        // Tag a per-line participant_id for JSON-Lines (a no-op for a single array) so the main
+        // CSV carries the same join-key column generate() promotes for the sidecars.
+        const json = parseJsonData(content, { tagParticipantId: true });
         if (!Array.isArray(json)) {
           console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
           return false;
