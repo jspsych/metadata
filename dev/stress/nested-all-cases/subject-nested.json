@@ -1,0 +1,101 @@
+[
+  {
+    "trial_type": "html-keyboard-response",
+    "trial_index": 0,
+    "time_elapsed": 1500,
+    "rt": 432.5,
+    "response": "f",
+    "correct": true,
+    "always_null": null,
+    "empty_string": "",
+    "numeric_string": "42",
+    "bool_string": "TRUE",
+    "mixed_col": 10,
+    "json_string_object": "{\"nested\": {\"deep\": 1}}",
+    "json_string_array": "[5, 6, 7]",
+    "flat_object": { "a": 1, "b": "x" },
+    "deep_object": {
+      "l1": {
+        "l2": {
+          "l3": { "l4_leaf": 4, "l4_arr": [1, 2] },
+          "l3_leaf": "first"
+        },
+        "l2_leaf": true
+      }
+    },
+    "object_with_array_of_objects": {
+      "trials": [ { "x": 1, "y": 2 }, { "x": 3, "y": 4 } ]
+    },
+    "array_primitives": [1, 2, 3],
+    "array_objects": [
+      { "x": 0.1, "y": 0.2, "t": 5 },
+      { "x": 0.3, "y": 0.4, "t": 10 }
+    ],
+    "array_of_arrays": [ [1, 2], [3, 4] ],
+    "array_mixed": [1, "two", { "three": 3 }],
+    "array_deep_objects": [
+      { "meta": { "tag": "a", "score": { "raw": 9, "norm": 0.9 } } },
+      { "meta": { "tag": "b", "score": { "raw": 7, "norm": 0.7 } } }
+    ],
+    "empty_object": {},
+    "empty_array": [],
+    "varying_object": { "only_row0": 1 },
+    "unicode_col": "héllo wörld 👋"
+  },
+  {
+    "trial_type": "survey-text",
+    "trial_index": 1,
+    "time_elapsed": 3200,
+    "rt": 1001,
+    "response": { "Q0": "free text answer" },
+    "correct": false,
+    "always_null": null,
+    "empty_string": "",
+    "numeric_string": "7",
+    "bool_string": "false",
+    "mixed_col": "oops",
+    "flat_object": { "a": 2, "b": "y" },
+    "deep_object": {
+      "l1": {
+        "l2": {
+          "l3": { "l4_leaf": 8, "l4_arr": [3] },
+          "l3_leaf": "second"
+        },
+        "l2_leaf": false
+      }
+    },
+    "object_with_array_of_objects": {
+      "trials": [ { "x": 5, "y": 6 } ]
+    },
+    "array_primitives": [4, 5],
+    "array_objects": [ { "x": 0.5, "y": 0.6, "t": 15 } ],
+    "array_of_arrays": [ [5, 6] ],
+    "array_mixed": [true, 2.5],
+    "array_deep_objects": [
+      { "meta": { "tag": "c", "score": { "raw": 5, "norm": 0.5 } } }
+    ],
+    "empty_object": {},
+    "empty_array": [],
+    "varying_object": { "only_row1": "different keys per row" },
+    "unicode_col": "中文データ"
+  },
+  {
+    "trial_type": "made-up-plugin",
+    "trial_index": 2,
+    "time_elapsed": 4100,
+    "rt": "98.6",
+    "response": "j",
+    "correct": "true",
+    "always_null": "null",
+    "mixed_col": 3,
+    "flat_object": { "a": 3, "b": "z" },
+    "varying_object": {},
+    "unicode_col": "plain ascii"
+  },
+  {
+    "trial_index": 3,
+    "time_elapsed": 5000,
+    "orphan_col": "row with no trial_type at all",
+    "rt": 9999
+  }
+]
