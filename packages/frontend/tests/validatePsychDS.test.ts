@@ -50,21 +50,22 @@ describe("validatePsychDS", () => {
     await expect(blobText(tree["dataset_description.json"].file)).resolves.toBe('{"name":"test"}');
   });
 
-  test("nests data files under data/, stripping the export folder", async () => {
+  test("inserts data files at their dataset-relative paths", async () => {
     mockValidateWeb.mockResolvedValue(validatorOutput([]));
+    // Keys are already dataset-relative paths (built by the upload step), inserted as-is.
     const dataFiles = new Map([
-      ["my-experiment/sub01.csv", "a,b\n1,2"],
-      ["my-experiment/session1/sub02.csv", "a,b\n3,4"],
+      ["data/subject-sub01_data.csv", "a,b\n1,2"],
+      ["data/raw/sub01.json", "[]"],
     ]);
     await validatePsychDS("{}", dataFiles);
 
     const [tree] = mockValidateWeb.mock.calls[0];
     const data = tree["data"];
     expect(data.type).toBe("directory");
-    await expect(blobText(data.contents["sub01.csv"].file)).resolves.toBe("a,b\n1,2");
-    const session = data.contents["session1"];
-    expect(session.type).toBe("directory");
-    await expect(blobText(session.contents["sub02.csv"].file)).resolves.toBe("a,b\n3,4");
+    await expect(blobText(data.contents["subject-sub01_data.csv"].file)).resolves.toBe("a,b\n1,2");
+    const raw = data.contents["raw"];
+    expect(raw.type).toBe("directory");
+    await expect(blobText(raw.contents["sub01.json"].file)).resolves.toBe("[]");
   });
 
   test("reports valid when the validator finds no issues", async () => {

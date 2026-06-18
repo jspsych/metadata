@@ -201,6 +201,17 @@
   color: var(--c-ink-3);
 }
 
+.warnNote {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--c-ink-2);
+  background: var(--c-bg-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 5px;
+}
+
 .issueList {
   list-style: none;
   margin: 0;

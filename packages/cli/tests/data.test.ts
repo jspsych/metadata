@@ -1,8 +1,8 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import JsPsychMetadata from "@jspsych/metadata";
-import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
+import JsPsychMetadata, { analyzeJoinKeys } from "@jspsych/metadata";
+import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
 import { planRenames } from "../src/rename";
 
 // Each describe block gets its own temp directory.
@@ -113,6 +113,23 @@ describe("processDirectory", () => {
     expect(failed).toBe(0);
   });
 
+  test("processes a JSON-Lines (.jsonl) file with one participant array per line", async () => {
+    // JATOS-style export: each line is a full participant array, not one big array.
+    const p1 = JSON.stringify([{ trial_type: "html-keyboard-response", trial_index: 0, rt: 450 }]);
+    const p2 = JSON.stringify([{ trial_type: "html-keyboard-response", trial_index: 0, rt: 512 }]);
+    fs.writeFileSync(path.join(tmpDir, "raw.jsonl"), `${p1}\n${p2}\n`);
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, tmpDir);
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+    // rows from both lines were ingested (rt spans both participants).
+    const rt = metadata.getVariable("rt") as any;
+    expect(rt.minValue).toBe(450);
+    expect(rt.maxValue).toBe(512);
+  });
+
   test("counts unsupported file types as failed", async () => {
     fs.writeFileSync(path.join(tmpDir, "notes.txt"), "just a text file");
 
@@ -214,6 +231,29 @@ describe("preAnalyzeDirectory", () => {
     expect(result).not.toBeNull();
     expect(result!.fileName).toBe("dupes.json");
     expect(result!.analysis.isUnique).toBe(false);
+  });
+
+  test("reports a synthesized source_record_id via the out-param for JSON-Lines input", async () => {
+    // JSON-Lines (one array per line) with no id column → source_record_id is synthesized.
+    fs.writeFileSync(
+      path.join(tmpDir, "jsonl.jsonl"),
+      `[{"trial_index":0},{"trial_index":1}]\n[{"trial_index":0}]`
+    );
+
+    const stats: { synthesizedSourceRecordId?: boolean } = {};
+    await preAnalyzeDirectory(tmpDir, ["trial_index"], stats);
+    expect(stats.synthesizedSourceRecordId).toBe(true);
+  });
+
+  test("does not report a synthesized source_record_id for a single JSON array", async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "single.json"),
+      JSON.stringify([{ trial_index: 0 }, { trial_index: 1 }])
+    );
+
+    const stats: { synthesizedSourceRecordId?: boolean } = {};
+    await preAnalyzeDirectory(tmpDir, ["trial_index"], stats);
+    expect(stats.synthesizedSourceRecordId).toBeUndefined();
   });
 
   test("parses CSV data files as well as JSON", async () => {
@@ -490,5 +530,117 @@ describe("processDirectory JSON → CSV conversion", () => {
     await expect(
       processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan })
     ).rejects.toThrow(RenamePlanError);
+  });
+
+  // #109 finding 2: R's write.csv prepends an unnamed row-index column (header starts with a bare
+  // comma). The written CSV must drop it so it matches variableMeasured, on both write paths.
+  test("non-planned path drops an unnamed leading column from the written CSV", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1_data.csv"),
+      ",trial_type,rt\n1,jsPsych-html-keyboard-response,450\n2,jsPsych-html-keyboard-response,512",
+    );
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    const csv = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    const header = csv.split(/\r?\n/)[0].split(",");
+    expect(header).not.toContain("");
+    expect(header).toEqual(expect.arrayContaining(["trial_type", "rt"]));
+    // On-disk header and variableMeasured agree — the whole point.
+    const names = (metadata.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    for (const col of header) expect(names).toContain(col);
+  });
+
+  test("rename-plan path also drops an unnamed leading column", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(srcDir, "raw.csv"),
+      ",trial_type,rt\n1,jsPsych-html-keyboard-response,450\n2,jsPsych-html-keyboard-response,512",
+    );
+
+    const key = path.resolve(srcDir, "raw.csv");
+    const columns = await analyzeOutputColumns(srcDir);
+    const normalizedBases = new Map([[key, "subject-9"]]);
+    const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-9", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan });
+
+    expect(failed).toBe(0);
+    const csv = fs.readFileSync(path.join(dataDir, "subject-9_data.csv"), "utf8");
+    expect(csv.split(/\r?\n/)[0].split(",")).not.toContain("");
+  });
+});
+
+// #109 finding #3: a fully-flagged headless run must not block on the interactive join-key prompt.
+// resolveJoinKeysNonInteractive picks deterministically from the same analysis the prompt uses.
+describe("resolveJoinKeysNonInteractive", () => {
+  // Two subjects, trial_index restarts per subject — the classic multi-subject case where the
+  // default join key is not unique but subject_id alone resolves it.
+  // rt repeats across subjects, so subject_id is the only single column that makes the rows unique.
+  const multiSubject = [
+    { trial_index: 0, subject_id: "s1", rt: 1 },
+    { trial_index: 1, subject_id: "s1", rt: 2 },
+    { trial_index: 0, subject_id: "s2", rt: 1 },
+    { trial_index: 1, subject_id: "s2", rt: 2 },
+  ];
+
+  test("adds a single sufficient column (subject_id) and reports resolved", () => {
+    const analysis = analyzeJoinKeys(multiSubject, ["trial_index"]);
+    expect(analysis.suggestedAdditionalKeys).toEqual([]); // a single column suffices
+
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "response.csv");
+    expect(result.keys).toEqual(["trial_index", "subject_id"]);
+    expect(result.unresolved).toBe(false);
+    expect(result.message).toContain("subject_id");
+  });
+
+  test("uses the greedy combination when no single column suffices", () => {
+    // Neither session nor block alone makes trial_index unique, but together they do.
+    const rows = [
+      { trial_index: 0, session: "a", block: 1 },
+      { trial_index: 0, session: "a", block: 2 },
+      { trial_index: 0, session: "b", block: 1 },
+      { trial_index: 0, session: "b", block: 2 },
+    ];
+    const analysis = analyzeJoinKeys(rows, ["trial_index"]);
+    expect(analysis.suggestedAdditionalKeys && analysis.suggestedAdditionalKeys.length).toBeGreaterThan(0);
+
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "data.csv");
+    expect(result.unresolved).toBe(false);
+    expect(new Set(result.keys)).toEqual(new Set(["trial_index", "session", "block"]));
+  });
+
+  test("proceeds with a warning when no column can make the rows unique", () => {
+    // Genuinely duplicate rows: no candidate column distinguishes them.
+    const rows = [
+      { trial_index: 0, kind: "x" },
+      { trial_index: 0, kind: "x" },
+    ];
+    const analysis = analyzeJoinKeys(rows, ["trial_index"]);
+    expect(analysis.suggestedAdditionalKeys).toBeNull();
+
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "dup.csv");
+    expect(result.keys).toEqual(["trial_index"]);
+    expect(result.unresolved).toBe(true);
+    expect(result.message).toMatch(/duplicate/i);
+  });
+
+  test("chosen single column is deterministic (stable across equivalent candidates)", () => {
+    // Both subject_id and uid alone make the rows unique; the lexicographically first wins.
+    const rows = [
+      { trial_index: 0, subject_id: "s1", uid: "u1" },
+      { trial_index: 0, subject_id: "s2", uid: "u2" },
+    ];
+    const analysis = analyzeJoinKeys(rows, ["trial_index"]);
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "data.csv");
+    expect(result.keys).toEqual(["trial_index", "subject_id"]); // "subject_id" < "uid"
   });
 });
