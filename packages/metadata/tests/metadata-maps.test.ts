@@ -98,6 +98,25 @@ describe("VariablesMap", () => {
 
   beforeEach(() => {
     variablesMap = new VariablesMap();
+    // System variables now register lazily (only when their column is observed in the data),
+    // so a fresh map is empty. The map-operation tests below predate that change and assume the
+    // jsPsych defaults are present, so seed them explicitly here. The lazy-registration behavior
+    // itself is covered by the dedicated test below.
+    for (const v of variable_data) variablesMap.registerSystemVariable(v["name"]);
+  });
+
+  test("system variables are not seeded at construction and register lazily", () => {
+    const fresh = new VariablesMap();
+    expect(fresh.getList().length).toBe(0);
+    expect(fresh.containsVariable("time_elapsed")).toBe(false);
+
+    expect(fresh.registerSystemVariable("time_elapsed")).toBe(true);
+    expect(fresh.getVariable("time_elapsed")).toStrictEqual(variable_data[2]);
+    // Already present → no-op.
+    expect(fresh.registerSystemVariable("time_elapsed")).toBe(false);
+    // Not a known system variable → not registered.
+    expect(fresh.registerSystemVariable("rt")).toBe(false);
+    expect(fresh.containsVariable("rt")).toBe(false);
   });
 
   test("#setAndGetVariable", () => {
@@ -252,8 +271,17 @@ describe("VariablesMap", () => {
       value: "string",
     };
 
+    // Distinct per-plugin descriptions collapse to a single " | "-joined Text value
+    // (an object value would trigger the validator's OBJECT_TYPE_MISSING warning).
+    let expected = {
+      "@type": "PropertyValue",
+      name: "animation style",
+      description: "how tall the user is | what the user likes to eat",
+      value: "string",
+    };
+
     variablesMap.setVariable(two_key);
-    expect([two_key]).toStrictEqual(variablesMap.getList());
+    expect([expected]).toStrictEqual(variablesMap.getList());
   });
 
   test("#gettingListTwoKeyDefault", () => {
@@ -298,17 +326,61 @@ describe("VariablesMap", () => {
       value: "string",
     };
 
+    // "default" is dropped, then the remaining distinct descriptions join into one Text value.
     let expected = {
       "@type": "PropertyValue",
       name: "animation style",
-      description: {
-        diet: "what the user likes to eat",
-        hamburger: "how many hamburgers the user ate",
-      },
+      description: "what the user likes to eat | how many hamburgers the user ate",
       value: "string",
     };
 
     variablesMap.setVariable(add_default);
     expect([expected]).toStrictEqual(variablesMap.getList());
+  });
+
+  test("#gettingListEmptyDescription", () => {
+    for (const variable of variable_data) {
+      variablesMap.deleteVariable(variable["name"]);
+    }
+
+    let empty_desc = {
+      "@type": "PropertyValue",
+      name: "animation style",
+      description: {},
+      value: "string",
+    };
+
+    let expected = {
+      "@type": "PropertyValue",
+      name: "animation style",
+      description: "unknown",
+      value: "string",
+    };
+
+    variablesMap.setVariable(empty_desc);
+    expect([expected]).toStrictEqual(variablesMap.getList());
+  });
+
+  test("#gettingListIsIdempotent", () => {
+    for (const variable of variable_data) {
+      variablesMap.deleteVariable(variable["name"]);
+    }
+
+    let two_key = {
+      "@type": "PropertyValue",
+      name: "animation style",
+      description: {
+        grown: "how tall the user is",
+        diet: "what the user likes to eat",
+      },
+      value: "string",
+    };
+
+    variablesMap.setVariable(two_key);
+    const first = variablesMap.getList();
+    // A second call must not re-process the now-string description (no per-character mangling).
+    const second = variablesMap.getList();
+    expect(second).toStrictEqual(first);
+    expect(second[0]["description"]).toBe("how tall the user is | what the user likes to eat");
   });
 });

@@ -1,8 +1,16 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, deriveArrayFilename, disambiguateArrayFilename, objectsToCSV, isValidPsychDSDataFilename } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
+
+/**
+ * JSON-family data extensions. `.jsonl` (JSON-Lines) is treated exactly like `.json`:
+ * parseJsonData() accepts both a single array and one-JSON-value-per-line, so a `.jsonl`
+ * file flows through the same code path and generate('json') call as a `.json` file.
+ */
+export const isJsonDataExt = (ext: string): boolean => ext === '.json' || ext === '.jsonl';
+export const isDataExt = (ext: string): boolean => isJsonDataExt(ext) || ext === '.csv';
 
 /**
  * Thrown when the data a file produces doesn't match the output-name plan the user approved
@@ -93,37 +101,56 @@ async function collectDataFiles(
  */
 export async function preAnalyzeDirectory(
   directoryPath: string,
-  initialKeys: string[] = ['trial_index']
-): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null> {
+  initialKeys: string[] = ['trial_index'],
+  // Optional out-param: set to true if any JSON-Lines file gets a synthesized source_record_id.
+  // Surfaced this way (rather than via the return value) so the existing return contract — and
+  // its "no problem found → null" callers — stays unchanged.
+  outStats?: { synthesizedSourceRecordId?: boolean }
+): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null> {
   directoryPath = expandHomeDir(directoryPath);
 
   const collected = await collectDataFiles(directoryPath);
   if (!collected) return null;
   const { files: filePaths } = collected;
 
-  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null = null;
+  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null = null;
 
   for (const { filePath, name } of filePaths) {
     if (name === 'dataset_description.json') continue;
 
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf8');
       let parsedData: Array<Record<string, any>>;
 
-      if (ext === '.json') {
-        const raw = JSON.parse(content);
+      if (isJsonDataExt(ext)) {
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
+        // analysis below sees the same rows generate() will.
+        const stats: { synthesizedSourceRecordId?: boolean } = {};
+        const raw = parseJsonData(content, { tagSourceRecordId: true }, stats);
         if (!Array.isArray(raw)) continue;
+        if (stats.synthesizedSourceRecordId && outStats) outStats.synthesizedSourceRecordId = true;
         parsedData = raw as Array<Record<string, any>>;
       } else {
         parsedData = (await parseCSV(content)) as Array<Record<string, any>>;
       }
 
-      const analysis = analyzeJoinKeys(parsedData, initialKeys);
+      // Mirror generate()'s join-key promotion so the prompt is built from the keys generate()
+      // will actually use: an identifier column — source_record_id synthesized from JSON-Lines,
+      // else a real participant_id already in the export — becomes the leading join key, and the
+      // uniqueness check accounts for it.
+      const idColumn = isJsonDataExt(ext)
+        ? (['source_record_id', 'participant_id'] as const).find((col) =>
+            !initialKeys.includes(col) &&
+            parsedData.some((row) => row && typeof row === 'object' && col in row))
+        : undefined;
+      const keys = idColumn ? [idColumn, ...initialKeys] : initialKeys;
+
+      const analysis = analyzeJoinKeys(parsedData, keys);
       if (!analysis.isUnique && (worst === null || analysis.duplicateCount > worst.analysis.duplicateCount)) {
-        worst = { parsedData, analysis, fileName: name };
+        worst = { parsedData, analysis, fileName: name, keys };
       }
     } catch {
       continue;
@@ -131,6 +158,71 @@ export async function preAnalyzeDirectory(
   }
 
   return worst;
+}
+
+/** Outcome of resolving join keys without a terminal (see {@link resolveJoinKeysNonInteractive}). */
+export interface NonInteractiveJoinKeyResult {
+  /** The join keys to use for array/object extraction. */
+  keys: string[];
+  /** Human-readable explanation of what was decided, for the caller to log. */
+  message: string;
+  /** True when the keys still don't uniquely identify rows (extracted CSVs may have duplicates). */
+  unresolved: boolean;
+}
+
+/**
+ * Picks join keys deterministically when there is no terminal to prompt at (a fully-flagged,
+ * headless run). Multi-subject jsPsych data always restarts trial_index per subject, so the
+ * default key is rarely unique — without this the run would block on an interactive checkbox
+ * and abort. Mirrors the choices {@link analyzeJoinKeys} surfaces to the interactive prompt:
+ *
+ *   - suggestedAdditionalKeys is a non-empty array → a minimal sufficient combination exists; use it.
+ *   - suggestedAdditionalKeys is [] → some single column alone suffices; add the first such column
+ *     (sorted for stable, reproducible output).
+ *   - suggestedAdditionalKeys is null → no combination achieves uniqueness; proceed with the
+ *     original keys and flag it so the caller can warn that extracted CSVs may have duplicate rows.
+ */
+export function resolveJoinKeysNonInteractive(
+  analysis: JoinKeyAnalysis,
+  initialKeys: string[],
+  fileName: string
+): NonInteractiveJoinKeyResult {
+  const { suggestedAdditionalKeys, candidates } = analysis;
+
+  if (suggestedAdditionalKeys && suggestedAdditionalKeys.length > 0) {
+    const keys = [...initialKeys, ...suggestedAdditionalKeys];
+    return {
+      keys,
+      message:
+        `[${initialKeys.join(', ')}] not unique in "${fileName}"; non-interactive run — ` +
+        `added [${suggestedAdditionalKeys.join(', ')}] so [${keys.join(', ')}] uniquely identifies all rows.`,
+      unresolved: false,
+    };
+  }
+
+  if (suggestedAdditionalKeys && suggestedAdditionalKeys.length === 0) {
+    const sufficient = candidates.filter(c => c.makesUnique).map(c => c.column).sort();
+    if (sufficient.length > 0) {
+      const chosen = sufficient[0];
+      const keys = [...initialKeys, chosen];
+      return {
+        keys,
+        message:
+          `[${initialKeys.join(', ')}] not unique in "${fileName}"; non-interactive run — ` +
+          `added "${chosen}" so [${keys.join(', ')}] uniquely identifies all rows.`,
+        unresolved: false,
+      };
+    }
+  }
+
+  return {
+    keys: initialKeys,
+    message:
+      `[${initialKeys.join(', ')}] not unique in "${fileName}" and no column makes it unique; ` +
+      `non-interactive run — proceeding with [${initialKeys.join(', ')}]. ` +
+      `Extracted array/object CSVs may contain duplicate rows.`,
+    unresolved: true,
+  };
 }
 
 /**
@@ -182,7 +274,7 @@ export async function analyzeOutputColumns(
 
   for (const { filePath, name } of files) {
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf8');
@@ -190,8 +282,8 @@ export async function analyzeOutputColumns(
         metadata.loadMetadata(content);
         continue;
       }
-      if (ext === '.json') {
-        if (!Array.isArray(JSON.parse(content))) continue; // non-array JSON is skipped by the writer too
+      if (isJsonDataExt(ext)) {
+        if (!Array.isArray(parseJsonData(content, { tagSourceRecordId: true }))) continue; // non-array JSON is skipped by the writer too
         await metadata.generate(content, {}, 'json', options);
       } else {
         await metadata.generate(content, {}, 'csv', options);
@@ -252,6 +344,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
 
     switch (fileExtension){
       case '.json':
+      case '.jsonl':
         if (file === "dataset_description.json") metadata.loadMetadata(content); // need to remove this for the files that are being called with the CLI
         else await metadata.generate(content, {}, 'json', options);
         break;
@@ -259,7 +352,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         await metadata.generate(content, {}, 'csv', options);
         break;
       default:
-        console.error(`"${file}" is not .csv or .json format.`);
+        console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
         return false;
     }
 
@@ -276,14 +369,21 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // skipped before it reserves an output name — otherwise it would needlessly disambiguate
       // a later valid file that maps to the same base.
       let parsed: Array<Record<string, any>> | null = null;
-      if (fileExtension === '.json') {
-        const json = JSON.parse(content);
+      if (isJsonDataExt(fileExtension)) {
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the main
+        // CSV carries the same join-key column generate() promotes for the sidecars.
+        const json = parseJsonData(content, { tagSourceRecordId: true });
         if (!Array.isArray(json)) {
           console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
           return false;
         }
         parsed = json;
       }
+
+      // Rows for the main table, fed to the shared builder / inline write. JSON is already
+      // parsed above; parse CSV here too so unnamed row-index columns can be stripped (a CSV's
+      // exact bytes are still preserved via mainContent when nothing is dropped).
+      const mainRows: Array<Record<string, any>> = parsed ?? ((await parseCSV(content)) as Array<Record<string, any>>);
 
       // Resolve the Psych-DS base (keyword-value sequence before "_data.csv"). The index.ts
       // pre-pass supplies a base for every source file; fall back to the file's own stem when
@@ -314,14 +414,11 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         return name;
       };
 
-      const mainName = planned
-        ? reserve(planned.mainName, 'main output')
-        : reserve(disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames), 'main output');
-
+      // Preserve the original JSON under data/raw/ (CSV inputs are already tabular, so they
+      // have no separate "raw" form). data/raw/ is flat (one level deep is flattened), so
+      // same-named originals from different source subdirectories must be disambiguated or
+      // they would overwrite one another.
       if (parsed) {
-        // Keep the original JSON under data/raw/, write a converted, Psych-DS-named CSV to data/.
-        // data/raw/ is flat (one level deep is flattened), so same-named originals from different
-        // source subdirectories must be disambiguated or they would overwrite one another.
         const rawDir = path.join(targetDirectoryPath, 'raw');
         await fs.promises.mkdir(rawDir, { recursive: true });
         const rawName = disambiguateFilename(file, usedRawFilenames);
@@ -330,13 +427,6 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
           console.log(`  ! raw/"${file}" already exists; saving original as raw/"${rawName}" instead.`);
         }
         await fs.promises.writeFile(path.join(rawDir, rawName), content);
-
-        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), objectsToCSV(parsed, ['trial_index']));
-        if (verbose) console.log(`  → converted ${file} to ${mainName} (raw saved to raw/${rawName})`);
-      } else {
-        // .csv input is already CSV; write it out under its Psych-DS-compliant name.
-        await fs.promises.writeFile(path.join(targetDirectoryPath, mainName), content);
-        if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
       }
 
       // Sidecar CSVs: one per array-of-objects column and one per plain-object column
@@ -345,13 +435,14 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       const extractedArrays = metadata.getExtractedArrays();
       const extractedObjects = metadata.getExtractedObjects();
       const joinKeys = metadata.getArrayJoinKeys();
-      const priorityCols = [...joinKeys, 'element_index'];
 
-      // With a rename plan, the preview reserved a name for each extracted column up front.
-      // Verify — in both directions — that the columns generate() actually produced are exactly
-      // the ones the user approved, before writing anything, so an approved run can never write
-      // an unapproved (or miss an approved) sidecar.
       if (planned) {
+        const priorityCols = [...joinKeys, 'element_index'];
+
+        // With a rename plan, the preview reserved a name for each extracted column up front.
+        // Verify — in both directions — that the columns generate() actually produced are exactly
+        // the ones the user approved, before writing anything, so an approved run can never write
+        // an unapproved (or miss an approved) sidecar.
         const approved = new Set(planned.sidecars.map((s) => `${s.kind}:${s.column}`));
         const produced = new Set([
           ...[...extractedArrays.keys()].map((c) => `array:${c}`),
@@ -373,34 +464,52 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
             );
           }
         }
-      }
 
-      // Single place that turns an extracted column into its on-disk name: the approved plan
-      // name when present, otherwise the legacy on-the-fly disambiguation (direct calls/tests).
-      const resolveSidecar = (kind: 'array' | 'object', colName: string): string => {
-        if (planned) {
+        const resolveSidecar = (kind: 'array' | 'object', colName: string): string => {
           const match = planned.sidecars.find((s) => s.kind === kind && s.column === colName)!;
           return reserve(match.filename, `${kind} sidecar "${colName}"`);
-        }
-        const derived = deriveArrayFilename(base, colName);
-        const name = disambiguateArrayFilename(derived, usedArrayFilenames);
-        if (name !== derived) {
-          console.log(`  ! "${derived}" already exists; writing ${kind} data for "${colName}" as "${name}" instead.`);
-        }
-        usedArrayFilenames.add(name);
-        return name;
-      };
+        };
 
-      for (const [colName, rows] of extractedArrays) {
-        const outPath = path.join(targetDirectoryPath, resolveSidecar('array', colName));
-        await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
-        if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
-      }
+        const mainName = reserve(planned.mainName, 'main output');
+        // Drop R-style unnamed row-index columns (same as the shared builder / generate()). A clean
+        // CSV keeps its exact bytes; JSON or a dirty CSV is serialised from the cleaned rows.
+        const { rows: cleanedMain, dropped: droppedMain } = stripUnnamedColumns(mainRows);
+        await fs.promises.writeFile(
+          path.join(targetDirectoryPath, mainName),
+          (parsed === null && droppedMain.length === 0) ? content : objectsToCSV(cleanedMain, ['trial_index']),
+        );
+        if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
 
-      for (const [colName, rows] of extractedObjects) {
-        const outPath = path.join(targetDirectoryPath, resolveSidecar('object', colName));
-        await fs.promises.writeFile(outPath, objectsToCSV(rows, joinKeys), 'utf8');
-        if (verbose) console.log(`  → wrote object data for "${colName}" to ${outPath}`);
+        for (const [colName, rows] of extractedArrays) {
+          const outPath = path.join(targetDirectoryPath, resolveSidecar('array', colName));
+          await fs.promises.writeFile(outPath, objectsToCSV(rows, priorityCols), 'utf8');
+          if (verbose) console.log(`  → wrote array data for "${colName}" to ${outPath}`);
+        }
+
+        for (const [colName, rows] of extractedObjects) {
+          const outPath = path.join(targetDirectoryPath, resolveSidecar('object', colName));
+          await fs.promises.writeFile(outPath, objectsToCSV(rows, joinKeys), 'utf8');
+          if (verbose) console.log(`  → wrote object data for "${colName}" to ${outPath}`);
+        }
+      } else {
+        // Non-interactive path (direct calls/tests): the shared converter owns naming,
+        // disambiguation, and CSV building — the same implementation the browser flow uses.
+        const built = buildPsychDSDataFiles({
+          base,
+          mainRows,
+          mainContent: parsed ? undefined : content,
+          extractedArrays,
+          extractedObjects,
+          joinKeys,
+          usedArrayFilenames,
+        });
+        for (const f of built) {
+          await fs.promises.writeFile(path.join(targetDirectoryPath, f.filename), f.content, 'utf8');
+          if (verbose) {
+            const what = f.kind === 'main' ? `${file} as ${f.filename}` : `${f.kind} data to ${f.filename}`;
+            console.log(`  → wrote ${what}`);
+          }
+        }
       }
     }
   } catch (err) {
@@ -440,6 +549,14 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
     for (const { dirPath, name } of files) {
       total += 1;
       if (!await processFile(metadata, dirPath, name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1;
+    }
+
+    // When raw originals were preserved under data/raw/, drop a .psychds-ignore at the dataset
+    // root so the validator skips them (otherwise FILE_NOT_CHECKED). targetDirectoryPath is the
+    // data/ dir, so its parent is the dataset root. Shared definition with the frontend.
+    if (usedRawFilenames.size > 0 && targetDirectoryPath) {
+      const ignorePath = path.join(path.dirname(targetDirectoryPath), PSYCHDS_IGNORE_FILENAME);
+      await fs.promises.writeFile(ignorePath, PSYCHDS_IGNORE_CONTENT, 'utf8');
     }
   } else {
     failed += 1;

@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile, parseCSV, tryParseJSON, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS } from "./utils";
+import { saveTextToFile, parseCSV, tryParseJSON, parseJsonData, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS, stripUnnamedColumns } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -176,14 +176,6 @@ export default class JsPsychMetadata {
 
       return res;
     }
-
-  /**
-   * Generates the default descriptions for extension_type and extension_version in metadata. Should be called after
-   * default metadata is generated, and only should be called once.
-   **/
-  generateDefaultExtensionVariables(): void {
-    this.variables.generateDefaultExtensionVariables();
-  }
 
   /**
    * Method that creates an author. This method can also be used to overwrite existing authors
@@ -446,12 +438,52 @@ export default class JsPsychMetadata {
       parsed_data = await parseCSV(data);
     }
 
+    let synthesizedSourceRecordId = false;
     if (ext === 'json') {
-      parsed_data = JSON.parse(data);
+      // Accepts both a single JSON array (standard jsPsych export) and JSON-Lines,
+      // where each line is its own JSON value (JATOS exports one participant array per line).
+      // Tag JSON-Lines rows with a per-line source_record_id: raw jsPsych exports carry no
+      // per-row identifier, so in multi-record JSONL trial_index alone repeats across records
+      // and can't uniquely key the extracted sidecar CSVs. The stat records whether we actually
+      // invented the id (vs. the data already carrying one), so we only describe it as
+      // synthetic when it truly is.
+      const parseStats: { synthesizedSourceRecordId?: boolean } = {};
+      parsed_data = parseJsonData(data, { tagSourceRecordId: true }, parseStats);
+      synthesizedSourceRecordId = parseStats.synthesizedSourceRecordId === true;
     }
 
     if (!Array.isArray(parsed_data)) {
       throw new Error("Parsed data is not in correct format: Expected an array of observations");
+    }
+
+    // Drop unnamed columns (empty/whitespace-only headers) before processing. These can't be
+    // represented in variableMeasured (Psych-DS requires a name) and are typically R's row-index
+    // column. Stripping here removes them from variableMeasured and avoids a per-row warning in
+    // setVariable. buildPsychDSDataFiles mirrors this on the written CSV so file and metadata sync.
+    const { dropped } = stripUnnamedColumns(parsed_data as Array<Record<string, any>>);
+    if (dropped.length > 0) {
+      console.warn(
+        `Dropped ${dropped.length} unnamed column${dropped.length > 1 ? "s" : ""} from the data — ` +
+          `Psych-DS requires every column to have a name (usually a row-index column added by R's ` +
+          `write.csv). Excluded from variableMeasured.`
+      );
+    }
+
+    // When JSON rows carry an identifier column, promote it to the leading join key (unless the
+    // caller already listed it). Prefer source_record_id (synthesized per line from JSON-Lines
+    // above) and otherwise fall back to a real participant_id already present in the export. Raw
+    // jsPsych exports otherwise have no per-row identifier, so trial_index alone repeats across
+    // records and can't uniquely key the extracted sidecar CSVs; (id, trial_index, …) restores a
+    // one-trial-per-key join. CSV inputs are left untouched, preserving existing behaviour for
+    // tabular sources.
+    const rows = parsed_data as Array<Record<string, any>>;
+    const hasColumn = (col: string) =>
+      ext === 'json' && rows.some((row) => row && typeof row === 'object' && col in row);
+    const idColumn = hasColumn('source_record_id') ? 'source_record_id'
+      : hasColumn('participant_id') ? 'participant_id'
+      : undefined;
+    if (idColumn && !this.arrayJoinKeys.includes(idColumn)) {
+      this.arrayJoinKeys = [idColumn, ...this.arrayJoinKeys];
     }
 
     // Callers that already surface join-key uniqueness to the user (e.g. the CLI's
@@ -462,6 +494,22 @@ export default class JsPsychMetadata {
 
     for (const observation of parsed_data) {
       await this.generateObservation(observation);
+    }
+
+    // Only when WE synthesized source_record_id (it wasn't in the source) do we own its
+    // description. As an identifier/join-key column it isn't plugin-documented, so per-trial
+    // processing leaves it with only "unknown" plugin descriptions that getList() strips to an
+    // empty {} (an object with no @type → OBJECT_TYPE_MISSING). Give it one explicit
+    // description that makes its synthetic origin unmistakable, so a downstream user never
+    // mistakes it for a real subject ID. A pre-existing participant_id is left untouched — its
+    // meaning is the experiment's, not ours. Done before updateMetadata so a caller-supplied
+    // metadata override still wins.
+    if (synthesizedSourceRecordId && this.containsVariable('source_record_id')) {
+      const existing = this.getVariable('source_record_id') as VariableFields;
+      this.setVariable({
+        ...existing,
+        description: { default: 'Synthetic source-record identifier (0-based), assigned one per source record (one JSON-Lines line, which is usually but not always one participant) because the raw data carried no identifier column. NOT a real subject ID from the experiment — it only orders/links records as they appeared in the source file, and serves as a join key connecting each trial to its extracted array/object rows.' },
+      });
     }
 
     await this.updateMetadata(metadata);
@@ -490,7 +538,11 @@ export default class JsPsychMetadata {
     const extensionType = observation["extension_type"]; // fix for non-list (single item extension)
     const extensionVersion = observation["extension_version"];
 
-    if (extensionType) this.generateDefaultExtensionVariables(); // After first call, generation is stopped
+    // extension_type / extension_version are jsPsych system columns and register lazily in the
+    // column loop below (registerSystemVariable), exactly like trial_type / trial_index /
+    // time_elapsed. We deliberately do NOT seed them eagerly here: doing so registered both vars
+    // whenever extension_type appeared, orphaning extension_version in variableMeasured for any
+    // dataset that lacks that column (the #109 VARIABLE_MISSING_FROM_CSV_COLUMNS failure mode).
 
     // Join key values for this row, shared by every array column (top-level or nested)
     // extracted into a separate CSV during this observation.
@@ -503,13 +555,21 @@ export default class JsPsychMetadata {
       // Ensure every column header appears in variableMeasured even if all its values are null/empty.
       // Columns that never get a real value keep value:"unknown" and no levels, which satisfies the
       // Psych-DS requirement that every CSV column header has a corresponding variableMeasured entry.
-      if (!this.containsVariable(variable) && !this.ignored_variables.has(variable)) {
-        this.setVariable({
-          "@type": "PropertyValue",
-          name: variable,
-          description: { default: "unknown" },
-          value: "unknown",
-        });
+      if (!this.containsVariable(variable)) {
+        if (this.ignored_variables.has(variable)) {
+          // System columns (trial_type, time_elapsed, …) carry fixed jsPsych descriptions and are
+          // registered lazily here — only when the column actually appears in the data. This keeps
+          // datasets that omit a system column (e.g. processed exports without time_elapsed) from
+          // getting an orphan variableMeasured entry that fails Psych-DS validation.
+          this.variables.registerSystemVariable(variable);
+        } else {
+          this.setVariable({
+            "@type": "PropertyValue",
+            name: variable,
+            description: { default: "unknown" },
+            value: "unknown",
+          });
+        }
       }
 
       if (value === null || value === undefined || value === '' || value === "null"){
@@ -607,17 +667,11 @@ export default class JsPsychMetadata {
    * @returns {*}
    */
   private async generateMetadata(variable, value, pluginType, version, extension?) {
-    if (!pluginType) { 
-      return;
-    }
-    // probably should work in a call to the plugin here
-    const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
-    const description = pluginInfo["description"];
-    const new_description = description
-      ? { [pluginType]: description }
-      : { [pluginType]: "unknown" };
-    var type = typeof value;
+    const type = typeof value;
 
+    // Register the column (or upgrade a value:"unknown" placeholder) with its concrete type. This is
+    // independent of the plugin: a row without a trial_type still has typed columns whose values must
+    // feed min/max and levels — only the human-readable description (below) comes from the plugin.
     if (!this.containsVariable(variable)) {
       const new_var = {
         "@type": "PropertyValue",
@@ -633,8 +687,17 @@ export default class JsPsychMetadata {
       if (existing.value === "unknown") this.updateVariable(variable, "value", type);
     }
 
-    // hit the update variable decription fields
-    this.updateVariable(variable, "description", new_description);
+    // Plugin/extension description lookup needs a plugin type. Rows without one (e.g. a row missing
+    // trial_type) keep the default "unknown" description but are still typed and counted.
+    if (pluginType) {
+      const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
+      const description = pluginInfo["description"];
+      const new_description = description
+        ? { [pluginType]: description }
+        : { [pluginType]: "unknown" };
+      this.updateVariable(variable, "description", new_description);
+    }
+
     this.updateFields(variable, value, type);
   }
 
@@ -693,6 +756,13 @@ export default class JsPsychMetadata {
         delete existing.minValue;
         delete existing.maxValue;
         this.updateVariable(variable, "value", "string");
+      }
+      // F2: a column already typed boolean (a genuine true/false was seen) may also receive the
+      // STRING "true"/"false" — e.g. the same field encoded as text in another row. Treat it as the
+      // same boolean rather than recording a misleading categorical level. Any other string still
+      // accumulates as a level (a real mix).
+      if (existing.value === "boolean" && (value === "true" || value === "false")) {
+        return;
       }
       this.updateVariable(variable, "levels", value);
     }
@@ -885,7 +955,7 @@ export default class JsPsychMetadata {
 
     // Declare the join-key columns this table carries that aren't known yet: element_index, plus
     // any ancestor element-index keys passed down from an enclosing array (qualified
-    // "<col>.element_index"). Pre-existing keys (trial_index, participant_id, …) are already
+    // "<col>.element_index"). Pre-existing keys (trial_index, source_record_id, …) are already
     // declared and are skipped.
     if (!this.containsVariable("element_index")) {
       this.setVariable({
@@ -964,7 +1034,8 @@ export default class JsPsychMetadata {
     if (this.containsVariable(name) && (this.getVariable(name) as VariableFields).value !== "unknown") return;
     await this.generateMetadata(name, value, pluginType, version);
     if (!this.containsVariable(name)) {
-      // generateMetadata is a no-op without a pluginType — declare the column anyway.
+      // Defensive: generateMetadata registers the column itself (even without a pluginType), but
+      // declare it here too in case it is ever reached without registration.
       this.setVariable({ "@type": "PropertyValue", name, description: { default: "unknown" }, value: type });
     } else {
       this.updateVariable(name, "value", type); // typeof {}/[] === "object"; pin the intended type
@@ -1019,5 +1090,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename } from "./utils";
-export type { JoinKeyAnalysis } from "./utils";
+export { analyzeJoinKeys, parseCSV, parseJsonData, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
+export type { JoinKeyAnalysis, PsychDSDataFile, BuildPsychDSDataFilesArgs } from "./utils";
