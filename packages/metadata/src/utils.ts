@@ -78,6 +78,81 @@ export function tryParseJSON(value: string): any | null {
   }
 }
 
+/**
+ * Parses experiment data that is either a single JSON document (the standard jsPsych
+ * export — one array of trials, possibly pretty-printed) or JSON-Lines: one JSON value
+ * per line, as JATOS and several labs export it (typically one participant's trial
+ * array per line). Returns a flat array of observations in both cases.
+ *
+ * A well-formed single document is returned as-is (arrays untouched, so existing
+ * single-array callers see no change). Only when whole-string parsing fails do we fall
+ * back to line-by-line parsing, flattening any per-line arrays into one observation
+ * stream. Throws a descriptive error when the input is neither valid JSON nor valid JSONL.
+ *
+ * When `tagSourceRecordId` is set, `stats.synthesizedSourceRecordId` is set to true iff a
+ * source_record_id was actually stamped onto at least one row (i.e. the data did not already
+ * carry a source_record_id or a real participant_id). Callers use this to describe the column
+ * honestly — a synthesized id marks the source record/line, not a real subject identifier, and
+ * must not be presented as one.
+ */
+export function parseJsonData(
+  content: string,
+  options: { tagSourceRecordId?: boolean } = {},
+  stats?: { synthesizedSourceRecordId?: boolean }
+): any {
+  // Fast path: a single, well-formed JSON document. Covers the standard single array
+  // (including pretty-printed/multi-line) with no behaviour change for existing callers.
+  // Note: tagSourceRecordId never applies here — a single document has no line boundaries
+  // to identify source records by, so its rows are returned untouched.
+  const whole = tryParseJSON(content);
+  if (whole !== null) return whole;
+
+  // Fallback: JSON-Lines. Each non-empty line must be its own JSON value; per-line
+  // arrays are concatenated so a multi-participant export becomes one observation array.
+  const lines = content.split(/\r?\n/);
+  const out: any[] = [];
+  let parsedAny = false;
+  let recordIndex = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    let value;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      throw new Error(
+        `Could not parse data as JSON or JSON-Lines: line ${i + 1} is not valid JSON.`
+      );
+    }
+    parsedAny = true;
+    const observations = Array.isArray(value) ? value : [value];
+    // In JSON-Lines each line is typically one participant's submission (JATOS-style export),
+    // but a line is only guaranteed to be one *source record* — the per-line boundary is the
+    // only identifier these raw jsPsych exports carry. So — when asked — stamp every object
+    // observation from this line with a 0-based source_record_id before that boundary is lost
+    // in the flattened stream. This lets nested array/object extraction form a unique
+    // (source_record_id, trial_index) join key. Rows that already carry a source_record_id or a
+    // real participant_id are left untouched (the experiment's own id already groups them);
+    // non-object lines (bare primitives) can't carry the tag.
+    if (options.tagSourceRecordId) {
+      for (const obs of observations) {
+        if (obs !== null && typeof obs === "object" && !Array.isArray(obs) &&
+            !("source_record_id" in obs) && !("participant_id" in obs)) {
+          obs.source_record_id = recordIndex;
+          if (stats) stats.synthesizedSourceRecordId = true;
+        }
+      }
+    }
+    out.push(...observations);
+    recordIndex++;
+  }
+
+  if (!parsedAny) {
+    throw new Error("Could not parse data: input is empty or not valid JSON/JSON-Lines.");
+  }
+  return out;
+}
+
 /** System columns excluded from join-key candidate detection; also used to initialise ignored_variables in JsPsychMetadata. */
 export const SYSTEM_COLUMNS = new Set([
   'trial_type', 'trial_index', 'time_elapsed', 'extension_type', 'extension_version',

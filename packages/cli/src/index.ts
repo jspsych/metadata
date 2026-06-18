@@ -6,7 +6,7 @@ import { input, select, checkbox, Separator } from '@inquirer/prompts';
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
 import fs from 'fs';
 import path from 'path';
-import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, OutputColumns } from "./data";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, OutputColumns, isDataExt } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
@@ -539,7 +539,7 @@ async function resolveFilenameNormalization(
   for (const { filePath, name } of files) {
     if (name === 'dataset_description.json') continue;
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     const stem = fileStem(name);
     if (!isValidPsychDSDataFilename(`${stem}_data.csv`)) {
@@ -730,20 +730,32 @@ const main = async () => {
   const canPrompt = !isNonInteractive && !!process.stdin.isTTY && !!process.stdout.isTTY;
   const { bases: normalizedBases, plan: renamePlan } = await resolveFilenameNormalization(dataDir, canPrompt, outputColumns);
 
-  // Pre-flight: check whether default join key (trial_index) is unique. If not, prompt the user
-  // when we have a terminal; otherwise (fully-flagged headless run) resolve deterministically so
-  // the run never blocks on an interactive prompt it can't answer.
+  // Pre-flight: check whether the join key is unique. preAnalyzeDirectory mirrors generate()'s
+  // source_record_id promotion, so preResult.keys is the effective key set (e.g.
+  // ['source_record_id', 'trial_index'] for multi-record JSON-Lines) — use it as the basis for
+  // resolution. If not unique, prompt the user when we have a terminal; otherwise (headless run)
+  // resolve deterministically so the run never blocks on an interactive prompt it can't answer.
   const initialKeys = ['trial_index'];
-  const preResult = await preAnalyzeDirectory(dataDir, initialKeys);
-  let arrayJoinKeys = initialKeys;
+  const preStats: { synthesizedSourceRecordId?: boolean } = {};
+  const preResult = await preAnalyzeDirectory(dataDir, initialKeys, preStats);
+  let arrayJoinKeys = preResult?.keys ?? initialKeys;
   if (preResult && !preResult.analysis.isUnique) {
     if (canPrompt) {
-      arrayJoinKeys = await promptJoinKeys(preResult.parsedData, preResult.analysis, initialKeys, preResult.fileName);
+      arrayJoinKeys = await promptJoinKeys(preResult.parsedData, preResult.analysis, preResult.keys, preResult.fileName);
     } else {
-      const resolved = resolveJoinKeysNonInteractive(preResult.analysis, initialKeys, preResult.fileName);
+      const resolved = resolveJoinKeysNonInteractive(preResult.analysis, preResult.keys, preResult.fileName);
       arrayJoinKeys = resolved.keys;
       (resolved.unresolved ? console.warn : console.log)(`${resolved.unresolved ? '⚠' : 'ℹ'}  ${resolved.message}`);
     }
+  }
+
+  // Tell the user when we add the synthetic identifier, so the extra column in their output
+  // isn't a surprise. Only fires for JSON-Lines input that carried no id of its own.
+  if (preStats.synthesizedSourceRecordId) {
+    console.log(
+      'Detected JSON-Lines input; added synthetic source_record_id to preserve ' +
+      'source-record boundaries for extracted nested data.'
+    );
   }
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the

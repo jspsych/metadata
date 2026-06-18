@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -173,7 +173,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
     const textMap = new Map<string, { content: string; type: string }>();
     for (const file of files) {
-      const type = file.name.split('.').pop()?.toLowerCase() || '';
+      const rawExt = file.name.split('.').pop()?.toLowerCase() || '';
+      // Treat JSON-Lines as JSON: parseJsonData() accepts both a single array and one
+      // JSON value per line, so .jsonl flows through the same path as .json downstream.
+      const type = rawExt === 'jsonl' ? 'json' : rawExt;
       const content = await readFileAsText(file);
       textMap.set(file.webkitRelativePath || file.name, { content, type });
     }
@@ -187,9 +190,16 @@ const DataUpload: React.FC<DataUploadProps> = ({
       if (type !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
       try {
-        const parsed = JSON.parse(content);
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array).
+        const parsed = parseJsonData(content, { tagSourceRecordId: true });
         if (!Array.isArray(parsed) || parsed.length === 0) continue;
-        const analysis = analyzeJoinKeys(parsed, ['trial_index']);
+        // Mirror generate()'s join-key promotion so a multi-record JSON-Lines file isn't wrongly
+        // flagged: trial_index alone repeats across records, but the identifier column (a
+        // synthesized source_record_id, else a real participant_id) makes (id, trial_index) unique.
+        const idColumn = (['source_record_id', 'participant_id'] as const).find((col) =>
+          parsed.some((row: any) => row && typeof row === 'object' && col in row));
+        const keys = idColumn ? [idColumn, 'trial_index'] : ['trial_index'];
+        const analysis = analyzeJoinKeys(parsed, keys);
         if (!analysis.isUnique) {
           setJoinKeyProblemFile(name);
           setJoinKeyCandidates(analysis.candidates);
@@ -268,7 +278,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
         let mainRows: Array<Record<string, any>> = [];
         let mainContent: string | undefined;
         if (type === 'json') {
-          const json = JSON.parse(content);
+          // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
+          // main CSV carries the same join-key column generate() promotes for the sidecars.
+          const json = parseJsonData(content, { tagSourceRecordId: true });
           if (!Array.isArray(json)) {
             update(i, { status: 'skipped', detail: 'not a jsPsych trial array' });
             continue;

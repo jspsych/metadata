@@ -1,8 +1,16 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
+
+/**
+ * JSON-family data extensions. `.jsonl` (JSON-Lines) is treated exactly like `.json`:
+ * parseJsonData() accepts both a single array and one-JSON-value-per-line, so a `.jsonl`
+ * file flows through the same code path and generate('json') call as a `.json` file.
+ */
+export const isJsonDataExt = (ext: string): boolean => ext === '.json' || ext === '.jsonl';
+export const isDataExt = (ext: string): boolean => isJsonDataExt(ext) || ext === '.csv';
 
 /**
  * Thrown when the data a file produces doesn't match the output-name plan the user approved
@@ -93,37 +101,56 @@ async function collectDataFiles(
  */
 export async function preAnalyzeDirectory(
   directoryPath: string,
-  initialKeys: string[] = ['trial_index']
-): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null> {
+  initialKeys: string[] = ['trial_index'],
+  // Optional out-param: set to true if any JSON-Lines file gets a synthesized source_record_id.
+  // Surfaced this way (rather than via the return value) so the existing return contract — and
+  // its "no problem found → null" callers — stays unchanged.
+  outStats?: { synthesizedSourceRecordId?: boolean }
+): Promise<{ parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null> {
   directoryPath = expandHomeDir(directoryPath);
 
   const collected = await collectDataFiles(directoryPath);
   if (!collected) return null;
   const { files: filePaths } = collected;
 
-  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string } | null = null;
+  let worst: { parsedData: Array<Record<string, any>>; analysis: JoinKeyAnalysis; fileName: string; keys: string[] } | null = null;
 
   for (const { filePath, name } of filePaths) {
     if (name === 'dataset_description.json') continue;
 
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf8');
       let parsedData: Array<Record<string, any>>;
 
-      if (ext === '.json') {
-        const raw = JSON.parse(content);
+      if (isJsonDataExt(ext)) {
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
+        // analysis below sees the same rows generate() will.
+        const stats: { synthesizedSourceRecordId?: boolean } = {};
+        const raw = parseJsonData(content, { tagSourceRecordId: true }, stats);
         if (!Array.isArray(raw)) continue;
+        if (stats.synthesizedSourceRecordId && outStats) outStats.synthesizedSourceRecordId = true;
         parsedData = raw as Array<Record<string, any>>;
       } else {
         parsedData = (await parseCSV(content)) as Array<Record<string, any>>;
       }
 
-      const analysis = analyzeJoinKeys(parsedData, initialKeys);
+      // Mirror generate()'s join-key promotion so the prompt is built from the keys generate()
+      // will actually use: an identifier column — source_record_id synthesized from JSON-Lines,
+      // else a real participant_id already in the export — becomes the leading join key, and the
+      // uniqueness check accounts for it.
+      const idColumn = isJsonDataExt(ext)
+        ? (['source_record_id', 'participant_id'] as const).find((col) =>
+            !initialKeys.includes(col) &&
+            parsedData.some((row) => row && typeof row === 'object' && col in row))
+        : undefined;
+      const keys = idColumn ? [idColumn, ...initialKeys] : initialKeys;
+
+      const analysis = analyzeJoinKeys(parsedData, keys);
       if (!analysis.isUnique && (worst === null || analysis.duplicateCount > worst.analysis.duplicateCount)) {
-        worst = { parsedData, analysis, fileName: name };
+        worst = { parsedData, analysis, fileName: name, keys };
       }
     } catch {
       continue;
@@ -247,7 +274,7 @@ export async function analyzeOutputColumns(
 
   for (const { filePath, name } of files) {
     const ext = path.extname(name).toLowerCase();
-    if (ext !== '.json' && ext !== '.csv') continue;
+    if (!isDataExt(ext)) continue;
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf8');
@@ -255,8 +282,8 @@ export async function analyzeOutputColumns(
         metadata.loadMetadata(content);
         continue;
       }
-      if (ext === '.json') {
-        if (!Array.isArray(JSON.parse(content))) continue; // non-array JSON is skipped by the writer too
+      if (isJsonDataExt(ext)) {
+        if (!Array.isArray(parseJsonData(content, { tagSourceRecordId: true }))) continue; // non-array JSON is skipped by the writer too
         await metadata.generate(content, {}, 'json', options);
       } else {
         await metadata.generate(content, {}, 'csv', options);
@@ -317,6 +344,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
 
     switch (fileExtension){
       case '.json':
+      case '.jsonl':
         if (file === "dataset_description.json") metadata.loadMetadata(content); // need to remove this for the files that are being called with the CLI
         else await metadata.generate(content, {}, 'json', options);
         break;
@@ -324,7 +352,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         await metadata.generate(content, {}, 'csv', options);
         break;
       default:
-        console.error(`"${file}" is not .csv or .json format.`);
+        console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
         return false;
     }
 
@@ -341,8 +369,10 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // skipped before it reserves an output name — otherwise it would needlessly disambiguate
       // a later valid file that maps to the same base.
       let parsed: Array<Record<string, any>> | null = null;
-      if (fileExtension === '.json') {
-        const json = JSON.parse(content);
+      if (isJsonDataExt(fileExtension)) {
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the main
+        // CSV carries the same join-key column generate() promotes for the sidecars.
+        const json = parseJsonData(content, { tagSourceRecordId: true });
         if (!Array.isArray(json)) {
           console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
           return false;

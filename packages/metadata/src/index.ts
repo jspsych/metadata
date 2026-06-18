@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile, parseCSV, tryParseJSON, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS, stripUnnamedColumns } from "./utils";
+import { saveTextToFile, parseCSV, tryParseJSON, parseJsonData, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS, stripUnnamedColumns } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -438,8 +438,18 @@ export default class JsPsychMetadata {
       parsed_data = await parseCSV(data);
     }
 
+    let synthesizedSourceRecordId = false;
     if (ext === 'json') {
-      parsed_data = JSON.parse(data);
+      // Accepts both a single JSON array (standard jsPsych export) and JSON-Lines,
+      // where each line is its own JSON value (JATOS exports one participant array per line).
+      // Tag JSON-Lines rows with a per-line source_record_id: raw jsPsych exports carry no
+      // per-row identifier, so in multi-record JSONL trial_index alone repeats across records
+      // and can't uniquely key the extracted sidecar CSVs. The stat records whether we actually
+      // invented the id (vs. the data already carrying one), so we only describe it as
+      // synthetic when it truly is.
+      const parseStats: { synthesizedSourceRecordId?: boolean } = {};
+      parsed_data = parseJsonData(data, { tagSourceRecordId: true }, parseStats);
+      synthesizedSourceRecordId = parseStats.synthesizedSourceRecordId === true;
     }
 
     if (!Array.isArray(parsed_data)) {
@@ -459,6 +469,23 @@ export default class JsPsychMetadata {
       );
     }
 
+    // When JSON rows carry an identifier column, promote it to the leading join key (unless the
+    // caller already listed it). Prefer source_record_id (synthesized per line from JSON-Lines
+    // above) and otherwise fall back to a real participant_id already present in the export. Raw
+    // jsPsych exports otherwise have no per-row identifier, so trial_index alone repeats across
+    // records and can't uniquely key the extracted sidecar CSVs; (id, trial_index, …) restores a
+    // one-trial-per-key join. CSV inputs are left untouched, preserving existing behaviour for
+    // tabular sources.
+    const rows = parsed_data as Array<Record<string, any>>;
+    const hasColumn = (col: string) =>
+      ext === 'json' && rows.some((row) => row && typeof row === 'object' && col in row);
+    const idColumn = hasColumn('source_record_id') ? 'source_record_id'
+      : hasColumn('participant_id') ? 'participant_id'
+      : undefined;
+    if (idColumn && !this.arrayJoinKeys.includes(idColumn)) {
+      this.arrayJoinKeys = [idColumn, ...this.arrayJoinKeys];
+    }
+
     // Callers that already surface join-key uniqueness to the user (e.g. the CLI's
     // interactive pre-analysis prompt) can suppress this warning to avoid repeating it
     // once per file.
@@ -467,6 +494,22 @@ export default class JsPsychMetadata {
 
     for (const observation of parsed_data) {
       await this.generateObservation(observation);
+    }
+
+    // Only when WE synthesized source_record_id (it wasn't in the source) do we own its
+    // description. As an identifier/join-key column it isn't plugin-documented, so per-trial
+    // processing leaves it with only "unknown" plugin descriptions that getList() strips to an
+    // empty {} (an object with no @type → OBJECT_TYPE_MISSING). Give it one explicit
+    // description that makes its synthetic origin unmistakable, so a downstream user never
+    // mistakes it for a real subject ID. A pre-existing participant_id is left untouched — its
+    // meaning is the experiment's, not ours. Done before updateMetadata so a caller-supplied
+    // metadata override still wins.
+    if (synthesizedSourceRecordId && this.containsVariable('source_record_id')) {
+      const existing = this.getVariable('source_record_id') as VariableFields;
+      this.setVariable({
+        ...existing,
+        description: { default: 'Synthetic source-record identifier (0-based), assigned one per source record (one JSON-Lines line, which is usually but not always one participant) because the raw data carried no identifier column. NOT a real subject ID from the experiment — it only orders/links records as they appeared in the source file, and serves as a join key connecting each trial to its extracted array/object rows.' },
+      });
     }
 
     await this.updateMetadata(metadata);
@@ -912,7 +955,7 @@ export default class JsPsychMetadata {
 
     // Declare the join-key columns this table carries that aren't known yet: element_index, plus
     // any ancestor element-index keys passed down from an enclosing array (qualified
-    // "<col>.element_index"). Pre-existing keys (trial_index, participant_id, …) are already
+    // "<col>.element_index"). Pre-existing keys (trial_index, source_record_id, …) are already
     // declared and are skipped.
     if (!this.containsVariable("element_index")) {
       this.setVariable({
@@ -1047,5 +1090,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
+export { analyzeJoinKeys, parseCSV, parseJsonData, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
 export type { JoinKeyAnalysis, PsychDSDataFile, BuildPsychDSDataFilesArgs } from "./utils";

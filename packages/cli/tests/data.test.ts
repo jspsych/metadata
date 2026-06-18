@@ -113,6 +113,23 @@ describe("processDirectory", () => {
     expect(failed).toBe(0);
   });
 
+  test("processes a JSON-Lines (.jsonl) file with one participant array per line", async () => {
+    // JATOS-style export: each line is a full participant array, not one big array.
+    const p1 = JSON.stringify([{ trial_type: "html-keyboard-response", trial_index: 0, rt: 450 }]);
+    const p2 = JSON.stringify([{ trial_type: "html-keyboard-response", trial_index: 0, rt: 512 }]);
+    fs.writeFileSync(path.join(tmpDir, "raw.jsonl"), `${p1}\n${p2}\n`);
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, tmpDir);
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+    // rows from both lines were ingested (rt spans both participants).
+    const rt = metadata.getVariable("rt") as any;
+    expect(rt.minValue).toBe(450);
+    expect(rt.maxValue).toBe(512);
+  });
+
   test("counts unsupported file types as failed", async () => {
     fs.writeFileSync(path.join(tmpDir, "notes.txt"), "just a text file");
 
@@ -214,6 +231,29 @@ describe("preAnalyzeDirectory", () => {
     expect(result).not.toBeNull();
     expect(result!.fileName).toBe("dupes.json");
     expect(result!.analysis.isUnique).toBe(false);
+  });
+
+  test("reports a synthesized source_record_id via the out-param for JSON-Lines input", async () => {
+    // JSON-Lines (one array per line) with no id column → source_record_id is synthesized.
+    fs.writeFileSync(
+      path.join(tmpDir, "jsonl.jsonl"),
+      `[{"trial_index":0},{"trial_index":1}]\n[{"trial_index":0}]`
+    );
+
+    const stats: { synthesizedSourceRecordId?: boolean } = {};
+    await preAnalyzeDirectory(tmpDir, ["trial_index"], stats);
+    expect(stats.synthesizedSourceRecordId).toBe(true);
+  });
+
+  test("does not report a synthesized source_record_id for a single JSON array", async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "single.json"),
+      JSON.stringify([{ trial_index: 0 }, { trial_index: 1 }])
+    );
+
+    const stats: { synthesizedSourceRecordId?: boolean } = {};
+    await preAnalyzeDirectory(tmpDir, ["trial_index"], stats);
+    expect(stats.synthesizedSourceRecordId).toBeUndefined();
   });
 
   test("parses CSV data files as well as JSON", async () => {
