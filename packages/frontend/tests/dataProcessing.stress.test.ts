@@ -1,3 +1,9 @@
+// Frontend-layer stress guards: exercise @jspsych/metadata's generate() and the browser
+// validatePsychDS wrapper through the frontend's own dependency resolution. The scale / type-
+// inference / many-levels blocks deliberately overlap packages/metadata's *.stress suites — here
+// they guard the generate() the *frontend bundle* actually loads (a different resolution path),
+// alongside the genuinely frontend-only coverage: multi-file CSV+JSON accumulation and the
+// validator error/warning partitioning (Smoke-test-2 regression).
 import JsPsychMetadata from "@jspsych/metadata";
 import { validateWeb } from "psychds-validator/web/psychds-validator.js";
 import { validatePsychDS } from "../src/validation/validatePsychDS";
