@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -276,6 +276,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
           mainRows = json;
         } else {
           mainContent = content;
+          // Parse CSV rows too so the builder can drop R-style unnamed row-index columns; a clean
+          // CSV still keeps its exact bytes (mainContent is used verbatim when nothing is dropped).
+          mainRows = (await parseCSV(content)) as Array<Record<string, unknown>>;
         }
 
         const built = buildPsychDSDataFiles({

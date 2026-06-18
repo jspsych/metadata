@@ -2,6 +2,7 @@ import {
   deriveFallbackBase,
   buildPsychDSDataFiles,
   isValidPsychDSDataFilename,
+  stripUnnamedColumns,
 } from "../src/utils";
 
 describe("deriveFallbackBase", () => {
@@ -72,5 +73,67 @@ describe("buildPsychDSDataFiles", () => {
 
   it("throws rather than emit a non-compliant filename", () => {
     expect(() => buildPsychDSDataFiles({ base: "Bad Base", mainRows: [{ trial_index: 0 }] })).toThrow();
+  });
+});
+
+describe("stripUnnamedColumns", () => {
+  it("removes empty and whitespace-only keys from every row and reports them", () => {
+    const rows = [
+      { "": "1", " ": "x", trial_index: 0, rt: 200 },
+      { "": "2", " ": "y", trial_index: 1, rt: 350 },
+    ];
+    const { rows: out, dropped } = stripUnnamedColumns(rows);
+    expect(dropped.sort()).toEqual(["", " "]);
+    expect(out).toBe(rows); // mutates in place, returns same reference
+    expect(Object.keys(out[0])).toEqual(["trial_index", "rt"]);
+  });
+
+  it("is a no-op (empty dropped list) when all columns are named", () => {
+    const rows = [{ trial_index: 0, rt: 200 }];
+    const { dropped } = stripUnnamedColumns(rows);
+    expect(dropped).toEqual([]);
+    expect(Object.keys(rows[0])).toEqual(["trial_index", "rt"]);
+  });
+});
+
+describe("buildPsychDSDataFiles drops unnamed columns (#109 finding 2)", () => {
+  // R's write.csv(row.names=TRUE) prepends an unnamed row-index column. The builder must drop it
+  // so the written main CSV matches variableMeasured (generate() drops it from the metadata).
+  it("re-serialises a CSV main table without the unnamed column, ignoring verbatim mainContent", () => {
+    const rows = [
+      { "": "1", trial_type: "x", rt: 450 },
+      { "": "2", trial_type: "x", rt: 512 },
+    ];
+    const built = buildPsychDSDataFiles({
+      base: "subject-sub01",
+      mainRows: rows,
+      mainContent: ",trial_type,rt\n1,x,450\n2,x,512", // dirty verbatim — must NOT be used as-is
+    });
+    const main = built.find((f) => f.kind === "main")!;
+    const header = main.content.split(/\r?\n/)[0].split(",");
+    expect(header).not.toContain("");
+    expect(header).toEqual(["trial_type", "rt"]);
+  });
+
+  it("keeps a clean CSV's mainContent byte-for-byte (nothing dropped)", () => {
+    const verbatim = "trial_type,rt\nx,450\nx,512";
+    const built = buildPsychDSDataFiles({
+      base: "subject-sub01",
+      mainRows: [
+        { trial_type: "x", rt: 450 },
+        { trial_type: "x", rt: 512 },
+      ],
+      mainContent: verbatim,
+    });
+    expect(built.find((f) => f.kind === "main")!.content).toBe(verbatim);
+  });
+
+  it("drops unnamed columns from JSON-sourced main rows too", () => {
+    const built = buildPsychDSDataFiles({
+      base: "subject-sub01",
+      mainRows: [{ "": "1", trial_index: 0, rt: 1 }],
+    });
+    const header = built.find((f) => f.kind === "main")!.content.split(/\r?\n/)[0].split(",");
+    expect(header).not.toContain("");
   });
 });

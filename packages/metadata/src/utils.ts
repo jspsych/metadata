@@ -300,6 +300,33 @@ export function disambiguateArrayFilename(base: string, used: Set<string>): stri
   return candidate;
 }
 
+/**
+ * Removes columns whose name is empty or whitespace-only from every row, in place,
+ * and reports which names were dropped. R's `write.csv` (with the default
+ * `row.names = TRUE`) prepends an unnamed row-index column, which surfaces as an
+ * empty-string ("") header. Such a column can never be represented in a Psych-DS
+ * `variableMeasured` entry (a name is required), so leaving it in produces a dataset
+ * that fails validation with CSV_COLUMN_MISSING_FROM_METADATA. Dropping it up front —
+ * once, rather than warning per row — keeps the generated metadata and the written
+ * CSV consistent. Returns the same `rows` reference for convenient chaining.
+ */
+export function stripUnnamedColumns(
+  rows: Array<Record<string, any>>
+): { rows: Array<Record<string, any>>; dropped: string[] } {
+  const unnamed = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (key.trim() === "") unnamed.add(key);
+    }
+  }
+  if (unnamed.size > 0) {
+    for (const row of rows) {
+      for (const key of unnamed) delete row[key];
+    }
+  }
+  return { rows, dropped: [...unnamed] };
+}
+
 /** A single converted Psych-DS output file produced by {@link buildPsychDSDataFiles}. */
 export interface PsychDSDataFile {
   /** Psych-DS-compliant filename, relative to the `data/` directory. */
@@ -313,12 +340,17 @@ export interface PsychDSDataFile {
 export interface BuildPsychDSDataFilesArgs {
   /** Compliant filename base (keyword-value sequence before `_data.csv`), e.g. "id-sub01". */
   base: string;
-  /** Parsed rows of the main data file. Serialised to CSV unless `mainContent` is given. */
+  /**
+   * Parsed rows of the main data file. Serialised to CSV unless `mainContent` is given and
+   * no unnamed columns are dropped. Always supply this (parse CSV inputs too) so unnamed
+   * row-index columns can be detected and stripped.
+   */
   mainRows: Array<Record<string, any>>;
   /**
-   * Pre-rendered CSV for the main file, used verbatim instead of serialising `mainRows`.
-   * Pass this when the source is already CSV so its exact bytes (column order, quoting) are
-   * preserved; `mainRows` may be empty in that case.
+   * Pre-rendered CSV for the main file, used verbatim instead of serialising `mainRows` —
+   * but only when no unnamed columns are dropped. Pass this when the source is already CSV
+   * so a clean file keeps its exact bytes (column order, quoting); a file with an unnamed
+   * column is re-serialised from the cleaned `mainRows` instead.
    */
   mainContent?: string;
   /** Array-column rows keyed by column name (from `JsPsychMetadata.getExtractedArrays`). */
@@ -369,9 +401,15 @@ export function buildPsychDSDataFiles(args: BuildPsychDSDataFilesArgs): PsychDSD
 
   // Main table. Disambiguate up front so a later file sharing this base doesn't overwrite it.
   const mainName = reserve(disambiguateArrayFilename(`${base}_data.csv`, usedArrayFilenames));
+  // Drop unnamed columns (R's row-index artifact) so the written CSV matches variableMeasured,
+  // which generate() also strips. A clean CSV input keeps its exact bytes (mainContent verbatim);
+  // a dirty one is re-serialised from the cleaned rows, as is JSON (no mainContent given).
+  const { rows: cleanedMainRows, dropped: droppedMain } = stripUnnamedColumns(mainRows);
   out.push({
     filename: mainName,
-    content: mainContent ?? objectsToCSV(mainRows, ['trial_index']),
+    content: (mainContent !== undefined && droppedMain.length === 0)
+      ? mainContent
+      : objectsToCSV(cleanedMainRows, ['trial_index']),
     kind: 'main',
   });
 

@@ -491,6 +491,52 @@ describe("processDirectory JSON → CSV conversion", () => {
       processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan })
     ).rejects.toThrow(RenamePlanError);
   });
+
+  // #109 finding 2: R's write.csv prepends an unnamed row-index column (header starts with a bare
+  // comma). The written CSV must drop it so it matches variableMeasured, on both write paths.
+  test("non-planned path drops an unnamed leading column from the written CSV", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1_data.csv"),
+      ",trial_type,rt\n1,jsPsych-html-keyboard-response,450\n2,jsPsych-html-keyboard-response,512",
+    );
+
+    const metadata = new JsPsychMetadata();
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    const csv = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    const header = csv.split(/\r?\n/)[0].split(",");
+    expect(header).not.toContain("");
+    expect(header).toEqual(expect.arrayContaining(["trial_type", "rt"]));
+    // On-disk header and variableMeasured agree — the whole point.
+    const names = (metadata.getMetadata()["variableMeasured"] as any[]).map((v) => v.name);
+    for (const col of header) expect(names).toContain(col);
+  });
+
+  test("rename-plan path also drops an unnamed leading column", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(srcDir, "raw.csv"),
+      ",trial_type,rt\n1,jsPsych-html-keyboard-response,450\n2,jsPsych-html-keyboard-response,512",
+    );
+
+    const key = path.resolve(srcDir, "raw.csv");
+    const columns = await analyzeOutputColumns(srcDir);
+    const normalizedBases = new Map([[key, "subject-9"]]);
+    const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-9", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan });
+
+    expect(failed).toBe(0);
+    const csv = fs.readFileSync(path.join(dataDir, "subject-9_data.csv"), "utf8");
+    expect(csv.split(/\r?\n/)[0].split(",")).not.toContain("");
+  });
 });
 
 // #109 finding #3: a fully-flagged headless run must not block on the interactive join-key prompt.

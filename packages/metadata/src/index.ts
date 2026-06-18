@@ -1,6 +1,6 @@
 import { AuthorFields, AuthorsMap } from "./AuthorsMap";
 import { PluginCache } from "./PluginCache";
-import { saveTextToFile, parseCSV, tryParseJSON, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS } from "./utils";
+import { saveTextToFile, parseCSV, tryParseJSON, analyzeJoinKeys, JoinKeyAnalysis, SYSTEM_COLUMNS, stripUnnamedColumns } from "./utils";
 import { VariableFields, VariablesMap } from "./VariablesMap";
 
 /**
@@ -444,6 +444,19 @@ export default class JsPsychMetadata {
 
     if (!Array.isArray(parsed_data)) {
       throw new Error("Parsed data is not in correct format: Expected an array of observations");
+    }
+
+    // Drop unnamed columns (empty/whitespace-only headers) before processing. These can't be
+    // represented in variableMeasured (Psych-DS requires a name) and are typically R's row-index
+    // column. Stripping here removes them from variableMeasured and avoids a per-row warning in
+    // setVariable. buildPsychDSDataFiles mirrors this on the written CSV so file and metadata sync.
+    const { dropped } = stripUnnamedColumns(parsed_data as Array<Record<string, any>>);
+    if (dropped.length > 0) {
+      console.warn(
+        `Dropped ${dropped.length} unnamed column${dropped.length > 1 ? "s" : ""} from the data — ` +
+          `Psych-DS requires every column to have a name (usually a row-index column added by R's ` +
+          `write.csv). Excluded from variableMeasured.`
+      );
     }
 
     // Callers that already surface join-key uniqueness to the user (e.g. the CLI's
@@ -1034,5 +1047,5 @@ export {
   AuthorFields,
   VariableFields
 }
-export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
+export { analyzeJoinKeys, parseCSV, isValidPsychDSDataFilename, toPsychDSValue, deriveArrayFilename, objectsToCSV, disambiguateArrayFilename, deriveFallbackBase, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "./utils";
 export type { JoinKeyAnalysis, PsychDSDataFile, BuildPsychDSDataFilesArgs } from "./utils";
