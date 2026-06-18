@@ -9,6 +9,16 @@ jest.mock("@jspsych/metadata", () => ({
   __esModule: true,
   default: jest.fn(),
   analyzeJoinKeys: jest.fn(),
+  // Preflight parses JSON via parseJsonData (tagSourceRecordId is a no-op for a single array);
+  // return the parsed array so the join-key preflight runs. runGenerate then builds Psych-DS
+  // files, which the component only iterates over — an empty list is sufficient for these tests.
+  parseJsonData: jest.fn((content: string) => JSON.parse(content)),
+  parseCSV: jest.fn(() => []),
+  buildPsychDSDataFiles: jest.fn(() => []),
+  deriveFallbackBase: jest.fn((stem: string) => `subject-${stem}`),
+  isValidPsychDSDataFilename: jest.fn(() => false),
+  PSYCHDS_IGNORE_FILENAME: ".psychds-ignore",
+  PSYCHDS_IGNORE_CONTENT: "",
 }));
 
 jest.mock("jszip", () => ({
@@ -29,6 +39,10 @@ function makeMeta(varNames: string[] = []) {
   return {
     generate: jest.fn().mockResolvedValue(undefined),
     getVariableNames: jest.fn().mockReturnValue(varNames),
+    // runGenerate feeds these into buildPsychDSDataFiles when converting each file.
+    getExtractedArrays: jest.fn().mockReturnValue(new Map()),
+    getExtractedObjects: jest.fn().mockReturnValue(new Map()),
+    getArrayJoinKeys: jest.fn().mockReturnValue(["trial_index"]),
   } as any;
 }
 
