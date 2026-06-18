@@ -6,7 +6,7 @@ import { input, select, checkbox, Separator } from '@inquirer/prompts';
 import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, isValidPsychDSDataFilename, toPsychDSValue } from "@jspsych/metadata";
 import fs from 'fs';
 import path from 'path';
-import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, enumerateDataFiles, analyzeOutputColumns, OutputColumns } from "./data";
+import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, OutputColumns } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
 import { fileStem } from './utils';
@@ -730,12 +730,20 @@ const main = async () => {
   const canPrompt = !isNonInteractive && !!process.stdin.isTTY && !!process.stdout.isTTY;
   const { bases: normalizedBases, plan: renamePlan } = await resolveFilenameNormalization(dataDir, canPrompt, outputColumns);
 
-  // Pre-flight: check whether default join key (trial_index) is unique; prompt if not
+  // Pre-flight: check whether default join key (trial_index) is unique. If not, prompt the user
+  // when we have a terminal; otherwise (fully-flagged headless run) resolve deterministically so
+  // the run never blocks on an interactive prompt it can't answer.
   const initialKeys = ['trial_index'];
   const preResult = await preAnalyzeDirectory(dataDir, initialKeys);
   let arrayJoinKeys = initialKeys;
   if (preResult && !preResult.analysis.isUnique) {
-    arrayJoinKeys = await promptJoinKeys(preResult.parsedData, preResult.analysis, initialKeys, preResult.fileName);
+    if (canPrompt) {
+      arrayJoinKeys = await promptJoinKeys(preResult.parsedData, preResult.analysis, initialKeys, preResult.fileName);
+    } else {
+      const resolved = resolveJoinKeysNonInteractive(preResult.analysis, initialKeys, preResult.fileName);
+      arrayJoinKeys = resolved.keys;
+      (resolved.unresolved ? console.warn : console.log)(`${resolved.unresolved ? '⚠' : 'ℹ'}  ${resolved.message}`);
+    }
   }
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
@@ -747,9 +755,11 @@ const main = async () => {
     if (verbose) console.log("\n\n-------------------------- Reading and writing metadata-option --------------------------n\n");
     await processOptions(metadata, argv['metadata-options'], verbose);
   }
-  else await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
+  else if (canPrompt) await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
+  // No options file and no terminal to prompt at: don't block — keep the generated defaults.
+  else console.log('ℹ  No --metadata-options provided and no terminal to prompt — using generated defaults. Pass --metadata-options to customize.');
 
-  if (!isNonInteractive) await promptUnknownDescriptions(metadata);
+  if (canPrompt) await promptUnknownDescriptions(metadata);
 
   const metadataString = JSON.stringify(metadata.getMetadata(), null, 2); // Assuming getMetadata() is the function that retrieves your metadata
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
@@ -759,7 +769,7 @@ const main = async () => {
     const validation = await validatePsychDS(project_path, verbose);
 
     if (validation.missingRequiredFields.length > 0) {
-      if (!isNonInteractive) {
+      if (canPrompt) {
         console.log('\nSome required fields are missing. Please provide values:');
         for (const field of validation.missingRequiredFields) {
           const value = await input({ message: `Value for required field "${field}":` });

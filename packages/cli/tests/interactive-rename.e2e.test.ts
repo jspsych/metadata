@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import * as pty from "node-pty";
 import JsPsychMetadata from "@jspsych/metadata";
 
@@ -205,5 +205,98 @@ describe("interactive rename flow (pty E2E)", () => {
     const variableNames = description.variableMeasured.map((v: { name: string }) => v.name);
     expect(variableNames).toContain("subject_id");
     expect(variableNames).toContain("rt");
+  });
+});
+
+/**
+ * Headless E2E (#109 finding #3 + the non-interactive hardening). Runs the built CLI bundle with
+ * piped stdio — so no prompt can succeed — and asserts it never blocks on `✘ User force closed the
+ * prompt`. The fixture uses a compliant filename (no rename prompt) and multi-subject data where
+ * trial_index restarts per subject (so the join-key path triggers and must resolve deterministically).
+ * time_elapsed is included so the data validates on this branch, which predates the lazy-system-
+ * variable fix.
+ */
+describe("non-interactive run (headless, no pty)", () => {
+  let tmpDir: string;
+  let projectDir: string;
+  let dataDir: string;
+  let optionsPath: string;
+
+  beforeAll(() => {
+    execSync("npm run build", { cwd: CLI_ROOT, stdio: "ignore" });
+  });
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-headless-test-"));
+
+    projectDir = path.join(tmpDir, "project");
+    fs.mkdirSync(path.join(projectDir, "data"), { recursive: true });
+    const metadata = new JsPsychMetadata();
+    metadata.setMetadataField("name", "headless-e2e");
+    metadata.setMetadataField("description", "Fixture project for the headless run test.");
+    fs.writeFileSync(
+      path.join(projectDir, "dataset_description.json"),
+      JSON.stringify(metadata.getMetadata(), null, 2)
+    );
+
+    // Compliant filename → no rename prompt. trial_index restarts per subject → not unique →
+    // join-key resolution must kick in. time_elapsed and rt repeat across subjects, so subject_id
+    // is the only single column that makes the rows unique (a deterministic, predictable pick).
+    dataDir = path.join(tmpDir, "source");
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(
+      path.join(dataDir, "task-resp_data.csv"),
+      [
+        "subject_id,trial_type,trial_index,time_elapsed,rt",
+        "P01,html-keyboard-response,0,500,450",
+        "P01,html-keyboard-response,1,1000,512",
+        "P02,html-keyboard-response,0,500,450",
+        "P02,html-keyboard-response,1,1000,512",
+      ].join("\n")
+    );
+
+    optionsPath = path.join(tmpDir, "options.json");
+    fs.writeFileSync(
+      optionsPath,
+      JSON.stringify({ name: "headless-e2e", description: "Headless run test.", author: [{ name: "Test Author" }] })
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** Spawn the CLI bundle with piped (non-TTY) stdio and an empty stdin. */
+  function runHeadless(args: string[]) {
+    const res = spawnSync(process.execPath, [CLI_BUNDLE, ...args], {
+      cwd: CLI_ROOT,
+      input: "",
+      encoding: "utf8",
+      env: process.env as Record<string, string>,
+    });
+    return { status: res.status, output: (res.stdout ?? "") + (res.stderr ?? "") };
+  }
+
+  test("fully-flagged run resolves join keys without ever prompting", () => {
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    expect(output).not.toContain("User force closed the prompt");
+    expect(output).toContain('added "subject_id"');
+    expect(status).toBe(0);
+  });
+
+  test("missing --metadata-options falls back to defaults instead of force-closing", () => {
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+    ]);
+
+    expect(output).not.toContain("User force closed the prompt");
+    expect(output).toContain("using generated defaults");
+    expect(status).toBe(0);
   });
 });
