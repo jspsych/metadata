@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -15,6 +15,13 @@ export type FileStatus = {
 export type DataSession = {
   files: File[];
   fileTexts: Map<string, { content: string; type: string }>;
+  /**
+   * Psych-DS `data/` payload built from the uploaded files: dataset-relative path
+   * (e.g. `data/subject-sub01_data.csv`, `data/raw/sub01.json`) → file contents. JSON is
+   * converted to Psych-DS-named CSV here so the validator and the downloadable zip both
+   * see compliant datafiles; without this, JSON uploads validate as MISSING_DATAFILE.
+   */
+  convertedFiles: Map<string, string>;
   joinKeyCandidates: JoinKeyCandidate[];
   joinKeyProblemFile: string;
   selectedKeys: string[];
@@ -24,6 +31,7 @@ export type DataSession = {
 export const emptyDataSession: DataSession = {
   files: [],
   fileTexts: new Map(),
+  convertedFiles: new Map(),
   joinKeyCandidates: [],
   joinKeyProblemFile: '',
   selectedKeys: ['trial_index'],
@@ -49,6 +57,36 @@ const readFileAsText = (file: File): Promise<string> =>
     reader.readAsText(file);
   });
 
+/** Filename without its extension (e.g. "sub01.json" → "sub01"). */
+const fileStem = (name: string): string => name.replace(/\.[^./]+$/, '');
+
+/**
+ * The Psych-DS base (keyword-value sequence before "_data.csv") of an already-compliant
+ * data filename, or null if the name isn't compliant. Lets us preserve a meaningful uploaded
+ * name (e.g. "sub-01_task-stroop_data.csv" → base "sub-01_task-stroop") instead of flattening
+ * it into a single subject-<stem> value, mirroring the CLI's non-rename path. JSON uploads are
+ * never compliant data filenames, so they always fall through to deriveFallbackBase.
+ */
+export const compliantBase = (name: string): string | null => {
+  const m = /^(.*)_data\.(csv|tsv)$/.exec(name);
+  return m && isValidPsychDSDataFilename(name) ? m[1] : null;
+};
+
+/**
+ * Returns a name not already in `used`, appending a counter before the extension on collision
+ * (e.g. "sub01.json" → "sub012.json"). Used for the flat data/raw/ directory, where originals
+ * from different source folders can share a name.
+ */
+const disambiguateFlatFilename = (name: string, used: Set<string>): string => {
+  if (!used.has(name)) return name;
+  const dot = name.lastIndexOf('.');
+  const stem = dot === -1 ? name : name.slice(0, dot);
+  const ext = dot === -1 ? '' : name.slice(dot);
+  let n = 2;
+  while (used.has(`${stem}${n}${ext}`)) n += 1;
+  return `${stem}${n}${ext}`;
+};
+
 const DataUpload: React.FC<DataUploadProps> = ({
   jsPsychMetadata,
   dataProcessed,
@@ -66,6 +104,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [sourceName, setSourceName] = useState('');
   const [pickError, setPickError] = useState('');
   const [fileTexts, setFileTexts] = useState(session.fileTexts);
+  const [convertedFiles, setConvertedFiles] = useState(session.convertedFiles);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
   const [joinKeyCandidates, setJoinKeyCandidates] = useState<JoinKeyCandidate[]>(session.joinKeyCandidates);
   const [joinKeyProblemFile, setJoinKeyProblemFile] = useState(session.joinKeyProblemFile);
@@ -80,9 +119,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   onSessionChangeRef.current = onSessionChange;
   useEffect(() => {
     onSessionChangeRef.current({
-      files, fileTexts, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
+      files, fileTexts, convertedFiles, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
     });
-  }, [files, fileTexts, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
+  }, [files, fileTexts, convertedFiles, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
 
   useEffect(() => {
     if (inputRef.current) (inputRef.current as any).webkitdirectory = true; // not in TS lib
@@ -134,7 +173,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
     const textMap = new Map<string, { content: string; type: string }>();
     for (const file of files) {
-      const type = file.name.split('.').pop()?.toLowerCase() || '';
+      const rawExt = file.name.split('.').pop()?.toLowerCase() || '';
+      // Treat JSON-Lines as JSON: parseJsonData() accepts both a single array and one
+      // JSON value per line, so .jsonl flows through the same path as .json downstream.
+      const type = rawExt === 'jsonl' ? 'json' : rawExt;
       const content = await readFileAsText(file);
       textMap.set(file.webkitRelativePath || file.name, { content, type });
     }
@@ -148,9 +190,16 @@ const DataUpload: React.FC<DataUploadProps> = ({
       if (type !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
       try {
-        const parsed = JSON.parse(content);
+        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array).
+        const parsed = parseJsonData(content, { tagSourceRecordId: true });
         if (!Array.isArray(parsed) || parsed.length === 0) continue;
-        const analysis = analyzeJoinKeys(parsed, ['trial_index']);
+        // Mirror generate()'s join-key promotion so a multi-record JSON-Lines file isn't wrongly
+        // flagged: trial_index alone repeats across records, but the identifier column (a
+        // synthesized source_record_id, else a real participant_id) makes (id, trial_index) unique.
+        const idColumn = (['source_record_id', 'participant_id'] as const).find((col) =>
+          parsed.some((row: any) => row && typeof row === 'object' && col in row));
+        const keys = idColumn ? [idColumn, 'trial_index'] : ['trial_index'];
+        const analysis = analyzeJoinKeys(parsed, keys);
         if (!analysis.isUnique) {
           setJoinKeyProblemFile(name);
           setJoinKeyCandidates(analysis.candidates);
@@ -190,6 +239,13 @@ const DataUpload: React.FC<DataUploadProps> = ({
     const update = (i: number, patch: Partial<FileStatus>) =>
       setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s));
 
+    // Psych-DS `data/` payload built alongside metadata generation. The name sets are shared
+    // across all files so converted CSVs are disambiguated against the whole output directory
+    // (mirrors the CLI's processDirectory), and `data/raw/` is flat so originals must be too.
+    const converted = new Map<string, string>();
+    const usedArrayFilenames = new Set<string>();
+    const usedRawFilenames = new Set<string>();
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const entry = textMap.get(file.webkitRelativePath || file.name);
@@ -214,12 +270,61 @@ const DataUpload: React.FC<DataUploadProps> = ({
           arrayJoinKeys: joinKeys,
           suppressJoinKeyWarning: suppressWarning,
         });
+
+        // Convert this file to its Psych-DS datafile(s) immediately: getExtracted* reflect
+        // only the most recent generate() call, so this must happen before the next iteration.
+        // JSON arrays are serialised to CSV; CSV is written verbatim. Non-array JSON is skipped
+        // (it isn't a jsPsych trial table) — matching the CLI.
+        let mainRows: Array<Record<string, any>> = [];
+        let mainContent: string | undefined;
+        if (type === 'json') {
+          // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
+          // main CSV carries the same join-key column generate() promotes for the sidecars.
+          const json = parseJsonData(content, { tagSourceRecordId: true });
+          if (!Array.isArray(json)) {
+            update(i, { status: 'skipped', detail: 'not a jsPsych trial array' });
+            continue;
+          }
+          mainRows = json;
+        } else {
+          mainContent = content;
+          // Parse CSV rows too so the builder can drop R-style unnamed row-index columns; a clean
+          // CSV still keeps its exact bytes (mainContent is used verbatim when nothing is dropped).
+          mainRows = (await parseCSV(content)) as Array<Record<string, unknown>>;
+        }
+
+        const built = buildPsychDSDataFiles({
+          // Preserve an already-compliant uploaded CSV name; otherwise derive a subject-<stem> base.
+          base: compliantBase(file.name) ?? deriveFallbackBase(fileStem(file.name)),
+          mainRows,
+          mainContent,
+          extractedArrays: jsPsychMetadata.getExtractedArrays(),
+          extractedObjects: jsPsychMetadata.getExtractedObjects(),
+          joinKeys: jsPsychMetadata.getArrayJoinKeys(),
+          usedArrayFilenames,
+        });
+        for (const f of built) converted.set(`data/${f.filename}`, f.content);
+
+        // Preserve the original JSON under data/raw/ (CSV inputs are already tabular).
+        if (type === 'json') {
+          const rawName = disambiguateFlatFilename(file.name, usedRawFilenames);
+          usedRawFilenames.add(rawName);
+          converted.set(`data/raw/${rawName}`, content);
+        }
+
         update(i, { status: 'success' });
       } catch (e) {
         update(i, { status: 'error', detail: String(e) });
       }
     }
 
+    // When we preserved raw originals, tell the validator to skip data/raw/ so they don't
+    // surface as FILE_NOT_CHECKED (shared definition with the CLI in @jspsych/metadata).
+    if (usedRawFilenames.size > 0) {
+      converted.set(PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT);
+    }
+
+    setConvertedFiles(converted);
     setPhase('done');
   };
 

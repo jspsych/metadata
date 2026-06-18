@@ -7,9 +7,10 @@ import JsPsychMetadata from "../src/index";
  * (deep objects, arrays of objects, arrays of arrays, mixed-type columns, a trial_type-less
  * row, unicode, empties) and assert each variable's stored type / levels / range stays coherent.
  *
- * Ported from stress-tests/run-nested.mjs (Pass 1). Three documented findings (F1a, F1b, F2 —
- * see the comments below) are asserted as *current* behavior so this stays green; each is a
- * deviation pending its own intent decision and must not be "fixed" here by loosening.
+ * Ported from stress-tests/run-nested.mjs (Pass 1). The three findings this fixture originally
+ * documented (F1a, F1b, F2) were fixed in #102, so the assertions below now verify the corrected
+ * behavior: values in a trial_type-less row are typed/counted, and a boolean column absorbs the
+ * string "true"/"false" instead of recording a misleading level.
  */
 
 const fixturePath = path.resolve(__dirname, "../../../dev/stress/nested-all-cases/subject-nested.json");
@@ -47,13 +48,9 @@ const EXPECTED: Record<string, string> = {
   empty_object: "object", empty_array: "array",
   varying_object: "object", "varying_object.only_row0": "number", "varying_object.only_row1": "string",
   unicode_col: "string",
-  orphan_col: "*", // column from a trial_type-less row: any type, but it must exist
+  orphan_col: "string", // column from a trial_type-less row: now typed (fixed in #102), was "unknown"
   element_index: "number",
 };
-
-// F2 (run-nested RESULTS.md): this boolean column also carries a `levels` array. Asserted as
-// known current behavior for this column only, so a NEW boolean-with-levels regression is caught.
-const F2_BOOLEAN_WITH_LEVELS = new Set(["correct"]);
 
 describe("nested-data generation coherence (stress)", () => {
   let metadata: JsPsychMetadata;
@@ -97,7 +94,7 @@ describe("nested-data generation coherence (stress)", () => {
         if (typeof v.minValue === "number" && !Number.isFinite(v.minValue)) issues.push("non-finite minValue");
         if (v.levels) issues.push("numeric but has levels");
       } else if (v.value === "boolean") {
-        if (v.levels && !F2_BOOLEAN_WITH_LEVELS.has(v.name)) issues.push("boolean but has levels");
+        if (v.levels) issues.push("boolean but has levels"); // post-#102: booleans never carry levels
         if (hasRange) issues.push("boolean but has min/max");
       } else if (v.value === "string") {
         if (hasRange) issues.push("string but has min/max");
@@ -116,13 +113,21 @@ describe("nested-data generation coherence (stress)", () => {
     expect(mixedLevels).toEqual(expect.arrayContaining(["10", "oops", "3"]));
   });
 
-  test("F1a: values in a trial_type-less row are dropped from min/max", () => {
-    // rt's 9999 lives in the trial_type-less row and is NOT counted, so max stays 1001.
-    expect(vars.get("rt").maxValue).toBe(1001);
+  test("F1a: a numeric value in a trial_type-less row IS counted in min/max (fixed in #102)", () => {
+    // rt's 9999 lives in the trial_type-less row and is now counted, so max reflects it.
+    expect(vars.get("rt").maxValue).toBe(9999);
   });
 
-  test("F1b: a column appearing only in a trial_type-less row stays \"unknown\"", () => {
-    expect(vars.get("orphan_col").value).toBe("unknown");
+  test("F1b: a column appearing only in a trial_type-less row is typed, not left \"unknown\" (fixed in #102)", () => {
+    const orphan = vars.get("orphan_col");
+    expect(orphan.value).toBe("string");
+    expect(orphan.levels).toContain("row with no trial_type at all");
+  });
+
+  test("F2: a boolean column absorbs the string \"true\"/\"false\" with no levels (fixed in #102)", () => {
+    const correct = vars.get("correct");
+    expect(correct.value).toBe("boolean");
+    expect(correct.levels).toBeUndefined();
   });
 
   test("extracts deeply nested array/object columns into sidecars", () => {

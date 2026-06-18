@@ -4,7 +4,7 @@ import {
   type WebFileTree,
   type PsychDSValidationOutput,
 } from 'psychds-validator/web/psychds-validator.js';
-import { DATASET_DESCRIPTION_FILENAME as FILENAME, dataFilePath } from '../datasetLayout';
+import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
 
 export interface ValidationIssue {
   key: string;
@@ -63,8 +63,9 @@ function buildFileTree(
     [FILENAME]: { type: 'file', file: new Blob([metadataJson]) },
   };
   if (dataFiles) {
-    for (const [originalPath, content] of dataFiles) {
-      insertFile(tree, dataFilePath(originalPath), content);
+    // Keys are already dataset-relative paths (e.g. `data/subject-sub01_data.csv`), inserted as-is.
+    for (const [path, content] of dataFiles) {
+      insertFile(tree, path, content);
     }
   }
   return tree;
@@ -76,7 +77,8 @@ function buildFileTree(
  * fetches the Psych-DS schema and schema.org context at runtime.
  *
  * @param metadataJson  Serialized dataset_description.json.
- * @param dataFiles     Map of original file path -> text content (CSV/JSON).
+ * @param dataFiles     Psych-DS `data/` payload: dataset-relative path
+ *                      (e.g. `data/subject-sub01_data.csv`) -> file contents.
  */
 export async function validatePsychDS(
   metadataJson: string,
