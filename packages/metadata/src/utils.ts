@@ -79,14 +79,46 @@ export function tryParseJSON(value: string): any | null {
 }
 
 /**
+ * Some jsPsych exports (e.g. from OSF) wrap the trials array as { "trials": [...] }
+ * instead of a bare array. Accepts the raw JSON string (or an already-parsed value)
+ * and returns the unwrapped trials array ONLY when the input is exactly that wrapper —
+ * an object whose single key is `trials` and whose value is an array. Otherwise returns
+ * the parsed value unchanged so the caller's existing Array.isArray gate keeps its
+ * current behavior (the library throws on a non-array; the CLI/frontend skip non-array JSON).
+ *
+ * The single-key check is deliberate: this supports the known wrapper shape, it does not
+ * treat `trials` as a magic key. A future export like { trials: [...], meta: {...} } is
+ * left untouched rather than silently discarding its top-level metadata.
+ *
+ * Folded into parseJsonData's whole-document fast path so every data parse site (generate(),
+ * the CLI pipeline, the frontend uploader) gets wrapper support through the one shared parser;
+ * also exported for direct use and testing.
+ */
+export function unwrapTrials(data: string | unknown): unknown {
+  const parsed = typeof data === "string" ? JSON.parse(data) : data;
+  if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const keys = Object.keys(parsed);
+    if (
+      keys.length === 1 &&
+      keys[0] === "trials" &&
+      Array.isArray((parsed as Record<string, unknown>).trials)
+    ) {
+      return (parsed as Record<string, unknown>).trials;
+    }
+  }
+  return parsed;
+}
+
+/**
  * Parses experiment data that is either a single JSON document (the standard jsPsych
  * export — one array of trials, possibly pretty-printed) or JSON-Lines: one JSON value
  * per line, as JATOS and several labs export it (typically one participant's trial
  * array per line). Returns a flat array of observations in both cases.
  *
  * A well-formed single document is returned as-is (arrays untouched, so existing
- * single-array callers see no change). Only when whole-string parsing fails do we fall
- * back to line-by-line parsing, flattening any per-line arrays into one observation
+ * single-array callers see no change), except an exact { "trials": [...] } wrapper is
+ * unwrapped to its array via {@link unwrapTrials}. Only when whole-string parsing fails do
+ * we fall back to line-by-line parsing, flattening any per-line arrays into one observation
  * stream. Throws a descriptive error when the input is neither valid JSON nor valid JSONL.
  *
  * When `tagSourceRecordId` is set, `stats.synthesizedSourceRecordId` is set to true iff a
@@ -102,10 +134,12 @@ export function parseJsonData(
 ): any {
   // Fast path: a single, well-formed JSON document. Covers the standard single array
   // (including pretty-printed/multi-line) with no behaviour change for existing callers.
+  // unwrapTrials accepts an exact { "trials": [...] } wrapper (e.g. OSF exports) and returns
+  // every other shape untouched, so a bare array passes through unchanged.
   // Note: tagSourceRecordId never applies here — a single document has no line boundaries
   // to identify source records by, so its rows are returned untouched.
   const whole = tryParseJSON(content);
-  if (whole !== null) return whole;
+  if (whole !== null) return unwrapTrials(whole);
 
   // Fallback: JSON-Lines. Each non-empty line must be its own JSON value; per-line
   // arrays are concatenated so a multi-participant export becomes one observation array.
