@@ -644,3 +644,63 @@ describe("resolveJoinKeysNonInteractive", () => {
     expect(result.keys).toEqual(["trial_index", "subject_id"]); // "subject_id" < "uid"
   });
 });
+
+// Some jsPsych exports (e.g. OSF) wrap trials as { "trials": [...] }. The CLI should treat
+// these exactly like a bare array: build the main CSV from the unwrapped trials and preserve
+// the literal wrapped original under raw/. Wrapper support comes from parseJsonData (which the
+// CLI uses at every JSON parse site), so no CLI-specific unwrap step is needed.
+describe("{ trials: [...] } wrapper handling", () => {
+  test("processDirectory builds the main CSV from unwrapped trials and preserves the wrapped original", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const wrapped = JSON.stringify({
+      trials: [
+        { trial_type: "jsPsych-html-keyboard-response", trial_index: 0, rt: 450 },
+        { trial_type: "jsPsych-html-keyboard-response", trial_index: 1, rt: 512 },
+      ],
+    });
+    fs.writeFileSync(path.join(srcDir, "subj-1_data.json"), wrapped);
+
+    const { total, failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+
+    // Main CSV built from the unwrapped trials: header + one row per trial.
+    const csv = fs.readFileSync(path.join(dataDir, "subj-1_data.csv"), "utf8");
+    const rows = csv.trim().split("\n");
+    expect(rows.length).toBe(3); // header + 2 trials
+    expect(csv).toContain("450");
+    expect(csv).toContain("512");
+
+    // The literal wrapped original is preserved byte-for-byte under raw/.
+    const raw = fs.readFileSync(path.join(dataDir, "raw", "subj-1_data.json"), "utf8");
+    expect(raw).toBe(wrapped);
+  });
+
+  test("preAnalyzeDirectory no longer skips a wrapped file (analyzes its trials)", async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "subj-1_data.json"),
+      JSON.stringify({ trials: [{ trial_index: 0 }, { trial_index: 0 }] })
+    );
+
+    const result = await preAnalyzeDirectory(tmpDir);
+    expect(result).not.toBeNull();
+    expect(result!.fileName).toBe("subj-1_data.json");
+    expect(result!.analysis.isUnique).toBe(false);
+  });
+
+  test("a { trials: {...} } object (trials not an array) is still skipped", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(path.join(srcDir, "subj-1_data.json"), JSON.stringify({ trials: { a: 1 } }));
+
+    const { total, failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+    expect(total).toBe(1);
+    expect(failed).toBe(1);
+    expect(fs.existsSync(path.join(dataDir, "subj-1_data.csv"))).toBe(false);
+  });
+});
