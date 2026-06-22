@@ -5,6 +5,7 @@ import {
   type PsychDSValidationOutput,
 } from 'psychds-validator/web/psychds-validator.js';
 import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
+import type { DatasetFileSource } from '../staging/stagedFileStore';
 
 export interface ValidationIssue {
   key: string;
@@ -38,7 +39,7 @@ function ensureJsonldGlobal() {
 }
 
 /** Inserts a `/`-separated path into the nested file-tree dict, creating dirs. */
-function insertFile(tree: WebFileTree, path: string, content: string) {
+function insertFile(tree: WebFileTree, path: string, file: Blob) {
   const segments = path.split('/').filter(Boolean);
   const filename = segments.pop();
   if (!filename) return;
@@ -52,20 +53,21 @@ function insertFile(tree: WebFileTree, path: string, content: string) {
     }
     dir = node.contents;
   }
-  dir[filename] = { type: 'file', file: new Blob([content]) };
+  dir[filename] = { type: 'file', file };
 }
 
-function buildFileTree(
+async function buildFileTree(
   metadataJson: string,
-  dataFiles?: Map<string, string>,
-): WebFileTree {
+  dataFiles?: DatasetFileSource,
+): Promise<WebFileTree> {
   const tree: WebFileTree = {
     [FILENAME]: { type: 'file', file: new Blob([metadataJson]) },
   };
   if (dataFiles) {
-    // Keys are already dataset-relative paths (e.g. `data/subject-sub01_data.csv`), inserted as-is.
-    for (const [path, content] of dataFiles) {
-      insertFile(tree, path, content);
+    // Keys are already dataset-relative paths (e.g. `data/subject-sub01_data.csv`). Pulled one at
+    // a time so only the current file's Blob is touched, not the whole payload at once.
+    for await (const [path, file] of dataFiles.entries()) {
+      insertFile(tree, path, file);
     }
   }
   return tree;
@@ -77,16 +79,16 @@ function buildFileTree(
  * fetches the Psych-DS schema and schema.org context at runtime.
  *
  * @param metadataJson  Serialized dataset_description.json.
- * @param dataFiles     Psych-DS `data/` payload: dataset-relative path
- *                      (e.g. `data/subject-sub01_data.csv`) -> file contents.
+ * @param dataFiles     Lazy source of the Psych-DS `data/` payload: dataset-relative path
+ *                      (e.g. `data/subject-sub01_data.csv`) -> file Blob, read one at a time.
  */
 export async function validatePsychDS(
   metadataJson: string,
-  dataFiles?: Map<string, string>,
+  dataFiles?: DatasetFileSource,
 ): Promise<PsychDSValidationResult> {
   ensureJsonldGlobal();
 
-  const tree = buildFileTree(metadataJson, dataFiles);
+  const tree = await buildFileTree(metadataJson, dataFiles);
 
   let output: PsychDSValidationOutput;
   try {

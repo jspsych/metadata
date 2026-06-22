@@ -19,7 +19,16 @@
 
 export type StagedFileStoreBackend = 'opfs' | 'memory';
 
-export interface StagedFileStore {
+/**
+ * A lazy source of dataset-relative files (path -> Blob), read one at a time. Both the validator
+ * (tree building) and the zip builder consume this, so neither needs the whole payload in the
+ * heap at once. {@link StagedFileStore} is the production implementation.
+ */
+export interface DatasetFileSource {
+  entries(): AsyncIterableIterator<[string, Blob]>;
+}
+
+export interface StagedFileStore extends DatasetFileSource {
   /** Backend actually in use, for diagnostics/measurement. */
   readonly backend: StagedFileStoreBackend;
   /** Stage one file. `content` may be a string or a Blob; large content should be a Blob. */
