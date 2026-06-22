@@ -415,17 +415,21 @@ export default class JsPsychMetadata {
    * Generates observations based on the input data and processes optional metadata. This is the
    * outer wrapper function that should called and handles the logic of reading individual observations.
    *
-   * This method accepts data, which can be an array of observation objects, a JSON string,
-   * or a CSV string. If the data is in CSV format, set the `csv` parameter to `true` to
-   * parse it into a JSON object. Each observation is processed asynchronously using the
-   * `generateObservation` method. Optionally, metadata options can be provided in the form of an
-   * object, and each key-value pair in the metadata object will be processed by the
-   * `processMetadata` method.
+   * This method accepts data as a JSON string, a CSV string, or an already-parsed array of
+   * observation objects. A string is parsed according to `ext`; an array is consumed as-is.
+   * Each observation is processed asynchronously via `generateObservation`. Optionally, metadata
+   * options can be provided as an object, and each key-value pair is processed by `processMetadata`.
+   *
+   * NOTE: when `data` is a pre-parsed array it is consumed in place and MUTATED — unnamed
+   * (blank-header) columns are deleted from the row objects. Callers that need the rows to stay
+   * pristine must pass a copy. This lets a caller parse a file once and share the rows with
+   * generate() instead of having generate() re-parse the same content.
    *
    * @async
-   * @param {Array|String} data - The data to generate observations from. Can be an array of objects, a JSON string, or a CSV string.
+   * @param {Array|String} data - Observations to generate from: a pre-parsed array (consumed as-is and mutated in place), a JSON string, or a CSV string.
    * @param {Object} [metadata={}] - Optional metadata to be processed. Each key-value pair in this object will be processed individually.
-   * @param {boolean} [csv=false] - Flag indicating if the data is in a string CSV. If true, the data will be parsed as CSV.
+   * @param {'json'|'csv'} [ext='json'] - Format of a string `data`; ignored when `data` is already an array.
+   * @param {Object} [options={}] - arrayJoinKeys / suppressJoinKeyWarning, plus synthesizedSourceRecordId for pre-parsed callers that tagged a synthetic source_record_id themselves.
    */
   async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean; synthesizedSourceRecordId?: boolean } = {}) {
     this.extractedArrays = new Map();

@@ -595,7 +595,6 @@ describe("processDirectory JSON → CSV conversion", () => {
     expect(generateSpy).toHaveBeenCalledTimes(2);
     for (const call of generateSpy.mock.calls) {
       expect(Array.isArray(call[0])).toBe(true);
-      expect(typeof call[0]).not.toBe("string");
     }
     generateSpy.mockRestore();
   });
