@@ -107,10 +107,73 @@ describe("validatePsychDS", () => {
     expect(result.errors[0].evidence).toEqual(["rt, stimulus", "response"]);
   });
 
+  test("reports valid with warnings present as long as there are no errors", async () => {
+    mockValidateWeb.mockResolvedValue(
+      validatorOutput([
+        { key: "MISSING_README", reason: "no README", severity: "warning" },
+        { key: "MISSING_CHANGES", reason: "no CHANGES", severity: "warning" },
+      ]),
+    );
+    const result = await validatePsychDS("{}");
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toHaveLength(2);
+  });
+
+  test("drops issues whose severity is neither error nor warning", async () => {
+    // The validator also emits 'ignore'-severity issues; these must not leak into
+    // either bucket (and must not flip `valid`).
+    mockValidateWeb.mockResolvedValue(
+      validatorOutput([
+        { key: "SOME_IGNORED_RULE", reason: "ignored", severity: "ignore" },
+      ] as Parameters<typeof validatorOutput>[0]),
+    );
+    const result = await validatePsychDS("{}");
+    expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+  });
+
   test("throws ValidationUnavailableError when the validator cannot run", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     mockValidateWeb.mockRejectedValue(new Error("fetch failed"));
     await expect(validatePsychDS("{}")).rejects.toThrow(ValidationUnavailableError);
     await expect(validatePsychDS("{}")).rejects.toThrow(/internet connection/);
+  });
+});
+
+describe("buildFileTree (via validatePsychDS)", () => {
+  beforeEach(() => mockValidateWeb.mockResolvedValue(validatorOutput([])));
+
+  test("an empty data-files map produces no data/ directory", async () => {
+    await validatePsychDS("{}", new Map());
+    const [tree] = mockValidateWeb.mock.calls[0];
+    expect(tree["data"]).toBeUndefined();
+    expect(tree["dataset_description.json"].type).toBe("file");
+  });
+
+  test("normalizes leading and duplicate slashes when nesting paths", async () => {
+    await validatePsychDS("{}", new Map([["/data//raw/sub01.json", "[]"]]));
+    const [tree] = mockValidateWeb.mock.calls[0];
+    // Empty segments from the leading/double slash are dropped, so the file still
+    // lands at data/raw/sub01.json rather than under an empty-named directory.
+    expect(tree[""]).toBeUndefined();
+    const raw = tree["data"].contents["raw"];
+    expect(raw.type).toBe("directory");
+    expect(raw.contents["sub01.json"].type).toBe("file");
+  });
+
+  test("nests a deep (3-level) path, creating each intermediate directory", async () => {
+    await validatePsychDS("{}", new Map([["data/raw/session1/sub01.json", "[]"]]));
+    const [tree] = mockValidateWeb.mock.calls[0];
+    const session = tree["data"].contents["raw"].contents["session1"];
+    expect(session.type).toBe("directory");
+    expect(session.contents["sub01.json"].type).toBe("file");
+  });
+
+  test("ignores a path with no filename (no-op, no stray entries)", async () => {
+    // "/" collapses to zero segments under filter(Boolean), leaving no filename to
+    // place, so insertFile bails out and the tree keeps only the metadata file.
+    await validatePsychDS("{}", new Map([["/", "ignored"]]));
+    const [tree] = mockValidateWeb.mock.calls[0];
+    expect(Object.keys(tree)).toEqual(["dataset_description.json"]);
   });
 });
