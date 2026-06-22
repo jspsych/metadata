@@ -427,19 +427,24 @@ export default class JsPsychMetadata {
    * @param {Object} [metadata={}] - Optional metadata to be processed. Each key-value pair in this object will be processed individually.
    * @param {boolean} [csv=false] - Flag indicating if the data is in a string CSV. If true, the data will be parsed as CSV.
    */
-  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean } = {}) {
+  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean; synthesizedSourceRecordId?: boolean } = {}) {
     this.extractedArrays = new Map();
     this.extractedObjects = new Map();
     this.arrayJoinKeys = options.arrayJoinKeys ?? ['trial_index'];
 
     var parsed_data;
 
-    if (ext === 'csv') {
+    // Accept data already parsed by the caller (an array of observations) so a file isn't
+    // parsed twice when the caller also needs the rows — e.g. the CLI/web conversion path,
+    // which builds the main CSV from these same rows. A pre-parsed caller owns any
+    // source_record_id tagging and tells us whether it synthesized one via options; when we
+    // parse a JSON string ourselves we derive it from the parse below.
+    let synthesizedSourceRecordId = options.synthesizedSourceRecordId ?? false;
+    if (Array.isArray(data)) {
+      parsed_data = data;
+    } else if (ext === 'csv') {
       parsed_data = await parseCSV(data);
-    }
-
-    let synthesizedSourceRecordId = false;
-    if (ext === 'json') {
+    } else if (ext === 'json') {
       // Accepts both a single JSON array (standard jsPsych export) and JSON-Lines,
       // where each line is its own JSON value (JATOS exports one participant array per line).
       // Tag JSON-Lines rows with a per-line source_record_id: raw jsPsych exports carry no

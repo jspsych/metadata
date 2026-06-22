@@ -266,31 +266,39 @@ const DataUpload: React.FC<DataUploadProps> = ({
       }
 
       try {
-        await jsPsychMetadata.generate(content, {}, type as 'json' | 'csv', {
-          arrayJoinKeys: joinKeys,
-          suppressJoinKeyWarning: suppressWarning,
-        });
-
-        // Convert this file to its Psych-DS datafile(s) immediately: getExtracted* reflect
-        // only the most recent generate() call, so this must happen before the next iteration.
-        // JSON arrays are serialised to CSV; CSV is written verbatim. Non-array JSON is skipped
-        // (it isn't a jsPsych trial table) — matching the CLI.
+        // Parse the file once here and hand the rows to generate(), then reuse the same rows to
+        // build the Psych-DS datafile(s) — so a large file isn't parsed twice. Conversion must
+        // happen immediately: getExtracted* reflect only the most recent generate() call. JSON
+        // arrays are serialised to CSV; CSV is written verbatim. Non-array JSON is skipped (it
+        // isn't a jsPsych trial table) before generate() runs — matching the CLI.
         let mainRows: Array<Record<string, any>> = [];
         let mainContent: string | undefined;
         if (type === 'json') {
           // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
           // main CSV carries the same join-key column generate() promotes for the sidecars.
-          const json = parseJsonData(content, { tagSourceRecordId: true });
+          const stats: { synthesizedSourceRecordId?: boolean } = {};
+          const json = parseJsonData(content, { tagSourceRecordId: true }, stats);
           if (!Array.isArray(json)) {
             update(i, { status: 'skipped', detail: 'not a jsPsych trial array' });
             continue;
           }
           mainRows = json;
+          await jsPsychMetadata.generate(mainRows, {}, 'json', {
+            arrayJoinKeys: joinKeys,
+            suppressJoinKeyWarning: suppressWarning,
+            synthesizedSourceRecordId: stats.synthesizedSourceRecordId === true,
+          });
         } else {
-          mainContent = content;
-          // Parse CSV rows too so the builder can drop R-style unnamed row-index columns; a clean
-          // CSV still keeps its exact bytes (mainContent is used verbatim when nothing is dropped).
+          // Parse CSV rows so the builder can drop R-style unnamed row-index columns. A clean CSV
+          // keeps its exact bytes (mainContent verbatim); record that eligibility before generate()
+          // strips mainRows in place, since the builder can no longer detect the drop afterwards.
           mainRows = (await parseCSV(content)) as Array<Record<string, unknown>>;
+          const csvVerbatimEligible = !mainRows.some((r) => Object.keys(r).some((k) => k.trim() === ''));
+          await jsPsychMetadata.generate(mainRows, {}, 'csv', {
+            arrayJoinKeys: joinKeys,
+            suppressJoinKeyWarning: suppressWarning,
+          });
+          if (csvVerbatimEligible) mainContent = content;
         }
 
         const built = buildPsychDSDataFiles({

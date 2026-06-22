@@ -577,6 +577,28 @@ describe("processDirectory JSON → CSV conversion", () => {
     const csv = fs.readFileSync(path.join(dataDir, "subject-9_data.csv"), "utf8");
     expect(csv.split(/\r?\n/)[0].split(",")).not.toContain("");
   });
+
+  // Parse-once guard: the file is parsed a single time and the rows (not the raw string) are
+  // handed to generate(), so a large file isn't re-parsed for metadata and again for the CSV.
+  test("parses each file once: generate() receives parsed rows, not the raw string", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.json"), JSON.stringify([{ trial_index: 0, rt: 1 }]));
+    fs.writeFileSync(path.join(srcDir, "subject-2_data.csv"), "trial_index,rt\n0,1");
+
+    const metadata = new JsPsychMetadata();
+    const generateSpy = jest.spyOn(metadata, "generate"); // keeps the real implementation
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    expect(generateSpy).toHaveBeenCalledTimes(2);
+    for (const call of generateSpy.mock.calls) {
+      expect(Array.isArray(call[0])).toBe(true);
+      expect(typeof call[0]).not.toBe("string");
+    }
+    generateSpy.mockRestore();
+  });
 });
 
 // #109 finding #3: a fully-flagged headless run must not block on the interactive join-key prompt.
