@@ -126,7 +126,7 @@ describe("validatePsychDS", () => {
     mockValidateWeb.mockResolvedValue(
       validatorOutput([
         { key: "SOME_IGNORED_RULE", reason: "ignored", severity: "ignore" },
-      ] as Parameters<typeof validatorOutput>[0]),
+      ]),
     );
     const result = await validatePsychDS("{}");
     expect(result).toEqual({ valid: true, errors: [], warnings: [] });

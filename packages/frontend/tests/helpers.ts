@@ -3,7 +3,9 @@ export function validatorOutput(
   issues: {
     key: string;
     reason: string;
-    severity: "error" | "warning";
+    // The validator emits "ignore" alongside "error"/"warning"; include it so tests can
+    // assert it's routed to neither bucket without casting at the call site.
+    severity: "error" | "warning" | "ignore";
     evidence?: (string | undefined)[];
   }[],
 ) {
