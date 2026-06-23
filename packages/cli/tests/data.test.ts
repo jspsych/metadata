@@ -602,6 +602,24 @@ describe("resolveJoinKeysNonInteractive", () => {
     expect(result.message).toContain("subject_id");
   });
 
+  test("never picks an unnamed row-index column; chooses the real key instead (#117)", () => {
+    // R's write.csv prepends a unique unnamed ("") row-index column. It sorts first, so the greedy
+    // resolver used to pick it (logging the confusing `added ""`) — but #114 drops it from the
+    // written sidecar, so the key would vanish. analyzeJoinKeys now excludes unnamed columns, so
+    // the resolver lands on subject_id instead.
+    const rRows = [
+      { "": "1", trial_index: 0, subject_id: "s1", rt: 1 },
+      { "": "2", trial_index: 1, subject_id: "s1", rt: 2 },
+      { "": "3", trial_index: 0, subject_id: "s2", rt: 1 },
+      { "": "4", trial_index: 1, subject_id: "s2", rt: 2 },
+    ];
+    const analysis = analyzeJoinKeys(rRows, ["trial_index"]);
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "task-resp_data.csv");
+    expect(result.keys).toEqual(["trial_index", "subject_id"]);
+    expect(result.keys).not.toContain("");
+    expect(result.message).not.toContain('added ""');
+  });
+
   test("uses the greedy combination when no single column suffices", () => {
     // Neither session nor block alone makes trial_index unique, but together they do.
     const rows = [

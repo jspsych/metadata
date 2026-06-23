@@ -245,8 +245,12 @@ export function analyzeJoinKeys(
   const allColumns = new Set<string>();
   for (const row of parsedData) for (const col of Object.keys(row)) allColumns.add(col);
 
+  // Exclude unnamed/whitespace-only-header columns (e.g. R write.csv's row-index column):
+  // stripUnnamedColumns (#114) drops them from the written output, so proposing one as a join
+  // key — interactively or in the headless resolver — would pick a column that can't survive to
+  // the sidecar, and emit a confusing `added ""` message (#117). Same predicate as the drop.
   const candidateColumns = [...allColumns].filter(
-    col => !keySet.has(col) && !SYSTEM_COLUMNS.has(col)
+    col => col.trim() !== "" && !keySet.has(col) && !SYSTEM_COLUMNS.has(col)
   );
 
   // 3. Categorise: does (keys + col) achieve uniqueness?
