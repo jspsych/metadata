@@ -197,6 +197,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
       try {
         content = await readFileAsText(file);
       } catch {
+        // A read failure here only skips this file's join-key prompt; runGenerate reads it
+        // again and surfaces the failure as a per-file 'error' status, so we never silently
+        // emit duplicate rows. Hence skip quietly rather than mirroring that error handling.
         continue;
       }
       try {
