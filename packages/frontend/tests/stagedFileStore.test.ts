@@ -1,6 +1,7 @@
 import {
   createStagedFileStore,
   opfsAvailable,
+  sweepStaleStagingDirs,
   type StagedFileStore,
 } from "../src/staging/stagedFileStore";
 
@@ -25,6 +26,7 @@ async function collect(store: StagedFileStore): Promise<Array<[string, string]>>
 // with createWritable()/getFile(), and recursive removeEntry().
 function installFakeOpfs() {
   class FakeFileHandle {
+    readonly kind = "file" as const;
     constructor(private store: Map<string, Blob>, private key: string) {}
     async createWritable() {
       const parts: Array<string | Blob> = [];
@@ -42,8 +44,13 @@ function installFakeOpfs() {
     }
   }
   class FakeDirHandle {
+    readonly kind = "directory" as const;
     files = new Map<string, Blob>();
     dirs = new Map<string, FakeDirHandle>();
+    async *entries(): AsyncIterableIterator<[string, FakeDirHandle | FakeFileHandle]> {
+      for (const [name, dir] of this.dirs) yield [name, dir];
+      for (const [name] of this.files) yield [name, new FakeFileHandle(this.files, name)];
+    }
     async getDirectoryHandle(name: string, opts?: { create?: boolean }) {
       let d = this.dirs.get(name);
       if (!d) {
@@ -135,5 +142,48 @@ describe("stagedFileStore — OPFS backend (faked)", () => {
     await store.write("data/x_data.csv", "x");
     await store.clear();
     expect(store.paths()).toEqual([]);
+  });
+
+  test("two stores are isolated — one's clear() leaves the other's files intact", async () => {
+    // Per-session subdirs mean concurrent tabs never share (or delete) each other's staged data.
+    const a = createStagedFileStore();
+    const b = createStagedFileStore();
+    await a.write("data/a_data.csv", "a");
+    await b.write("data/b_data.csv", "b");
+
+    await b.clear();
+
+    expect(b.paths()).toEqual([]);
+    await expect(blobText(await a.read("data/a_data.csv"))).resolves.toBe("a");
+  });
+
+  test("write() after clear() recreates the session subdir", async () => {
+    const store = createStagedFileStore();
+    await store.write("data/x_data.csv", "x");
+    await store.clear();
+    await store.write("data/y_data.csv", "y"); // must not throw on the removed handle
+    expect(store.paths()).toEqual(["data/y_data.csv"]);
+    await expect(blobText(await store.read("data/y_data.csv"))).resolves.toBe("y");
+  });
+
+  test("sweepStaleStagingDirs reclaims old/stray entries but keeps fresh sessions", async () => {
+    const root = await (navigator as any).storage.getDirectory();
+    const staging = await root.getDirectoryHandle("psychds-staging", { create: true });
+    const now = Date.now();
+    const oldName = `${(now - 1000 * 60 * 60 * 48).toString(36)}-dead`; // 48h ago
+    const freshName = `${now.toString(36)}-live`;
+    await staging.getDirectoryHandle(oldName, { create: true });
+    await staging.getDirectoryHandle(freshName, { create: true });
+    await staging.getFileHandle("stray-leftover", { create: true }); // pre-subdir-layout file
+
+    await sweepStaleStagingDirs(); // default 24h TTL
+
+    const remaining: string[] = [];
+    for await (const [name] of (staging as any).entries()) remaining.push(name);
+    expect(remaining).toEqual([freshName]);
+  });
+
+  test("sweepStaleStagingDirs is a no-op when nothing has been staged", async () => {
+    await expect(sweepStaleStagingDirs()).resolves.toBeUndefined();
   });
 });
