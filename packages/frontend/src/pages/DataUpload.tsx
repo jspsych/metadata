@@ -15,7 +15,6 @@ export type FileStatus = {
 
 export type DataSession = {
   files: File[];
-  fileTexts: Map<string, { content: string; type: string }>;
   /**
    * Staged Psych-DS `data/` payload built from the uploaded files (dataset-relative paths such as
    * `data/subject-sub01_data.csv`, `data/raw/sub01.json`). JSON is converted to Psych-DS-named CSV
@@ -32,7 +31,6 @@ export type DataSession = {
 
 export const emptyDataSession: DataSession = {
   files: [],
-  fileTexts: new Map(),
   convertedStore: null,
   joinKeyCandidates: [],
   joinKeyProblemFile: '',
@@ -58,6 +56,16 @@ const readFileAsText = (file: File): Promise<string> =>
     reader.onerror = reject;
     reader.readAsText(file);
   });
+
+/**
+ * Normalised data-file type for routing. `.jsonl` is treated as `json` (parseJsonData accepts
+ * both a single array and one JSON value per line, so JSONL flows through the same path), and
+ * everything else keeps its lowercased extension.
+ */
+const dataFileType = (name: string): string => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return ext === 'jsonl' ? 'json' : ext;
+};
 
 /** Filename without its extension (e.g. "sub01.json" → "sub01"). */
 const fileStem = (name: string): string => name.replace(/\.[^./]+$/, '');
@@ -105,7 +113,6 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [files, setFiles] = useState<File[]>(session.files);
   const [sourceName, setSourceName] = useState('');
   const [pickError, setPickError] = useState('');
-  const [fileTexts, setFileTexts] = useState(session.fileTexts);
   const [convertedStore, setConvertedStore] = useState<StagedFileStore | null>(session.convertedStore);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
   const [joinKeyCandidates, setJoinKeyCandidates] = useState<JoinKeyCandidate[]>(session.joinKeyCandidates);
@@ -121,9 +128,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   onSessionChangeRef.current = onSessionChange;
   useEffect(() => {
     onSessionChangeRef.current({
-      files, fileTexts, convertedStore, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
+      files, convertedStore, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
     });
-  }, [files, fileTexts, convertedStore, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
+  }, [files, convertedStore, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
 
   useEffect(() => {
     if (inputRef.current) (inputRef.current as any).webkitdirectory = true; // not in TS lib
@@ -173,24 +180,25 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const handleProcess = async () => {
     setPhase('preflight');
 
-    const textMap = new Map<string, { content: string; type: string }>();
-    for (const file of files) {
-      const rawExt = file.name.split('.').pop()?.toLowerCase() || '';
-      // Treat JSON-Lines as JSON: parseJsonData() accepts both a single array and one
-      // JSON value per line, so .jsonl flows through the same path as .json downstream.
-      const type = rawExt === 'jsonl' ? 'json' : rawExt;
-      const content = await readFileAsText(file);
-      textMap.set(file.webkitRelativePath || file.name, { content, type });
-    }
-    setFileTexts(textMap);
-
     // Pre-flight: check join key uniqueness. Only JSON files are checked because
     // analyzeJoinKeys expects a parsed array of objects; CSV parsing would require
     // an extra parse step and CSV experiments are typically single-participant files
     // where trial_index is already unique.
-    for (const [name, { content, type }] of textMap) {
-      if (type !== 'json') continue;
+    //
+    // Each file is read on demand and dropped when the iteration ends, so the whole
+    // upload is never resident in the heap at once (File objects are already disk-backed
+    // by the browser). The trade-off is that JSON files are read again in runGenerate —
+    // intentional: this step bounds peak memory, not total I/O.
+    for (const file of files) {
+      const name = file.webkitRelativePath || file.name;
+      if (dataFileType(file.name) !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
+      let content: string;
+      try {
+        content = await readFileAsText(file);
+      } catch {
+        continue;
+      }
       try {
         // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array).
         const parsed = parseJsonData(content, { tagSourceRecordId: true });
@@ -214,13 +222,13 @@ const DataUpload: React.FC<DataUploadProps> = ({
       }
     }
 
-    await runGenerate(textMap, ['trial_index'], true);
+    await runGenerate(['trial_index'], true);
   };
 
   const handleJoinKeyApply = async () => {
     const keys = proceedAnyway ? ['trial_index'] : selectedKeys;
     setCommittedKeys(keys);
-    await runGenerate(fileTexts, keys, proceedAnyway);
+    await runGenerate(keys, proceedAnyway);
   };
 
   const toggleKey = (col: string) => {
@@ -230,7 +238,6 @@ const DataUpload: React.FC<DataUploadProps> = ({
   };
 
   const runGenerate = async (
-    textMap: Map<string, { content: string; type: string }>,
     joinKeys: string[],
     suppressWarning: boolean
   ) => {
@@ -253,9 +260,6 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const entry = textMap.get(file.webkitRelativePath || file.name);
-      if (!entry) continue;
-      const { content, type } = entry;
 
       update(i, { status: 'loading' });
 
@@ -265,8 +269,19 @@ const DataUpload: React.FC<DataUploadProps> = ({
         continue;
       }
 
+      const type = dataFileType(file.name);
       if (type !== 'json' && type !== 'csv') {
         update(i, { status: 'skipped', detail: 'unsupported file type' });
+        continue;
+      }
+
+      // Read this file's text on demand; it goes out of scope at the end of the iteration,
+      // so peak heap is bounded to one file's working set rather than the whole upload.
+      let content: string;
+      try {
+        content = await readFileAsText(file);
+      } catch (e) {
+        update(i, { status: 'error', detail: String(e) });
         continue;
       }
 
@@ -429,7 +444,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           <button className={styles.continueBtn} onClick={onComplete}>
             Continue →
           </button>
-          {joinKeyCandidates.length > 0 && fileTexts.size > 0 && (
+          {joinKeyCandidates.length > 0 && files.length > 0 && (
             <button className={styles.reConfigureBtn} onClick={() => enterReConfigureJoinKeys('hasData')}>
               Re-configure join keys
             </button>
