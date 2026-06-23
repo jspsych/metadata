@@ -40,6 +40,15 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
   );
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Discard this session's on-disk staging before tearing the shell down — Start Over throws the
+  // whole project away, so the converted CSVs/raw originals shouldn't linger in OPFS (otherwise
+  // they sit there until the next startup sweep). Fire-and-forget: clear() swallows its own errors
+  // and navigation needn't wait on disk cleanup.
+  const handleStartOver = () => {
+    void dataSession.convertedStore?.clear();
+    onStartOver();
+  };
+
   const completeStep = (stepId: StepId) => {
     const idx = STEPS.findIndex(s => s.id === stepId);
     setCompletedSteps(prev => new Set([...prev, stepId]));
@@ -104,7 +113,7 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
         completedSteps={completedSteps}
         canNavigateTo={canNavigateTo}
         onNavigate={(stepId) => { if (canNavigateTo(stepId)) setCurrentStep(stepId); }}
-        onStartOver={onStartOver}
+        onStartOver={handleStartOver}
       />
       <main className={styles.content}>
         {renderStep()}

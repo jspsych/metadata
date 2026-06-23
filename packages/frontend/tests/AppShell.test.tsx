@@ -38,12 +38,22 @@ jest.mock("../src/pages/ProjectInfo", () => ({
   OPTIONAL_FIELDS: [],
 }));
 
+// A fake staged store the DataUpload stub can push into the session, so Start Over cleanup can be
+// asserted. The `mock` prefix lets the hoisted jest.mock factory reference it (jest rule).
+const mockStagedClear = jest.fn();
+const mockStagedStore = { clear: mockStagedClear } as any;
+
 jest.mock("../src/pages/DataUpload", () => ({
   __esModule: true,
-  default: ({ onComplete }: any) => (
+  default: ({ onComplete, onSessionChange }: any) => (
     <div>
       <span>DataUpload page</span>
       <button onClick={onComplete}>Complete DataUpload</button>
+      <button
+        onClick={() => onSessionChange({ files: [], fileTexts: new Map(), convertedStore: mockStagedStore })}
+      >
+        Stage data
+      </button>
     </div>
   ),
   emptyDataSession: { fileTexts: [], files: [] },
@@ -86,6 +96,7 @@ let onStartOver: jest.Mock;
 beforeEach(() => {
   meta = makeMeta();
   onStartOver = jest.fn();
+  mockStagedClear.mockClear();
 });
 
 describe("AppShell", () => {
@@ -230,6 +241,24 @@ describe("AppShell", () => {
     test("Sidebar 'Start over' calls the onStartOver prop", async () => {
       render(<AppShell jsPsychMetadata={meta} onStartOver={onStartOver} />);
       await userEvent.click(screen.getByRole("button", { name: "Start over" }));
+      expect(onStartOver).toHaveBeenCalledTimes(1);
+    });
+
+    test("Start over clears the session's staged file store before bubbling up", async () => {
+      render(<AppShell jsPsychMetadata={meta} onStartOver={onStartOver} />);
+      await userEvent.click(screen.getByRole("button", { name: "Complete ProjectInfo" }));
+      await userEvent.click(screen.getByRole("button", { name: "Stage data" })); // session now holds a store
+      await userEvent.click(screen.getByRole("button", { name: "Start over" }));
+
+      expect(mockStagedClear).toHaveBeenCalledTimes(1);
+      expect(onStartOver).toHaveBeenCalledTimes(1);
+    });
+
+    test("Start over is a no-op for the store when nothing was staged", async () => {
+      render(<AppShell jsPsychMetadata={meta} onStartOver={onStartOver} />);
+      await userEvent.click(screen.getByRole("button", { name: "Start over" }));
+
+      expect(mockStagedClear).not.toHaveBeenCalled();
       expect(onStartOver).toHaveBeenCalledTimes(1);
     });
   });
