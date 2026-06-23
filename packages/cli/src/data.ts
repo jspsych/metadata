@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, hasUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -367,7 +367,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       await metadata.generate(parsedRows, {}, 'json', { ...options, synthesizedSourceRecordId: stats.synthesizedSourceRecordId === true });
     } else if (fileExtension === '.csv') {
       parsedRows = (await parseCSV(content)) as Array<Record<string, any>>;
-      csvVerbatimEligible = !parsedRows.some((r) => Object.keys(r).some((k) => k.trim() === ''));
+      csvVerbatimEligible = !hasUnnamedColumns(parsedRows);
       await metadata.generate(parsedRows, {}, 'csv', options);
     } else {
       console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
@@ -383,11 +383,9 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         return true;
       }
 
-      // Reuse the rows parsed (and fed to generate()) above — no second parse. `parsed` is the
-      // JSON row array (null for CSV) so the verbatim-bytes / raw-preservation logic below still
-      // distinguishes a JSON source from a CSV one.
-      const parsed: Array<Record<string, any>> | null = isJsonDataExt(fileExtension) ? parsedRows : null;
-      const mainRows: Array<Record<string, any>> = parsedRows;
+      // Reuse the rows parsed (and fed to generate()) above — no second parse. The verbatim-bytes
+      // decision is carried by csvVerbatimEligible; raw-preservation below keys off the source type
+      // via isJsonDataExt(fileExtension) directly.
 
       // Resolve the Psych-DS base (keyword-value sequence before "_data.csv"). The index.ts
       // pre-pass supplies a base for every source file; fall back to the file's own stem when
@@ -422,7 +420,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // have no separate "raw" form). data/raw/ is flat (one level deep is flattened), so
       // same-named originals from different source subdirectories must be disambiguated or
       // they would overwrite one another.
-      if (parsed) {
+      if (isJsonDataExt(fileExtension)) {
         const rawDir = path.join(targetDirectoryPath, 'raw');
         await fs.promises.mkdir(rawDir, { recursive: true });
         const rawName = disambiguateFilename(file, usedRawFilenames);
@@ -479,7 +477,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         // generate() already stripped from mainRows) is serialised from those cleaned rows.
         await fs.promises.writeFile(
           path.join(targetDirectoryPath, mainName),
-          csvVerbatimEligible ? content : objectsToCSV(mainRows, ['trial_index']),
+          csvVerbatimEligible ? content : objectsToCSV(parsedRows, ['trial_index']),
         );
         if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
 
@@ -499,7 +497,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         // disambiguation, and CSV building — the same implementation the browser flow uses.
         const built = buildPsychDSDataFiles({
           base,
-          mainRows,
+          mainRows: parsedRows,
           mainContent: csvVerbatimEligible ? content : undefined,
           extractedArrays,
           extractedObjects,

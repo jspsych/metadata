@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, hasUnnamedColumns, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import styles from './DataUpload.module.css';
 
@@ -293,7 +293,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           // keeps its exact bytes (mainContent verbatim); record that eligibility before generate()
           // strips mainRows in place, since the builder can no longer detect the drop afterwards.
           mainRows = (await parseCSV(content)) as Array<Record<string, unknown>>;
-          const csvVerbatimEligible = !mainRows.some((r) => Object.keys(r).some((k) => k.trim() === ''));
+          const csvVerbatimEligible = !hasUnnamedColumns(mainRows);
           await jsPsychMetadata.generate(mainRows, {}, 'csv', {
             arrayJoinKeys: joinKeys,
             suppressJoinKeyWarning: suppressWarning,

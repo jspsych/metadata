@@ -14,6 +14,7 @@ jest.mock("@jspsych/metadata", () => ({
   // files, which the component only iterates over — an empty list is sufficient for these tests.
   parseJsonData: jest.fn((content: string) => JSON.parse(content)),
   parseCSV: jest.fn(() => []),
+  hasUnnamedColumns: jest.fn(() => false),
   buildPsychDSDataFiles: jest.fn(() => []),
   deriveFallbackBase: jest.fn((stem: string) => `subject-${stem}`),
   isValidPsychDSDataFilename: jest.fn(() => false),
