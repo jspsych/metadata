@@ -324,6 +324,26 @@ describe("preAnalyzeDirectory", () => {
   });
 });
 
+describe("processDirectory output-directory creation (#118)", () => {
+  test("creates a missing data/ directory for a CSV input instead of failing with ENOENT", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    // Mirrors an existing Psych-DS project with no data/ dir: the output path doesn't exist yet.
+    const dataDir = path.join(tmpDir, "project", "data");
+    fs.mkdirSync(srcDir);
+    // A CSV input (no data/raw/ is created for CSV, so nothing else would make data/ first).
+    // "subject-1" yields the compliant "subject-1_data.csv" without needing a rename plan.
+    fs.writeFileSync(path.join(srcDir, "subject-1.csv"), "trial_type,rt\njsPsych-html-keyboard-response,450");
+
+    expect(fs.existsSync(dataDir)).toBe(false);
+
+    const { total, failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+    expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
+  });
+});
+
 describe("processDirectory JSON → CSV conversion", () => {
   test("writes a converted CSV to data/ and preserves the original JSON under data/raw/", async () => {
     const srcDir = path.join(tmpDir, "src");

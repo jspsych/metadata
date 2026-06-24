@@ -547,6 +547,16 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
       return 0;
     });
 
+    // Ensure the output data/ directory exists before writing into it. A brand-new project gets
+    // this from createDirectoryWithStructure, but an existing project pointed at via --psych-ds-dir
+    // may be a minimal/hand-rolled skeleton with no data/ dir. CSV inputs write straight into
+    // targetDirectoryPath, so without this the first writeFile fails with ENOENT and the run
+    // misreports it as "0 files read" (#118). (JSON inputs only dodged this incidentally, by
+    // creating data/raw/ first.) Recursive, so it's a no-op when the directory already exists.
+    if (targetDirectoryPath) {
+      await fs.promises.mkdir(targetDirectoryPath, { recursive: true });
+    }
+
     for (const { dirPath, name } of files) {
       total += 1;
       if (!await processFile(metadata, dirPath, name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1;
