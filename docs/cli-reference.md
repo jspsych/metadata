@@ -1,6 +1,6 @@
 # CLI Reference
 
-This page documents all flags, exit codes, filename rules, and output behaviour for the jsPsych Metadata CLI. For a step-by-step walkthrough of a typical first run, see [Getting Started](getting-started.md).
+This page documents all flags, exit codes, filename rules, and output behaviour for the jsPsych Metadata CLI. For a step-by-step walkthrough of a typical first run, see the [CLI Guide](cli-guide.md).
 
 ---
 
@@ -73,9 +73,22 @@ fi
 
 ### Accepted formats
 
-The tool accepts `.csv` and `.json` data files produced by jsPsych. JSON files are automatically converted to CSV in the output (`data/` folder); the originals are preserved byte-for-byte in `data/raw/`. CSV files are copied to `data/` under their normalized name; originals are also preserved in `data/raw/`.
+The tool accepts the following jsPsych data shapes:
+
+| Format | Notes |
+|--------|-------|
+| **CSV** | One row per trial. Copied to `data/` under its normalized name. Unnamed row-index columns (the blank leading column some exporters and R add) are dropped. |
+| **JSON array** | The standard jsPsych export: `[ {…}, {…} ]`. Converted to CSV. |
+| **`{ "trials": [...] }` wrapper** | An object whose single key is `trials` holding the trial array (e.g. OSF exports). Automatically unwrapped, then treated as a JSON array. |
+| **JSON-Lines (`.jsonl`)** | One JSON value per line (JATOS and several labs export this way — often one participant's trial array per line). All lines are flattened into a single observation stream. |
+
+JSON and JSON-Lines files are automatically converted to CSV in the output (`data/` folder); the originals are preserved byte-for-byte in `data/raw/`. CSV files are copied to `data/` under their normalized name; originals are also preserved in `data/raw/`.
 
 Files of any other type are ignored during metadata generation.
+
+### Nested arrays and join keys
+
+When a data file contains nested arrays inside a trial, the tool extracts each array into its own Psych-DS CSV. Those rows need a column that uniquely identifies them. If `trial_index` alone isn't unique, the tool prompts (interactively) for additional **join-key** columns, grouping candidates into "Sufficient alone" and "Reduces duplicates", with a "Proceed anyway" escape. For JSON-Lines input with no per-trial identifier, a `source_record_id` (the source line) is synthesized so the join key can be formed; it marks the source record, not a real participant.
 
 ### Folder depth
 
@@ -103,12 +116,23 @@ data_2024-01-15.csv           ← date is not in keyword-value format
 flanker_results_data.csv      ← "flanker_results" is not a keyword-value pair
 ```
 
-In **interactive mode**, the tool detects non-compliant names and prompts you to choose a keyword. The file's current name becomes the value (with hyphens and underscores removed, since Psych-DS values may not contain them). For example:
+In **interactive mode**, the tool detects non-compliant names and offers a menu of naming **strategies**, each with a live preview of what it would produce on your actual filenames:
+
+| Strategy | What it does | When offered |
+|----------|--------------|--------------|
+| **Use the value found inside each file** | Reads an ID column from the data (one unique value per file) and uses it as the value. The most reliable option, and recommended when available. | Only when such a column exists in *every* file. |
+| **Keep only the part that differs** | Strips the shared prefix/suffix across filenames; the varying middle becomes the value (you pick the keyword). | Only when the filenames share a common pattern. |
+| **Give the files fresh numbered names** | Replaces names with a clean sequence (`subject-001`, `subject-002`, …); you type the first name. | Always. |
+| **Keep the whole old filename as the value** | The fallback: the entire old name becomes one value under a keyword you pick. Nothing is lost, but names get verbose. | Always. |
+
+After you pick a strategy, the tool shows the full set of proposed renames (including any sidecar CSVs from nested arrays, and auto-adjusting name collisions) and lets you **Apply**, **Edit one filename**, or **Choose a different strategy**. Psych-DS values may not contain hyphens or underscores, so those are stripped when a value is derived from a filename. For example:
 
 ```
 participant_01.csv → subject-participant01_data.csv
 flanker_results.json → task-flankerResults_data.csv
 ```
+
+Files with technically valid names that use an **unofficial keyword** (one not in the table below) are legal but draw a validator warning; the tool offers to rename those too.
 
 Official Psych-DS keywords offered by the tool:
 

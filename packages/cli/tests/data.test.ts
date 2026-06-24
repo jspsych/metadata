@@ -324,6 +324,26 @@ describe("preAnalyzeDirectory", () => {
   });
 });
 
+describe("processDirectory output-directory creation (#118)", () => {
+  test("creates a missing data/ directory for a CSV input instead of failing with ENOENT", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    // Mirrors an existing Psych-DS project with no data/ dir: the output path doesn't exist yet.
+    const dataDir = path.join(tmpDir, "project", "data");
+    fs.mkdirSync(srcDir);
+    // A CSV input (no data/raw/ is created for CSV, so nothing else would make data/ first).
+    // "subject-1" yields the compliant "subject-1_data.csv" without needing a rename plan.
+    fs.writeFileSync(path.join(srcDir, "subject-1.csv"), "trial_type,rt\njsPsych-html-keyboard-response,450");
+
+    expect(fs.existsSync(dataDir)).toBe(false);
+
+    const { total, failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+    expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
+  });
+});
+
 describe("processDirectory JSON → CSV conversion", () => {
   test("writes a converted CSV to data/ and preserves the original JSON under data/raw/", async () => {
     const srcDir = path.join(tmpDir, "src");
@@ -577,6 +597,27 @@ describe("processDirectory JSON → CSV conversion", () => {
     const csv = fs.readFileSync(path.join(dataDir, "subject-9_data.csv"), "utf8");
     expect(csv.split(/\r?\n/)[0].split(",")).not.toContain("");
   });
+
+  // Parse-once guard: the file is parsed a single time and the rows (not the raw string) are
+  // handed to generate(), so a large file isn't re-parsed for metadata and again for the CSV.
+  test("parses each file once: generate() receives parsed rows, not the raw string", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.json"), JSON.stringify([{ trial_index: 0, rt: 1 }]));
+    fs.writeFileSync(path.join(srcDir, "subject-2_data.csv"), "trial_index,rt\n0,1");
+
+    const metadata = new JsPsychMetadata();
+    const generateSpy = jest.spyOn(metadata, "generate"); // keeps the real implementation
+    await processDirectory(metadata, srcDir, false, dataDir);
+
+    expect(generateSpy).toHaveBeenCalledTimes(2);
+    for (const call of generateSpy.mock.calls) {
+      expect(Array.isArray(call[0])).toBe(true);
+    }
+    generateSpy.mockRestore();
+  });
 });
 
 // #109 finding #3: a fully-flagged headless run must not block on the interactive join-key prompt.
@@ -600,6 +641,24 @@ describe("resolveJoinKeysNonInteractive", () => {
     expect(result.keys).toEqual(["trial_index", "subject_id"]);
     expect(result.unresolved).toBe(false);
     expect(result.message).toContain("subject_id");
+  });
+
+  test("never picks an unnamed row-index column; chooses the real key instead (#117)", () => {
+    // R's write.csv prepends a unique unnamed ("") row-index column. It sorts first, so the greedy
+    // resolver used to pick it (logging the confusing `added ""`) — but #114 drops it from the
+    // written sidecar, so the key would vanish. analyzeJoinKeys now excludes unnamed columns, so
+    // the resolver lands on subject_id instead.
+    const rRows = [
+      { "": "1", trial_index: 0, subject_id: "s1", rt: 1 },
+      { "": "2", trial_index: 1, subject_id: "s1", rt: 2 },
+      { "": "3", trial_index: 0, subject_id: "s2", rt: 1 },
+      { "": "4", trial_index: 1, subject_id: "s2", rt: 2 },
+    ];
+    const analysis = analyzeJoinKeys(rRows, ["trial_index"]);
+    const result = resolveJoinKeysNonInteractive(analysis, ["trial_index"], "task-resp_data.csv");
+    expect(result.keys).toEqual(["trial_index", "subject_id"]);
+    expect(result.keys).not.toContain("");
+    expect(result.message).not.toContain('added ""');
   });
 
   test("uses the greedy combination when no single column suffices", () => {

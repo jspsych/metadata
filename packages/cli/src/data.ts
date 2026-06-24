@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, stripUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, hasUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -342,22 +342,40 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
     const content = await fs.promises.readFile(filePath, "utf8");
     const fileExtension = path.extname(file).toLowerCase();
 
-    switch (fileExtension){
-      case '.json':
-      case '.jsonl':
-        if (file === "dataset_description.json") metadata.loadMetadata(content); // need to remove this for the files that are being called with the CLI
-        else await metadata.generate(content, {}, 'json', options);
-        break;
-      case '.csv':
-        await metadata.generate(content, {}, 'csv', options);
-        break;
-      default:
-        console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
+    // Rows parsed from this file, reused by the conversion path below so the file is parsed
+    // once rather than once here and again per output. Empty for dataset_description.json,
+    // which is loaded as existing metadata and never parsed/generated from.
+    let parsedRows: Array<Record<string, any>> = [];
+    // A clean CSV (no blank/whitespace-only headers) can be written back byte-for-byte. Recorded
+    // before generate() strips parsedRows in place — the conversion path reuses those same rows,
+    // so it can no longer detect the dropped columns itself.
+    let csvVerbatimEligible = false;
+    if (file === "dataset_description.json") {
+      metadata.loadMetadata(content);
+    } else if (isJsonDataExt(fileExtension)) {
+      // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the main
+      // CSV carries the same join-key column generate() promotes for the sidecars. Validate
+      // before generating so a non-array (or unparseable) file is skipped without side effects.
+      const stats: { synthesizedSourceRecordId?: boolean } = {};
+      const json = parseJsonData(content, { tagSourceRecordId: true }, stats);
+      if (!Array.isArray(json)) {
+        console.error(`"${file}" is not a JSON array of jsPsych trials; skipping.`);
         return false;
+      }
+      parsedRows = json;
+      // Hand the already-parsed rows to generate() so it doesn't re-parse the same content.
+      await metadata.generate(parsedRows, {}, 'json', { ...options, synthesizedSourceRecordId: stats.synthesizedSourceRecordId === true });
+    } else if (fileExtension === '.csv') {
+      parsedRows = (await parseCSV(content)) as Array<Record<string, any>>;
+      csvVerbatimEligible = !hasUnnamedColumns(parsedRows);
+      await metadata.generate(parsedRows, {}, 'csv', options);
+    } else {
+      console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
+      return false;
     }
 
     if (targetDirectoryPath) {
-      // dataset_description.json takes the loadMetadata() branch above. Copy it through
+      // dataset_description.json was loaded as existing metadata above. Copy it through
       // unchanged and skip conversion + array extraction (the latter would re-write the
       // previous data file's array rows under a filename derived from this one).
       if (file === "dataset_description.json") {
@@ -365,25 +383,9 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         return true;
       }
 
-      // For JSON sources, parse and validate first so a non-array (or unparseable) file is
-      // skipped before it reserves an output name — otherwise it would needlessly disambiguate
-      // a later valid file that maps to the same base.
-      let parsed: Array<Record<string, any>> | null = null;
-      if (isJsonDataExt(fileExtension)) {
-        // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the main
-        // CSV carries the same join-key column generate() promotes for the sidecars.
-        const json = parseJsonData(content, { tagSourceRecordId: true });
-        if (!Array.isArray(json)) {
-          console.error(`"${file}" is not a JSON array of jsPsych trials; skipping CSV conversion.`);
-          return false;
-        }
-        parsed = json;
-      }
-
-      // Rows for the main table, fed to the shared builder / inline write. JSON is already
-      // parsed above; parse CSV here too so unnamed row-index columns can be stripped (a CSV's
-      // exact bytes are still preserved via mainContent when nothing is dropped).
-      const mainRows: Array<Record<string, any>> = parsed ?? ((await parseCSV(content)) as Array<Record<string, any>>);
+      // Reuse the rows parsed (and fed to generate()) above — no second parse. The verbatim-bytes
+      // decision is carried by csvVerbatimEligible; raw-preservation below keys off the source type
+      // via isJsonDataExt(fileExtension) directly.
 
       // Resolve the Psych-DS base (keyword-value sequence before "_data.csv"). The index.ts
       // pre-pass supplies a base for every source file; fall back to the file's own stem when
@@ -418,7 +420,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // have no separate "raw" form). data/raw/ is flat (one level deep is flattened), so
       // same-named originals from different source subdirectories must be disambiguated or
       // they would overwrite one another.
-      if (parsed) {
+      if (isJsonDataExt(fileExtension)) {
         const rawDir = path.join(targetDirectoryPath, 'raw');
         await fs.promises.mkdir(rawDir, { recursive: true });
         const rawName = disambiguateFilename(file, usedRawFilenames);
@@ -471,12 +473,11 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         };
 
         const mainName = reserve(planned.mainName, 'main output');
-        // Drop R-style unnamed row-index columns (same as the shared builder / generate()). A clean
-        // CSV keeps its exact bytes; JSON or a dirty CSV is serialised from the cleaned rows.
-        const { rows: cleanedMain, dropped: droppedMain } = stripUnnamedColumns(mainRows);
+        // A clean CSV keeps its exact bytes; JSON or a dirty CSV (whose unnamed row-index columns
+        // generate() already stripped from mainRows) is serialised from those cleaned rows.
         await fs.promises.writeFile(
           path.join(targetDirectoryPath, mainName),
-          (parsed === null && droppedMain.length === 0) ? content : objectsToCSV(cleanedMain, ['trial_index']),
+          csvVerbatimEligible ? content : objectsToCSV(parsedRows, ['trial_index']),
         );
         if (verbose) console.log(`  → wrote ${file} as ${mainName}`);
 
@@ -496,8 +497,8 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         // disambiguation, and CSV building — the same implementation the browser flow uses.
         const built = buildPsychDSDataFiles({
           base,
-          mainRows,
-          mainContent: parsed ? undefined : content,
+          mainRows: parsedRows,
+          mainContent: csvVerbatimEligible ? content : undefined,
           extractedArrays,
           extractedObjects,
           joinKeys,
@@ -545,6 +546,16 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
       if (b.name === 'dataset_description.json') return 1;
       return 0;
     });
+
+    // Ensure the output data/ directory exists before writing into it. A brand-new project gets
+    // this from createDirectoryWithStructure, but an existing project pointed at via --psych-ds-dir
+    // may be a minimal/hand-rolled skeleton with no data/ dir. CSV inputs write straight into
+    // targetDirectoryPath, so without this the first writeFile fails with ENOENT and the run
+    // misreports it as "0 files read" (#118). (JSON inputs only dodged this incidentally, by
+    // creating data/raw/ first.) Recursive, so it's a no-op when the directory already exists.
+    if (targetDirectoryPath) {
+      await fs.promises.mkdir(targetDirectoryPath, { recursive: true });
+    }
 
     for (const { dirPath, name } of files) {
       total += 1;

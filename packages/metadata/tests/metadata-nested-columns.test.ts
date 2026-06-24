@@ -411,6 +411,26 @@ describe("analyzeJoinKeys", () => {
     expect(cols).not.toContain("trial_index");
   });
 
+  test("excludes unnamed/whitespace-only-header columns from candidates (#117)", () => {
+    // R's write.csv prepends an unnamed row-index column (empty-string header). It's unique, so a
+    // greedy resolver would happily pick it — but stripUnnamedColumns (#114) drops it from the
+    // written output, so it must never be proposed as a join key (interactively or headless).
+    const withRowIndex = [
+      { "": "1", "  ": "a", trial_index: 0, subject_id: "s1" },
+      { "": "2", "  ": "b", trial_index: 1, subject_id: "s1" },
+      { "": "3", "  ": "c", trial_index: 0, subject_id: "s2" },
+      { "": "4", "  ": "d", trial_index: 1, subject_id: "s2" },
+    ];
+    const result = analyzeJoinKeys(withRowIndex, ["trial_index"]);
+    const cols = result.candidates.map(c => c.column);
+    expect(cols).not.toContain("");      // empty header
+    expect(cols).not.toContain("  ");    // whitespace-only header
+    expect(cols).toContain("subject_id"); // the legitimate key is still offered
+    // and an unnamed column is never smuggled into a greedy combination either
+    expect(result.suggestedAdditionalKeys ?? []).not.toContain("");
+    expect(result.suggestedAdditionalKeys ?? []).not.toContain("  ");
+  });
+
   test("marks subject_id as makesUnique: true (it alone resolves all duplicates)", () => {
     const result = analyzeJoinKeys(rows, ["trial_index"]);
     const subjectCandidate = result.candidates.find(c => c.column === "subject_id");
