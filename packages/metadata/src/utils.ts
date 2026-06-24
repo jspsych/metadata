@@ -248,9 +248,10 @@ export function analyzeJoinKeys(
   // Exclude unnamed/whitespace-only-header columns (e.g. R write.csv's row-index column):
   // stripUnnamedColumns (#114) drops them from the written output, so proposing one as a join
   // key — interactively or in the headless resolver — would pick a column that can't survive to
-  // the sidecar, and emit a confusing `added ""` message (#117). Same predicate as the drop.
+  // the sidecar, and emit a confusing `added ""` message (#117). Reuse isUnnamedHeader so this
+  // can never diverge from the drop.
   const candidateColumns = [...allColumns].filter(
-    col => col.trim() !== "" && !keySet.has(col) && !SYSTEM_COLUMNS.has(col)
+    col => !isUnnamedHeader(col) && !keySet.has(col) && !SYSTEM_COLUMNS.has(col)
   );
 
   // 3. Categorise: does (keys + col) achieve uniqueness?
