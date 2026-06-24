@@ -74,14 +74,22 @@ async function streamZipToSink(opts: BuildDatasetZipOptions, sink: ZipSink): Pro
   // writes earlier chunks. FileSystemWritableFileStream serialises them internally. Promise.all
   // detects any write failure after the last chunk is delivered. Per-chunk backpressure would
   // require pausing the worker between chunks, which fflate's callback API doesn't support.
+  //
+  // .catch(() => {}) is attached to each write promise at creation so that late chunk callbacks
+  // (from fflate workers already in-flight when buildZip rejects) don't produce unhandled
+  // rejections when they call sink.write() on the now-aborted stream. Promise.all still sees
+  // the original rejections through the writes[] references.
   const writes: Promise<void>[] = [];
   try {
-    await buildZip(opts, (dat) => writes.push(sink.write(dat)));
+    await buildZip(opts, (dat) => {
+      const w = sink.write(dat);
+      w.catch(() => {});
+      writes.push(w);
+    });
     await Promise.all(writes);
     await sink.close();
   } catch (e) {
     await sink.abort().catch(() => {});
-    await Promise.allSettled(writes); // drain pending write rejections so they don't surface as unhandled
     throw e;
   }
 }
