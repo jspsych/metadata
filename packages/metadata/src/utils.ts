@@ -409,6 +409,22 @@ export function disambiguateArrayFilename(base: string, used: Set<string>): stri
   return candidate;
 }
 
+/** A column header is "unnamed" when it is empty or whitespace-only — the unnamed row-index
+ *  column R's `write.csv` prepends. The single source of truth for that rule; both
+ *  {@link stripUnnamedColumns} and {@link hasUnnamedColumns} use it so they can never diverge. */
+const isUnnamedHeader = (key: string): boolean => key.trim() === "";
+
+/**
+ * True when any row carries an {@link isUnnamedHeader unnamed} column. Lets a caller decide,
+ * *before* `generate()` mutates the rows in place, whether a CSV source can be written back
+ * byte-for-byte (no unnamed columns) or must be re-serialised from the cleaned rows. Kept as a
+ * shared predicate so the CLI and browser conversion paths share one definition of "unnamed"
+ * with {@link stripUnnamedColumns}, rather than each re-implementing the header scan.
+ */
+export function hasUnnamedColumns(rows: Array<Record<string, any>>): boolean {
+  return rows.some((row) => Object.keys(row).some(isUnnamedHeader));
+}
+
 /**
  * Removes columns whose name is empty or whitespace-only from every row, in place,
  * and reports which names were dropped. R's `write.csv` (with the default
@@ -425,7 +441,7 @@ export function stripUnnamedColumns(
   const unnamed = new Set<string>();
   for (const row of rows) {
     for (const key of Object.keys(row)) {
-      if (key.trim() === "") unnamed.add(key);
+      if (isUnnamedHeader(key)) unnamed.add(key);
     }
   }
   if (unnamed.size > 0) {

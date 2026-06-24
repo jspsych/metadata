@@ -14,6 +14,7 @@ jest.mock("@jspsych/metadata", () => ({
   // files, which the component only iterates over — an empty list is sufficient for these tests.
   parseJsonData: jest.fn((content: string) => JSON.parse(content)),
   parseCSV: jest.fn(() => []),
+  hasUnnamedColumns: jest.fn(() => false),
   buildPsychDSDataFiles: jest.fn(() => []),
   deriveFallbackBase: jest.fn((stem: string) => `subject-${stem}`),
   isValidPsychDSDataFilename: jest.fn(() => false),
@@ -263,13 +264,15 @@ describe("DataUpload", () => {
       await userEvent.click(screen.getByRole("button", { name: "Process files" }));
     }
 
-    test("calls generate once per CSV file with correct args", async () => {
+    test("calls generate once per CSV file with the parsed rows", async () => {
       const { container } = render(<DataUpload {...props()} />);
       await pickAndProcess(makeFile("sub01.csv", "rt,stimulus\n100,hello"), container);
 
       await waitFor(() => expect(meta.generate).toHaveBeenCalledTimes(1));
+      // The file is parsed once up front and the rows (not the raw string) are handed to
+      // generate(), so it doesn't re-parse the same content.
       expect(meta.generate).toHaveBeenCalledWith(
-        "rt,stimulus\n100,hello",
+        expect.any(Array),
         {},
         "csv",
         expect.any(Object),
@@ -309,7 +312,8 @@ describe("DataUpload", () => {
       await pickAndProcess(makeFile("data.json", content), container);
 
       await waitFor(() => expect(meta.generate).toHaveBeenCalledTimes(1));
-      expect(meta.generate).toHaveBeenCalledWith(content, {}, "json", expect.any(Object));
+      // generate() receives the parsed rows array, not the raw JSON string (parsed once up front).
+      expect(meta.generate).toHaveBeenCalledWith(expect.any(Array), {}, "json", expect.any(Object));
       expect(screen.queryByText(/Rows need a unique identifier/)).not.toBeInTheDocument();
     });
 
@@ -366,7 +370,7 @@ describe("DataUpload", () => {
 
       await waitFor(() => expect(meta.generate).toHaveBeenCalled());
       expect(meta.generate).toHaveBeenCalledWith(
-        expect.any(String),
+        expect.any(Array),
         {},
         "json",
         expect.objectContaining({
@@ -385,7 +389,7 @@ describe("DataUpload", () => {
       await userEvent.click(screen.getByRole("button", { name: "Apply and process files" }));
       await waitFor(() => expect(meta.generate).toHaveBeenCalled());
       expect(meta.generate).toHaveBeenCalledWith(
-        expect.any(String),
+        expect.any(Array),
         {},
         "json",
         expect.objectContaining({ arrayJoinKeys: ["trial_index"], suppressJoinKeyWarning: true }),
