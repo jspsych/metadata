@@ -16,5 +16,8 @@ module.exports = {
     // Resolve the workspace library from source so tests don't require a prior build,
     // mirroring how packages/metadata's own tests import from src.
     "^@jspsych/metadata$": "<rootDir>/../metadata/src/index.ts",
+    // fflate's package exports default to the browser build (requires browser Worker).
+    // Redirect to the Node.js build so tests can use worker_threads instead.
+    "^fflate$": "<rootDir>/../../node_modules/fflate/lib/node.cjs",
   },
 };

@@ -3,7 +3,8 @@ import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
 import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
-import { buildDatasetZipBlob } from '../staging/datasetZip';
+import { downloadDatasetZip } from '../staging/datasetZip';
+import { blobDownload } from '../download';
 import type { StagedFileStore } from '../staging/stagedFileStore';
 import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
@@ -18,17 +19,6 @@ interface ReviewProps {
   dataFiles?: StagedFileStore | null;
 }
 
-function blobDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
 
 // Warnings the downloadable zip already resolves: it ships a README.md and CHANGES.md the
@@ -39,6 +29,7 @@ const ZIP_RESOLVED_WARNINGS = new Set(['MISSING_README_DOC', 'MISSING_CHANGES_DO
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
   const [valStatus, setValStatus] = useState<ValidationStatus>('idle');
   const [valResult, setValResult] = useState<PsychDSValidationResult | null>(null);
   const [valError, setValError] = useState<string | null>(null);
@@ -53,7 +44,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   }, []);
 
   // Staged Psych-DS data/ payload (paths already include `data/`); drives validation + zip.
-  const hasDataFiles = (dataFiles?.paths().length ?? 0) > 0;
+  const hasDataFiles = useMemo(() => (dataFiles?.paths().length ?? 0) > 0, [dataFiles]);
 
   const handleDownload = async () => {
     if ('showSaveFilePicker' in window) {
@@ -78,10 +69,16 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   };
 
   const handleDownloadZip = async () => {
-    // Built from the staged store, reading one file at a time (see buildDatasetZipBlob).
-    const blob = await buildDatasetZipBlob({ metadataJson, projectName, dataFiles: dataFiles ?? undefined });
-    blobDownload(blob, `${projectName}.zip`);
-    setZipped(true);
+    setZipError(null);
+    try {
+      const didDownload = await downloadDatasetZip(
+        { metadataJson, projectName, dataFiles: dataFiles ?? undefined },
+        `${projectName}.zip`,
+      );
+      if (didDownload) setZipped(true);
+    } catch (err) {
+      setZipError(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   const handleValidate = async () => {
@@ -127,6 +124,11 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
               <button className={styles.downloadBtn} onClick={handleDownloadZip}>
                 {zipped ? '✓ Downloaded' : `Download ${projectName}.zip`}
               </button>
+              {zipError && (
+                <div className={`${styles.resultBanner} ${styles.resultUnavailable}`}>
+                  {zipError}
+                </div>
+              )}
               <p className={styles.saveHint}>
                 Includes <code className={styles.code}>dataset_description.json</code> and your data files in a <code className={styles.code}>data/</code> folder — ready to validate.
               </p>
