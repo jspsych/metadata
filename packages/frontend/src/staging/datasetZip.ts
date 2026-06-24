@@ -9,6 +9,7 @@
 
 import { Zip, AsyncZipDeflate } from 'fflate';
 import { DATASET_DESCRIPTION_FILENAME } from '../datasetLayout';
+import { blobDownload } from '../download';
 import type { DatasetFileSource } from './stagedFileStore';
 
 const readmeContents = (projectName: string): string =>
@@ -94,17 +95,6 @@ async function streamZipToSink(opts: BuildDatasetZipOptions, sink: ZipSink): Pro
   }
 }
 
-function blobDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 /**
  * Assembles the dataset zip and returns it as a Blob. Each data file is read from the store
  * one at a time; output chunks are collected into a single Blob. Use {@link downloadDatasetZip}
@@ -149,8 +139,6 @@ export async function downloadDatasetZip(
       return true;
     }
   }
-  const chunks: Uint8Array[] = [];
-  await buildZip(opts, (dat) => chunks.push(dat));
-  blobDownload(new Blob(chunks, { type: 'application/zip' }), filename);
+  blobDownload(await buildDatasetZipBlob(opts), filename);
   return true;
 }

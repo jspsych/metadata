@@ -4,6 +4,7 @@ import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
 import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
 import { downloadDatasetZip } from '../staging/datasetZip';
+import { blobDownload } from '../download';
 import type { StagedFileStore } from '../staging/stagedFileStore';
 import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
@@ -16,17 +17,6 @@ interface ReviewProps {
    * at a time to drive both validation and the zip. Null/absent when no data was uploaded.
    */
   dataFiles?: StagedFileStore | null;
-}
-
-function blobDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
