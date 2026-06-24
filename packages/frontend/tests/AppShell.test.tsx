@@ -50,13 +50,13 @@ jest.mock("../src/pages/DataUpload", () => ({
       <span>DataUpload page</span>
       <button onClick={onComplete}>Complete DataUpload</button>
       <button
-        onClick={() => onSessionChange({ files: [], fileTexts: new Map(), convertedStore: mockStagedStore })}
+        onClick={() => onSessionChange({ files: [], convertedStore: mockStagedStore })}
       >
         Stage data
       </button>
     </div>
   ),
-  emptyDataSession: { fileTexts: [], files: [] },
+  emptyDataSession: { files: [] },
 }));
 
 jest.mock("../src/pages/Variables", () => ({

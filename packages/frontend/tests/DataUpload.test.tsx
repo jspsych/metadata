@@ -141,11 +141,11 @@ describe("DataUpload", () => {
       expect(screen.getByText("parse failed")).toBeInTheDocument();
     });
 
-    test("shows Re-configure join keys when candidates and fileTexts exist", () => {
+    test("shows Re-configure join keys when candidates and files exist", () => {
       const session: DataSession = {
         ...emptyDataSession,
         joinKeyCandidates: [{ column: "subject", makesUnique: true }],
-        fileTexts: new Map([["data.json", { content: "[]", type: "json" }]]),
+        files: [makeFile("data.json", "[]")],
       };
       render(<DataUpload {...props({ dataProcessed: true, session })} />);
       expect(screen.getByRole("button", { name: "Re-configure join keys" })).toBeInTheDocument();
