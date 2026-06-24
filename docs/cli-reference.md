@@ -19,7 +19,7 @@ With no flags, the tool runs interactively and prompts you for everything it nee
 | Flag | Alias | Type | Description |
 |------|-------|------|-------------|
 | `--psych-ds-dir` | `-em` | path | Path to an **existing** Psych-DS project folder. Must contain a `dataset_description.json`. Use this when updating a project you have already generated. |
-| `--data-dir` | `-d` | path | Path to the folder containing your raw jsPsych data files (`.csv` or `.json`). |
+| `--data-dir` | `-d` | path | Path to the folder containing your raw jsPsych data files (`.csv`, `.json`, or `.jsonl`). |
 | `--metadata-options` | `-m` | path | Path to a metadata options `.json` file. See [Metadata Options](metadata-options.md). |
 | `--verbose` | `-v` | boolean | Print detailed output at each processing step. Shows plugin fetching, variable resolution, and full validation warnings. |
 
