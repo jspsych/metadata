@@ -56,6 +56,8 @@ Upload your jsPsych data files (`.csv` or `.json`):
 - Each file is shown with a status indicator once processed.
 - If your data files contain nested arrays, the wizard detects whether `trial_index` uniquely identifies each row. If not, a join-key chooser lets you select additional columns before proceeding — these are used to name the separate CSV files the validator expects.
 
+> **What the wizard does with your files:** JSON data is converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip both see compliant tables; your original JSON is preserved under `data/raw/`. CSV uploads are kept as-is. This conversion is what ends up in the downloaded zip.
+
 > **For existing projects:** the Data step is pre-marked complete since your variables are already loaded from the uploaded `dataset_description.json`. You can still upload new data files to regenerate the variable list.
 
 ---
@@ -96,7 +98,8 @@ Inspect the generated `dataset_description.json` and download your project:
       └── <your data files>
   ```
 - If no data files were uploaded, a **Save `dataset_description.json`** button is shown instead.
-- **Validate dataset** runs the Psych-DS validator in-browser and shows any errors or warnings inline. An internet connection is required (the validator fetches the schema from GitHub).
+- **Validate dataset** runs the Psych-DS validator entirely in your browser and lists any errors and warnings inline, each with the underlying rule key and the specific files/columns at fault. An internet connection is required — the validator fetches the Psych-DS schema and schema.org context at runtime.
+  - Because in-browser validation only sees your metadata and data files, it may report missing `README` / `CHANGES` warnings. These are expected: the downloaded zip already includes `README.md` and `CHANGES.md`, so they clear when you validate the downloaded dataset (e.g. with `npx @jspsych/cli validate`).
 
 The **{} Preview** pill button (visible on all steps except Review) opens a live JSON snapshot in a slide-in drawer so you can check the output at any point without leaving the current step.
 
