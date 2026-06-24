@@ -70,6 +70,7 @@ Metadata generation isn't a separate tool you have to bolt on afterward — it d
 - **In the browser, alongside your experiment.** The `@jspsych/metadata` library runs client-side, so an experiment can generate or update its own `dataset_description.json` at the moment data is collected, using the plugins it already loaded.
 - **In Node or a build step.** The same library runs server-side to process data you've already collected, in batch.
 - **From the command line.** The Metadata CLI wraps that library for researchers who just want to point at a folder of files.
+- **Via the web wizard.** A point-and-click interface that runs the same process in your browser, with no installation required. See [Using the Web Wizard](using-the-frontend.md).
 
 In every case the variable descriptions come from the **same jsPsych plugin modules your experiment uses**. Because the plugin is the source of truth, the descriptions stay consistent with the plugin versions you actually ran — there's no separate data dictionary to maintain by hand.
 
