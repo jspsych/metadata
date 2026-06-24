@@ -101,8 +101,8 @@ async function streamZipToSink(opts: BuildDatasetZipOptions, sink: ZipSink): Pro
  * to trigger a browser download with a streaming disk sink when available.
  */
 export async function buildDatasetZipBlob(opts: BuildDatasetZipOptions): Promise<Blob> {
-  const chunks: Uint8Array[] = [];
-  await buildZip(opts, (dat) => chunks.push(dat));
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  await buildZip(opts, (dat) => chunks.push(dat as Uint8Array<ArrayBuffer>));
   return new Blob(chunks, { type: 'application/zip' });
 }
 
