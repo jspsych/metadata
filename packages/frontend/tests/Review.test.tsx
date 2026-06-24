@@ -3,6 +3,15 @@ import userEvent from "@testing-library/user-event";
 import JsPsychMetadata from "@jspsych/metadata";
 import Review from "../src/pages/Review";
 import { validatePsychDS } from "../src/validation/validatePsychDS";
+import { createStagedFileStore, type StagedFileStore } from "../src/staging/stagedFileStore";
+
+// The converted Psych-DS payload now lives in a staged store (OPFS-backed in the browser,
+// in-memory here). Build one pre-populated for tests that exercise the data-files path.
+async function storeWith(entries: Array<[string, string]>): Promise<StagedFileStore> {
+  const store = createStagedFileStore({ forceMemory: true });
+  for (const [path, content] of entries) await store.write(path, content);
+  return store;
+}
 
 // Review lazy-loads the validator wrapper on the first Validate click; mock it
 // so tests exercise the UI states without the real (network-bound) validator.
@@ -39,9 +48,9 @@ describe("Review", () => {
     expect(screen.queryByRole("button", { name: /\.zip/ })).not.toBeInTheDocument();
   });
 
-  test("offers a zip download named after the project when data files exist", () => {
+  test("offers a zip download named after the project when data files exist", async () => {
     // dataFiles is the converted Psych-DS payload (path -> contents), already built upstream.
-    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
+    const dataFiles = await storeWith([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     expect(
       screen.getByRole("button", { name: "Download my-project.zip" }),
@@ -51,8 +60,8 @@ describe("Review", () => {
     ).toBeInTheDocument();
   });
 
-  test("offers only the single-file save when the converted payload is empty", () => {
-    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={new Map()} />);
+  test("offers only the single-file save when the converted payload is empty", async () => {
+    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={await storeWith([])} />);
     expect(
       screen.getByRole("button", { name: "Save dataset_description.json" }),
     ).toBeInTheDocument();
@@ -69,7 +78,7 @@ describe("Review", () => {
   });
 
   test("downloading the zip bundles metadata plus data files and confirms", async () => {
-    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
+    const dataFiles = await storeWith([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     await userEvent.click(screen.getByRole("button", { name: "Download my-project.zip" }));
 
@@ -77,16 +86,16 @@ describe("Review", () => {
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
   });
 
-  test("validates the metadata and passes the converted data payload through", async () => {
+  test("validates the metadata and passes the staged data store through", async () => {
     mockValidate.mockResolvedValue({ valid: true, errors: [], warnings: [] });
-    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
+    const dataFiles = await storeWith([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
 
     expect(await screen.findByText("✓ Valid Psych-DS dataset")).toBeInTheDocument();
     expect(mockValidate).toHaveBeenCalledWith(
       expect.stringContaining('"my-project"'),
-      new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]),
+      dataFiles,
     );
     // Button switches to re-validate after a run.
     expect(screen.getByRole("button", { name: "Re-validate" })).toBeInTheDocument();
@@ -127,7 +136,7 @@ describe("Review", () => {
         { key: "MISSING_CHANGES_DOC", reason: "include a CHANGES", evidence: [] },
       ],
     });
-    const dataFiles = new Map([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
+    const dataFiles = await storeWith([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
     render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
     await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
 

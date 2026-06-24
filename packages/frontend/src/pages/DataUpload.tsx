@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
 import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, hasUnnamedColumns, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
+import { createStagedFileStore, type StagedFileStore } from '../staging/stagedFileStore';
 import styles from './DataUpload.module.css';
 
 type JoinKeyCandidate = { column: string; makesUnique: boolean };
@@ -16,12 +17,13 @@ export type DataSession = {
   files: File[];
   fileTexts: Map<string, { content: string; type: string }>;
   /**
-   * Psych-DS `data/` payload built from the uploaded files: dataset-relative path
-   * (e.g. `data/subject-sub01_data.csv`, `data/raw/sub01.json`) → file contents. JSON is
-   * converted to Psych-DS-named CSV here so the validator and the downloadable zip both
-   * see compliant datafiles; without this, JSON uploads validate as MISSING_DATAFILE.
+   * Staged Psych-DS `data/` payload built from the uploaded files (dataset-relative paths such as
+   * `data/subject-sub01_data.csv`, `data/raw/sub01.json`). JSON is converted to Psych-DS-named CSV
+   * here so the validator and the downloadable zip both see compliant datafiles; without this,
+   * JSON uploads validate as MISSING_DATAFILE. Backed by OPFS (on disk) so a large study isn't
+   * held in the heap; null until the first processing run. See {@link StagedFileStore}.
    */
-  convertedFiles: Map<string, string>;
+  convertedStore: StagedFileStore | null;
   joinKeyCandidates: JoinKeyCandidate[];
   joinKeyProblemFile: string;
   selectedKeys: string[];
@@ -31,7 +33,7 @@ export type DataSession = {
 export const emptyDataSession: DataSession = {
   files: [],
   fileTexts: new Map(),
-  convertedFiles: new Map(),
+  convertedStore: null,
   joinKeyCandidates: [],
   joinKeyProblemFile: '',
   selectedKeys: ['trial_index'],
@@ -104,7 +106,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [sourceName, setSourceName] = useState('');
   const [pickError, setPickError] = useState('');
   const [fileTexts, setFileTexts] = useState(session.fileTexts);
-  const [convertedFiles, setConvertedFiles] = useState(session.convertedFiles);
+  const [convertedStore, setConvertedStore] = useState<StagedFileStore | null>(session.convertedStore);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
   const [joinKeyCandidates, setJoinKeyCandidates] = useState<JoinKeyCandidate[]>(session.joinKeyCandidates);
   const [joinKeyProblemFile, setJoinKeyProblemFile] = useState(session.joinKeyProblemFile);
@@ -119,9 +121,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   onSessionChangeRef.current = onSessionChange;
   useEffect(() => {
     onSessionChangeRef.current({
-      files, fileTexts, convertedFiles, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
+      files, fileTexts, convertedStore, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
     });
-  }, [files, fileTexts, convertedFiles, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
+  }, [files, fileTexts, convertedStore, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
 
   useEffect(() => {
     if (inputRef.current) (inputRef.current as any).webkitdirectory = true; // not in TS lib
@@ -239,10 +241,13 @@ const DataUpload: React.FC<DataUploadProps> = ({
     const update = (i: number, patch: Partial<FileStatus>) =>
       setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s));
 
-    // Psych-DS `data/` payload built alongside metadata generation. The name sets are shared
-    // across all files so converted CSVs are disambiguated against the whole output directory
-    // (mirrors the CLI's processDirectory), and `data/raw/` is flat so originals must be too.
-    const converted = new Map<string, string>();
+    // Psych-DS `data/` payload built alongside metadata generation, staged to disk (OPFS) as each
+    // file is produced so the whole study is never resident in the heap at once. The name sets are
+    // shared across all files so converted CSVs are disambiguated against the whole output
+    // directory (mirrors the CLI's processDirectory), and `data/raw/` is flat so originals too.
+    // Reuse the existing store across re-processing runs, clearing stale output first.
+    const store = convertedStore ?? createStagedFileStore();
+    await store.clear();
     const usedArrayFilenames = new Set<string>();
     const usedRawFilenames = new Set<string>();
 
@@ -311,13 +316,13 @@ const DataUpload: React.FC<DataUploadProps> = ({
           joinKeys: jsPsychMetadata.getArrayJoinKeys(),
           usedArrayFilenames,
         });
-        for (const f of built) converted.set(`data/${f.filename}`, f.content);
+        for (const f of built) await store.write(`data/${f.filename}`, f.content);
 
         // Preserve the original JSON under data/raw/ (CSV inputs are already tabular).
         if (type === 'json') {
           const rawName = disambiguateFlatFilename(file.name, usedRawFilenames);
           usedRawFilenames.add(rawName);
-          converted.set(`data/raw/${rawName}`, content);
+          await store.write(`data/raw/${rawName}`, content);
         }
 
         update(i, { status: 'success' });
@@ -329,10 +334,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
     // When we preserved raw originals, tell the validator to skip data/raw/ so they don't
     // surface as FILE_NOT_CHECKED (shared definition with the CLI in @jspsych/metadata).
     if (usedRawFilenames.size > 0) {
-      converted.set(PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT);
+      await store.write(PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT);
     }
 
-    setConvertedFiles(converted);
+    setConvertedStore(store);
     setPhase('done');
   };
 

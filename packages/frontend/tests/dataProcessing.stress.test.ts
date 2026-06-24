@@ -7,6 +7,7 @@
 import JsPsychMetadata from "@jspsych/metadata";
 import { validateWeb } from "psychds-validator/web/psychds-validator.js";
 import { validatePsychDS } from "../src/validation/validatePsychDS";
+import { createStagedFileStore } from "../src/staging/stagedFileStore";
 import { validatorOutput } from "./helpers";
 
 const mockValidateWeb = validateWeb as jest.Mock;
@@ -187,9 +188,11 @@ describe("Smoke-test-2 regression: VARIABLE_MISSING_FROM_CSV_COLUMNS", () => {
       ]),
     );
 
-    const dataFiles = new Map([
-      ["experiment/subject-01_data.csv", "trial_type,trial_index,time_elapsed,stimulus,response,rt,correct\nhtml-keyboard-response,0,812,+,null,null,null"],
-    ]);
+    const dataFiles = createStagedFileStore({ forceMemory: true });
+    await dataFiles.write(
+      "experiment/subject-01_data.csv",
+      "trial_type,trial_index,time_elapsed,stimulus,response,rt,correct\nhtml-keyboard-response,0,812,+,null,null,null",
+    );
 
     const result = await validatePsychDS("{}", dataFiles);
 

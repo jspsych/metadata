@@ -1,19 +1,21 @@
 import { useState, useMemo } from 'react';
-import JSZip from 'jszip';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
 import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
+import { buildDatasetZipBlob } from '../staging/datasetZip';
+import type { StagedFileStore } from '../staging/stagedFileStore';
 import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
 
 interface ReviewProps {
   jsPsychMetadata: JsPsychMetadata;
   /**
-   * Psych-DS `data/` payload (dataset-relative path → contents, e.g. `data/subject-sub01_data.csv`),
-   * already converted to compliant CSV by the upload step. Drives both validation and the zip.
+   * Staged Psych-DS `data/` payload (dataset-relative paths, e.g. `data/subject-sub01_data.csv`),
+   * already converted to compliant CSV by the upload step and held on disk (OPFS). Read one file
+   * at a time to drive both validation and the zip. Null/absent when no data was uploaded.
    */
-  dataFiles?: Map<string, string>;
+  dataFiles?: StagedFileStore | null;
 }
 
 function blobDownload(blob: Blob, filename: string) {
@@ -50,9 +52,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
     return name?.trim() || 'dataset';
   }, []);
 
-  // Converted Psych-DS data/ payload (paths already include `data/`); drives validation + zip.
-  const dataPayload = useMemo(() => dataFiles ?? new Map<string, string>(), [dataFiles]);
-  const hasDataFiles = dataPayload.size > 0;
+  // Staged Psych-DS data/ payload (paths already include `data/`); drives validation + zip.
+  const hasDataFiles = (dataFiles?.paths().length ?? 0) > 0;
 
   const handleDownload = async () => {
     if ('showSaveFilePicker' in window) {
@@ -77,14 +78,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   };
 
   const handleDownloadZip = async () => {
-    const zip = new JSZip();
-    zip.file(FILENAME, metadataJson);
-    for (const [path, content] of dataPayload) {
-      zip.file(path, content); // path already includes the `data/` prefix
-    }
-    zip.file('README.md', `# ${projectName}\nHuman-readable description of the project and dataset.`);
-    zip.file('CHANGES.md', 'For version tracking — if the dataset is updated after being uploaded/shared, changes (with human-readable descriptions) may be recorded here.');
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    // Built from the staged store, reading one file at a time (see buildDatasetZipBlob).
+    const blob = await buildDatasetZipBlob({ metadataJson, projectName, dataFiles: dataFiles ?? undefined });
     blobDownload(blob, `${projectName}.zip`);
     setZipped(true);
   };
@@ -95,7 +90,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
     try {
       // Lazy-loaded so the ~260 KB validator bundle stays out of the initial load.
       const { validatePsychDS } = await import('../validation/validatePsychDS');
-      const result = await validatePsychDS(metadataJson, dataPayload);
+      const result = await validatePsychDS(metadataJson, dataFiles ?? undefined);
       setValResult(result);
       setValStatus('done');
     } catch (err) {

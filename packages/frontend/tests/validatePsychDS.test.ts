@@ -4,6 +4,7 @@ import {
   validatePsychDS,
   ValidationUnavailableError,
 } from "../src/validation/validatePsychDS";
+import { createStagedFileStore } from "../src/staging/stagedFileStore";
 import { validatorOutput } from "./helpers";
 
 const mockValidateWeb = validateWeb as jest.Mock;
@@ -52,11 +53,11 @@ describe("validatePsychDS", () => {
 
   test("inserts data files at their dataset-relative paths", async () => {
     mockValidateWeb.mockResolvedValue(validatorOutput([]));
-    // Keys are already dataset-relative paths (built by the upload step), inserted as-is.
-    const dataFiles = new Map([
-      ["data/subject-sub01_data.csv", "a,b\n1,2"],
-      ["data/raw/sub01.json", "[]"],
-    ]);
+    // Paths are already dataset-relative (built by the upload step); the staged store yields them
+    // as Blobs, read one at a time, and the validator tree is built from those.
+    const dataFiles = createStagedFileStore({ forceMemory: true });
+    await dataFiles.write("data/subject-sub01_data.csv", "a,b\n1,2");
+    await dataFiles.write("data/raw/sub01.json", "[]");
     await validatePsychDS("{}", dataFiles);
 
     const [tree] = mockValidateWeb.mock.calls[0];

@@ -136,3 +136,8 @@ dist
 .impeccable/
 PRODUCT.md
 dev/smoke-test*/
+
+# Local dev/measurement artifacts (synthetic fixtures, stress inputs, shortcuts; see #95)
+dev/synthetic-dataset/
+dev/stress-test/
+dev/*.lnk
