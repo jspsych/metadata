@@ -44,7 +44,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   }, []);
 
   // Staged Psych-DS data/ payload (paths already include `data/`); drives validation + zip.
-  const hasDataFiles = (dataFiles?.paths().length ?? 0) > 0;
+  const hasDataFiles = useMemo(() => (dataFiles?.paths().length ?? 0) > 0, [dataFiles]);
 
   const handleDownload = async () => {
     if ('showSaveFilePicker' in window) {
