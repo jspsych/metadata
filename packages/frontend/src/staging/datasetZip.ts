@@ -26,10 +26,11 @@ export interface BuildDatasetZipOptions {
   dataFiles?: DatasetFileSource;
 }
 
-/** Minimal write-then-close sink; satisfied by FileSystemWritableFileStream. */
+/** Minimal write-close-abort sink; satisfied by FileSystemWritableFileStream. */
 interface ZipSink {
   write(data: Uint8Array): Promise<void>;
   close(): Promise<void>;
+  abort(): Promise<void>;
 }
 
 /**
@@ -69,10 +70,19 @@ async function buildZip(opts: BuildDatasetZipOptions, onChunk: (dat: Uint8Array)
 }
 
 async function streamZipToSink(opts: BuildDatasetZipOptions, sink: ZipSink): Promise<void> {
+  // write() calls are fired as chunks arrive so fflate's worker keeps compressing while the OS
+  // writes earlier chunks. FileSystemWritableFileStream serialises them internally. Promise.all
+  // detects any write failure after the last chunk is delivered. Per-chunk backpressure would
+  // require pausing the worker between chunks, which fflate's callback API doesn't support.
   const writes: Promise<void>[] = [];
-  await buildZip(opts, (dat) => writes.push(sink.write(dat)));
-  await Promise.all(writes);
-  await sink.close();
+  try {
+    await buildZip(opts, (dat) => writes.push(sink.write(dat)));
+    await Promise.all(writes);
+    await sink.close();
+  } catch (e) {
+    await sink.abort().catch(() => {});
+    throw e;
+  }
 }
 
 function blobDownload(blob: Blob, filename: string): void {
@@ -104,22 +114,30 @@ export async function buildDatasetZipBlob(opts: BuildDatasetZipOptions): Promise
  * downloading via an object URL (same peak as before; input files are still one at a time).
  *
  * Returns `true` when a download was triggered, `false` when the user aborted the save dialog.
+ * Streaming errors (e.g. disk full) are propagated as exceptions — callers should surface them.
  */
 export async function downloadDatasetZip(
   opts: BuildDatasetZipOptions,
   filename: string,
 ): Promise<boolean> {
   if ('showSaveFilePicker' in window) {
+    // Separate picker/handle creation (catches AbortError + setup errors → blob fallback) from
+    // the streaming step (propagates errors so callers can show them instead of silently
+    // falling back to blob, which would also fail if the disk is full).
+    let sink: ZipSink | undefined;
     try {
       const fileHandle = await (window as any).showSaveFilePicker({
         suggestedName: filename,
         types: [{ description: 'ZIP file', accept: { 'application/zip': ['.zip'] } }],
       });
-      await streamZipToSink(opts, await fileHandle.createWritable());
-      return true;
+      sink = await fileHandle.createWritable() as ZipSink;
     } catch (err) {
       if ((err as DOMException).name === 'AbortError') return false;
-      // Fall through to the blob path on any other picker failure.
+      // Picker or handle creation failed — fall through to blob download.
+    }
+    if (sink) {
+      await streamZipToSink(opts, sink); // errors propagate to caller
+      return true;
     }
   }
   const chunks: Uint8Array[] = [];

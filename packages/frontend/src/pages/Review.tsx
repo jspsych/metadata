@@ -39,6 +39,7 @@ const ZIP_RESOLVED_WARNINGS = new Set(['MISSING_README_DOC', 'MISSING_CHANGES_DO
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
   const [valStatus, setValStatus] = useState<ValidationStatus>('idle');
   const [valResult, setValResult] = useState<PsychDSValidationResult | null>(null);
   const [valError, setValError] = useState<string | null>(null);
@@ -78,11 +79,16 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   };
 
   const handleDownloadZip = async () => {
-    const didDownload = await downloadDatasetZip(
-      { metadataJson, projectName, dataFiles: dataFiles ?? undefined },
-      `${projectName}.zip`,
-    );
-    if (didDownload) setZipped(true);
+    setZipError(null);
+    try {
+      const didDownload = await downloadDatasetZip(
+        { metadataJson, projectName, dataFiles: dataFiles ?? undefined },
+        `${projectName}.zip`,
+      );
+      if (didDownload) setZipped(true);
+    } catch (err) {
+      setZipError(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   const handleValidate = async () => {
@@ -128,6 +134,11 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
               <button className={styles.downloadBtn} onClick={handleDownloadZip}>
                 {zipped ? '✓ Downloaded' : `Download ${projectName}.zip`}
               </button>
+              {zipError && (
+                <div className={`${styles.resultBanner} ${styles.resultUnavailable}`}>
+                  {zipError}
+                </div>
+              )}
               <p className={styles.saveHint}>
                 Includes <code className={styles.code}>dataset_description.json</code> and your data files in a <code className={styles.code}>data/</code> folder — ready to validate.
               </p>
