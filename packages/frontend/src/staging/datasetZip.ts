@@ -81,6 +81,7 @@ async function streamZipToSink(opts: BuildDatasetZipOptions, sink: ZipSink): Pro
     await sink.close();
   } catch (e) {
     await sink.abort().catch(() => {});
+    await Promise.allSettled(writes); // drain pending write rejections so they don't surface as unhandled
     throw e;
   }
 }
