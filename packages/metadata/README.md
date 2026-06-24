@@ -21,7 +21,7 @@ await metadata.generate(properties);
 
 | Parameter | Type | Description
 ----------|------|------------
-| data      | object, string | The data file that was generated from running a JsPsych experiment. This can be passed in as string Json, string CSV or as an object. Depending on the type of data will need to change the CSV flag. |
+| data      | array, string | The data file that was generated from running a JsPsych experiment. This can be passed in as a JSON string, a CSV string, or an already-parsed array of observation objects. Depending on the type of data you will need to change the `format` flag. **Note:** when you pass a pre-parsed array it is consumed in place and *mutated* — unnamed (blank-header) columns are deleted from the row objects. If you need the rows to stay pristine, pass a copy. |
 | metadata  | object | Optional metadata that can be passed in to adjust the output of the generate method. Each key-value pair will map to a parameter field, and will either overwite existing data or create new fields. All normal fields can be adjusted as entries within the object, but for authors and variables the entries need to be nested within an "author" or "variables" key mapping. Similarily, updating the descriptions of variables needs to be a nested map. |
 | format       | boolean|  Optional flag that should be marked 'csv' if data is in a string csv format. If passing in as an object can specify as 'json' or leave blank. |
 

@@ -35,10 +35,10 @@ packages/frontend/
 │   ├── hooks/
 │   │   └── useTheme.ts     — dark/light theme: reads localStorage, falls back to OS preference
 │   │
-│   └── validation/         — in-browser Psych-DS validation (added by feat/frontend-validator)
-│       ├── validatePsychDS.ts
-│       ├── psychds-validator-web.d.ts
-│       └── node-stub.ts
+│   └── validation/         — in-browser Psych-DS validation (see "In-browser validation" below)
+│       ├── validatePsychDS.ts          — wraps psychds-validator's web build
+│       ├── psychds-validator-web.d.ts  — local types for the web bundle
+│       └── node-stub.ts                — Node-only shim so the bundle resolves under Jest
 ```
 
 > **Note:** the original modal-chain files (`pages/Upload.tsx`, `pages/Options.tsx`, `pages/ViewOptions.tsx`, `components/ListItems.tsx`, `components/Preview.tsx`, `components/popups/`, `components/upload/`, `useExternalScripts.ts`, and `App.css`) have been removed; the redesigned wizard described here is the only active architecture.
@@ -121,6 +121,39 @@ A recursive collapsible renderer for arbitrary JSON. Keys, strings, numbers, boo
 
 ---
 
+## Data conversion pipeline (DataUpload)
+
+The validator and the downloadable zip both expect Psych-DS-compliant CSV data files, so `DataUpload.tsx` converts uploaded data **before** anything reaches Review. For each file it calls `jsPsychMetadata.generate()` to accumulate variable metadata, then builds the converted payload using library exports re-used from `@jspsych/metadata` (`buildPsychDSDataFiles`, `parseCSV`, `parseJsonData`, `analyzeJoinKeys`, `deriveFallbackBase`, `isValidPsychDSDataFilename`, `PSYCHDS_IGNORE_FILENAME`, `PSYCHDS_IGNORE_CONTENT`):
+
+- **JSON arrays** are serialized to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`); the original JSON is preserved under `data/raw/<name>`.
+- **CSV** input is written verbatim (an already-compliant filename is kept; otherwise a `subject-<stem>` base is derived). Rows are still parsed so R-style **unnamed row-index columns** can be dropped.
+- **Non-array JSON** is skipped.
+- When raw originals are kept, a top-level **`.psychds-ignore`** file (`PSYCHDS_IGNORE_FILENAME` / `PSYCHDS_IGNORE_CONTENT`) is added so the validator skips `data/raw/`.
+- If a file has **nested arrays** and `trial_index` doesn't uniquely identify rows, a join-key chooser collects extra columns (via `analyzeJoinKeys`) before conversion.
+
+The result is a `convertedFiles` map (dataset-relative path → contents) carried in the `DataSession` and handed to `Review` as `dataFiles`. It drives both validation and the zip, so the two always agree.
+
+---
+
+## In-browser validation
+
+`Review.tsx` validates **post-generation**, on demand, behind a **"Validate dataset"** button — the implementation behind issue #3. The validator chunk is **lazy-loaded** (`await import('../validation/validatePsychDS')`, ~260 KB) so it stays out of the initial bundle.
+
+`validatePsychDS(metadataJson, dataFiles)` (in `src/validation/validatePsychDS.ts`):
+
+1. Ensures `jsonld` is on `window` (`ensureJsonldGlobal`) — the validator's browser path expects it as a global.
+2. Builds a `WebFileTree` from `dataset_description.json` plus the converted `data/` payload (`buildFileTree` / `insertFile`).
+3. Calls `validateWeb(tree, { schema: 'latest' })` from `psychds-validator/web`. `'latest'` (not a pinned version) keeps results consistent with the CLI and deployed web validator and avoids requesting a schema version the server may not have.
+4. Splits the returned issues into `errors` / `warnings` by `severity`, deduping each issue's per-file `evidence` (e.g. the offending column names), and returns `{ valid, errors, warnings }`.
+
+**Network is required** — the validator fetches the Psych-DS schema and schema.org context at runtime. If it can't run, `validatePsychDS` throws `ValidationUnavailableError` with a connectivity-first message (underlying error appended), which Review surfaces as an `unavailable` banner rather than a false "invalid" result.
+
+**Zip-resolved warnings:** the in-browser validator only sees the metadata + data files, so it reports `MISSING_README_DOC` / `MISSING_CHANGES_DOC`. The downloaded zip ships `README.md` and `CHANGES.md`, so Review (`ZIP_RESOLVED_WARNINGS`) shows a reassurance note explaining these clear once the downloaded dataset is validated. A `<details>` block also documents the CLI equivalent (`npx @jspsych/cli validate`).
+
+> The core `@jspsych/metadata` library does **not** validate — validation is a consuming concern owned by the frontend (here) and the CLI (`packages/cli/src/validatefunctions.ts`). Unit tests for these helpers are tracked in issue #94.
+
+---
+
 ## Design system
 
 ### CSS Modules
@@ -176,6 +209,8 @@ The wizard uses a single `JsPsychMetadata` instance created in `App.tsx` and pas
 | `setAuthor(fields)` | Authors | Add or update an author entry (single `AuthorFields` object; keyed by `name`) |
 | `deleteAuthor(name)` | Authors | Remove an author |
 | `getMetadata()` | Review | Serialize the full metadata object to JSON |
+
+Beyond the `JsPsychMetadata` instance, `DataUpload` also imports standalone helpers from `@jspsych/metadata` to build the Psych-DS `data/` payload — `buildPsychDSDataFiles`, `parseCSV`, `parseJsonData`, `analyzeJoinKeys`, `deriveFallbackBase`, `isValidPsychDSDataFilename`, and the `PSYCHDS_IGNORE_*` constants (see [Data conversion pipeline](#data-conversion-pipeline-dataupload)). In-browser validation uses `psychds-validator` directly, not the library (see [In-browser validation](#in-browser-validation)).
 
 ---
 
