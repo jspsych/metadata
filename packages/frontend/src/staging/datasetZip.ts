@@ -1,13 +1,13 @@
-// Builds the downloadable Psych-DS dataset zip from the staged file store.
+// Builds and streams the downloadable Psych-DS dataset zip from the staged file store.
 //
-// Reads each data file from the store lazily (one at a time) and adds it to the archive, so the
-// whole converted payload is never held in the JS heap at once — only the file currently being
-// compressed. JSZip's input files are read during generateAsync(); pairing it with the OPFS-backed
-// store (disk-backed Blobs) keeps the input side off the heap. If profiling later shows the output
-// Blob itself is the bottleneck, this is the seam to swap JSZip for a streaming zip (e.g.
-// client-zip) writing to a disk-backed sink — callers only depend on buildDatasetZipBlob.
+// Uses fflate's AsyncZipDeflate (DEFLATE compressed, worker-backed when available) to emit
+// output chunks as each file finishes compressing — so neither the full input set nor the
+// complete output zip ever lives in the JS heap at once. On Chromium (showSaveFilePicker) each
+// chunk is written to the user-chosen file as it arrives, bounding peak heap to roughly one
+// file's working set. On other browsers (or if the picker fails) chunks are collected into a
+// Blob and downloaded via an object URL.
 
-import JSZip from 'jszip';
+import { Zip, AsyncZipDeflate } from 'fflate';
 import { DATASET_DESCRIPTION_FILENAME } from '../datasetLayout';
 import type { DatasetFileSource } from './stagedFileStore';
 
@@ -26,23 +26,104 @@ export interface BuildDatasetZipOptions {
   dataFiles?: DatasetFileSource;
 }
 
+/** Minimal write-then-close sink; satisfied by FileSystemWritableFileStream. */
+interface ZipSink {
+  write(data: Uint8Array): Promise<void>;
+  close(): Promise<void>;
+}
+
 /**
- * Assembles dataset_description.json + the staged data files + README/CHANGES into a single zip
- * Blob, ready to hand to a download. Data files are pulled from the source one at a time.
+ * Runs the zip build and routes each output chunk to `onChunk`. Resolves once the zip is
+ * complete (all chunks delivered). Each data file is read from the store one at a time.
  */
-export async function buildDatasetZipBlob({
-  metadataJson,
-  projectName,
-  dataFiles,
-}: BuildDatasetZipOptions): Promise<Blob> {
-  const zip = new JSZip();
-  zip.file(DATASET_DESCRIPTION_FILENAME, metadataJson);
-  if (dataFiles) {
-    for await (const [path, blob] of dataFiles.entries()) {
-      zip.file(path, blob); // path already includes the `data/` prefix
+async function buildZip(opts: BuildDatasetZipOptions, onChunk: (dat: Uint8Array) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const zip = new Zip((err, dat, final) => {
+      if (err) { reject(err); return; }
+      onChunk(dat);
+      if (final) resolve();
+    });
+
+    const addEntry = (filename: string, content: Uint8Array): void => {
+      const entry = new AsyncZipDeflate(filename, { level: 6 });
+      zip.add(entry);
+      entry.push(content, true);
+    };
+
+    (async () => {
+      try {
+        addEntry(DATASET_DESCRIPTION_FILENAME, new TextEncoder().encode(opts.metadataJson));
+        if (opts.dataFiles) {
+          for await (const [path, blob] of opts.dataFiles.entries()) {
+            addEntry(path, new Uint8Array(await blob.arrayBuffer()));
+          }
+        }
+        addEntry('README.md', new TextEncoder().encode(readmeContents(opts.projectName)));
+        addEntry('CHANGES.md', new TextEncoder().encode(CHANGES_CONTENTS));
+        zip.end();
+      } catch (e) {
+        reject(e);
+      }
+    })();
+  });
+}
+
+async function streamZipToSink(opts: BuildDatasetZipOptions, sink: ZipSink): Promise<void> {
+  const writes: Promise<void>[] = [];
+  await buildZip(opts, (dat) => writes.push(sink.write(dat)));
+  await Promise.all(writes);
+  await sink.close();
+}
+
+function blobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Assembles the dataset zip and returns it as a Blob. Each data file is read from the store
+ * one at a time; output chunks are collected into a single Blob. Use {@link downloadDatasetZip}
+ * to trigger a browser download with a streaming disk sink when available.
+ */
+export async function buildDatasetZipBlob(opts: BuildDatasetZipOptions): Promise<Blob> {
+  const chunks: Uint8Array[] = [];
+  await buildZip(opts, (dat) => chunks.push(dat));
+  return new Blob(chunks, { type: 'application/zip' });
+}
+
+/**
+ * Builds the dataset zip and triggers a browser download. On Chromium (`showSaveFilePicker`)
+ * each zip chunk is written to a user-chosen file as it arrives — peak heap stays at roughly
+ * one file's working set. On other browsers it falls back to collecting into a Blob and
+ * downloading via an object URL (same peak as before; input files are still one at a time).
+ *
+ * Returns `true` when a download was triggered, `false` when the user aborted the save dialog.
+ */
+export async function downloadDatasetZip(
+  opts: BuildDatasetZipOptions,
+  filename: string,
+): Promise<boolean> {
+  if ('showSaveFilePicker' in window) {
+    try {
+      const fileHandle = await (window as any).showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'ZIP file', accept: { 'application/zip': ['.zip'] } }],
+      });
+      await streamZipToSink(opts, await fileHandle.createWritable());
+      return true;
+    } catch (err) {
+      if ((err as DOMException).name === 'AbortError') return false;
+      // Fall through to the blob path on any other picker failure.
     }
   }
-  zip.file('README.md', readmeContents(projectName));
-  zip.file('CHANGES.md', CHANGES_CONTENTS);
-  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  const chunks: Uint8Array[] = [];
+  await buildZip(opts, (dat) => chunks.push(dat));
+  blobDownload(new Blob(chunks, { type: 'application/zip' }), filename);
+  return true;
 }

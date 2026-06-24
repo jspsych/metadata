@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@jspsych/metadata": "^0.0.3",
+    "fflate": "^0.8.3",
     "jsonld": "^8.3.2",
     "jszip": "^3.10.1",
     "psychds-validator": "^1.5.0",

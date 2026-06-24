@@ -3,7 +3,7 @@ import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
 import PageHeader from '../components/PageHeader';
 import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
-import { buildDatasetZipBlob } from '../staging/datasetZip';
+import { downloadDatasetZip } from '../staging/datasetZip';
 import type { StagedFileStore } from '../staging/stagedFileStore';
 import type { PsychDSValidationResult } from '../validation/validatePsychDS';
 import styles from './Review.module.css';
@@ -78,10 +78,11 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   };
 
   const handleDownloadZip = async () => {
-    // Built from the staged store, reading one file at a time (see buildDatasetZipBlob).
-    const blob = await buildDatasetZipBlob({ metadataJson, projectName, dataFiles: dataFiles ?? undefined });
-    blobDownload(blob, `${projectName}.zip`);
-    setZipped(true);
+    const didDownload = await downloadDatasetZip(
+      { metadataJson, projectName, dataFiles: dataFiles ?? undefined },
+      `${projectName}.zip`,
+    );
+    if (didDownload) setZipped(true);
   };
 
   const handleValidate = async () => {
