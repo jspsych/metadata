@@ -80,8 +80,7 @@ Inspect the generated `dataset_description.json` and download your project:
       └── <your data files>
   ```
 - If no data files were uploaded, a **Save `dataset_description.json`** button is shown instead.
-- **Validate dataset** runs the Psych-DS validator entirely in your browser and lists any errors and warnings inline, each with the underlying rule key and the specific files/columns at fault. **An internet connection is required** — the validator fetches the Psych-DS schema and schema.org context at runtime.
-  - Because in-browser validation only sees your metadata and data files, it may report missing `README` / `CHANGES` warnings. These are expected: the downloaded zip already includes `README.md` and `CHANGES.md`, so they clear when you validate the downloaded dataset (e.g. with `npx @jspsych/cli validate`).
+- **Validate dataset** runs the Psych-DS validator entirely in your browser (an internet connection is required) and lists any errors and warnings inline. Missing `README` / `CHANGES` warnings are expected here — the downloaded zip includes both files, so they clear when you validate the downloaded dataset (e.g. with `npx @jspsych/cli validate`). See the [frontend README](../packages/frontend/README.md#step-5--review) and the [frontend developer guide](dev/frontend-architecture.md) for the full validation flow.
 
 The **{} Preview** pill button (visible on all steps except Review) opens a live JSON snapshot in a slide-in drawer, so you can check the output at any point without leaving the current step.
 
