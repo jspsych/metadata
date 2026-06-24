@@ -92,6 +92,8 @@ class OpfsFileStore implements StagedFileStore {
   readonly backend = 'opfs' as const;
   // Real dataset-relative paths in insertion order; the on-disk name is encodePath(path).
   private readonly index: string[] = [];
+  // Set mirror of index for O(1) has() and write() dedup checks.
+  private readonly indexSet = new Set<string>();
   // This store's own subdir of STAGING_ROOT — isolates it from other tabs and is the unit clear()
   // removes. The timestamp prefix lets sweepStaleStagingDirs() tell live sessions from dead ones.
   private readonly sessionDir = newSessionDirName();
@@ -120,11 +122,11 @@ class OpfsFileStore implements StagedFileStore {
     } finally {
       await writable.close();
     }
-    if (!this.index.includes(path)) this.index.push(path);
+    if (!this.indexSet.has(path)) { this.index.push(path); this.indexSet.add(path); }
   }
 
   has(path: string): boolean {
-    return this.index.includes(path);
+    return this.indexSet.has(path);
   }
 
   paths(): string[] {
@@ -155,6 +157,7 @@ class OpfsFileStore implements StagedFileStore {
     }
     this.dirHandle = null;
     this.index.length = 0;
+    this.indexSet.clear();
   }
 }
 
