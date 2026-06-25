@@ -70,10 +70,10 @@ On Windows, you can copy the path directly from File Explorer's address bar. On 
 ### Step 3: Name your project
 
 ```
-? Enter the project name (used as the folder name and in the metadata): flanker-study
+? Enter the project name (used as the folder name and in the metadata): my-experiment
 ```
 
-The name becomes the subfolder created inside the folder from Step 2, and is recorded in the metadata. Use something descriptive without spaces (hyphens are fine).
+The name becomes the subfolder created inside the folder from Step 2, and is recorded in the metadata. Use something descriptive without spaces (hyphens are fine). `my-experiment` here is just an example — use whatever name fits your study; the rest of this guide uses `my-experiment` to illustrate the output.
 
 ---
 
@@ -203,22 +203,21 @@ A checkmark means your dataset is valid. Warnings are minor issues (like recomme
 
 ## What you get
 
-Your new project folder will be inside the location you chose in Step 2, named after the project name from Step 3. For example, if you chose `C:\Users\yourname\Documents\experiments` as the output location and `flanker-study` as the project name, the result is at `C:\Users\yourname\Documents\experiments\flanker-study\`:
+Your new project folder will be inside the location you chose in Step 2, named after the project name from Step 3. For example, if you chose `C:\Users\yourname\Documents\experiments` as the output location and `my-experiment` as the project name, the result is at `C:\Users\yourname\Documents\experiments\my-experiment\`:
 
 ```
-flanker-study/
+my-experiment/
 ├── data/
-│   ├── raw/
-│   │   ├── participant_01.csv        original files, untouched
-│   │   └── participant_02.csv
-│   ├── subject-p01_data.csv          Psych-DS normalized copies
+│   ├── subject-p01_data.csv          Psych-DS compliant copies of your data
 │   └── subject-p02_data.csv
 ├── dataset_description.json          generated metadata
 ├── README.md                         placeholder for a human-readable description
 └── CHANGES.md                        placeholder for a changelog
 ```
 
-The `data/raw/` folder holds your original files exactly as they were. The `data/` folder holds the Psych-DS-compliant copies (JSON and JSON-Lines files are converted to CSV so the validator can read them).
+The `data/` folder holds the Psych-DS-compliant copies of your data. The example above starts from CSV files, which are already tabular and so are written straight to `data/`.
+
+If your inputs are **JSON or JSON-Lines**, the tool converts them to CSV in `data/` and additionally preserves your originals untouched under a `data/raw/` folder, alongside a top-level `.psychds-ignore` file that tells the validator to skip the raw copies. (CSV inputs aren't duplicated under `raw/`, so a CSV-only dataset has no `data/raw/` folder.) Data files that contain **nested arrays** produce one extra CSV per nested column.
 
 Open `dataset_description.json` to see what was generated. It will look something like:
 
@@ -226,7 +225,7 @@ Open `dataset_description.json` to see what was generated. It will look somethin
 {
   "@context": "https://schema.org/",
   "@type": "Dataset",
-  "name": "flanker-study",
+  "name": "my-experiment",
   "variableMeasured": [
     {
       "@type": "PropertyValue",
