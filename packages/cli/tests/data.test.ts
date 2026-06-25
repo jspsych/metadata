@@ -342,6 +342,34 @@ describe("processDirectory output-directory creation (#118)", () => {
     expect(failed).toBe(0);
     expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
   });
+
+  test("strips a leading UTF-8 BOM so the written data file and metadata agree on the first column", async () => {
+    // Excel-exported CSVs (like the OSF lip-kinematics dataset, osf.io/9v4t6) start with a UTF-8
+    // BOM. The persisted data file must not carry it forward, otherwise the validator sees a
+    // BOM-prefixed first column that no longer matches the BOM-stripped variable name in the
+    // metadata (CSV_COLUMN_MISSING_FROM_METADATA + VARIABLE_MISSING_FROM_CSV_COLUMNS).
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "project", "data");
+    fs.mkdirSync(srcDir);
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1.csv"),
+      "﻿Participant_ID,trial_type,rt\np01,jsPsych-html-keyboard-response,450",
+    );
+
+    const metadata = new JsPsychMetadata();
+    const { failed } = await processDirectory(metadata, srcDir, false, dataDir);
+    expect(failed).toBe(0);
+
+    // The written data file's first column has no BOM.
+    const written = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    expect(written.charCodeAt(0)).not.toBe(0xfeff);
+    expect(written.startsWith("Participant_ID,")).toBe(true);
+
+    // The metadata variable name matches it exactly.
+    const names = (metadata.getMetadata().variableMeasured as any[]).map((v) => v.name);
+    expect(names).toContain("Participant_ID");
+    expect(names).not.toContain("﻿Participant_ID");
+  });
 });
 
 describe("processDirectory JSON → CSV conversion", () => {

@@ -565,7 +565,8 @@ export async function parseCSV(input) {
   return new Promise((resolve, reject) => {
     parse(input, {
       columns: true, // Treat the first row as headers
-      delimiter: ',' // Specify the delimiter (e.g., comma)
+      delimiter: ',', // Specify the delimiter (e.g., comma)
+      bom: true // Strip a leading UTF-8 BOM so the first header name isn't corrupted (e.g. "﻿Participant_ID")
     }, (err, records) => {
       if (err) {
         reject(err);
