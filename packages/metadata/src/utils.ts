@@ -132,6 +132,12 @@ export function parseJsonData(
   options: { tagSourceRecordId?: boolean } = {},
   stats?: { synthesizedSourceRecordId?: boolean }
 ): any {
+  // Strip a leading UTF-8 BOM (e.g. from Excel/PowerShell exports) so neither JSON.parse nor the
+  // JSON-Lines fallback chokes on it. Mirrors parseCSV's `bom: true`, keeping every read site
+  // (processFile, analyzeOutputColumns, preAnalyzeDirectory) consistent rather than relying on
+  // each caller to strip it first.
+  if (content.charCodeAt(0) === 0xfeff) content = content.slice(1);
+
   // Fast path: a single, well-formed JSON document. Covers the standard single array
   // (including pretty-printed/multi-line) with no behaviour change for existing callers.
   // unwrapTrials accepts an exact { "trials": [...] } wrapper (e.g. OSF exports) and returns

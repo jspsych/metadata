@@ -3,13 +3,16 @@
 "@jspsych/metadata-cli": patch
 ---
 
-fix(metadata,cli): strip a leading UTF-8 BOM from CSV input
+fix(metadata,cli): strip a leading UTF-8 BOM from CSV and JSON input
 
 CSVs exported by Excel (and similar tools) begin with a UTF-8 BOM (U+FEFF).
 The shared `parseCSV` previously folded that BOM into the first header,
 producing a corrupted variable name like `﻿Participant_ID` that is not valid
-Psych-DS. `parseCSV` now passes `bom: true` to `csv-parse` so the first
-variable is named exactly as written (e.g. `Participant_ID`).
+Psych-DS. `parseCSV` now passes `bom: true` to `csv-parse`, and `parseJsonData`
+strips the same BOM before parsing, so the first variable is named exactly as
+written (e.g. `Participant_ID`) and BOM-prefixed JSON/JSON-Lines no longer fail
+to parse (which previously, for inputs with nested-array columns, could abort an
+interactive run with a rename-plan mismatch).
 
 The CLI also strips a leading BOM from the file content before writing the
 data file into the Psych-DS `data/` directory. A clean CSV is written

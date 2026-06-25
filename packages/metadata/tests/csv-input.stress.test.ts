@@ -207,4 +207,24 @@ describe("CSV leading UTF-8 BOM handling (regression)", () => {
 
     jest.restoreAllMocks();
   });
+
+  test("JSON-Lines: strips the BOM so the first line parses and the variable is named Participant_ID", async () => {
+    // A BOM on the first JSONL line previously made JSON.parse throw, skipping the whole file.
+    // parseJsonData now strips it, mirroring parseCSV's bom:true.
+    (global as any).fetch = mockFetch;
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const jsonl =
+      `${BOM}{"Participant_ID":"p01","trial_type":"t","trial_index":0}\n` +
+      `{"Participant_ID":"p02","trial_type":"t","trial_index":1}\n`;
+
+    const metadata = new JsPsychMetadata();
+    await metadata.generate(jsonl, {}, "json");
+    const names = metadata.getMetadata().variableMeasured.map((v: any) => v.name);
+
+    expect(names).toContain("Participant_ID");
+    expect(names).not.toContain(`${BOM}Participant_ID`);
+
+    jest.restoreAllMocks();
+  });
 });

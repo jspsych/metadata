@@ -559,6 +559,36 @@ describe("processDirectory JSON → CSV conversion", () => {
     expect(written).toEqual(["subject-7_data.csv", "subject-7_measure-mouseTracking_data.csv"]);
   });
 
+  // Regression: the BOM strip must reach the pre-pass (analyzeOutputColumns), not just processFile.
+  // A BOM-prefixed JSON/JSONL with a nested-array column used to throw in the pre-pass (parseJsonData
+  // choked on the BOM), so the rename plan reserved NO sidecar name; processFile then stripped the
+  // BOM, succeeded, and extracted the array — a sidecar the plan never approved, aborting the whole
+  // run with RenamePlanError. parseJsonData now strips the BOM, so the plan and the write agree.
+  test("a BOM-prefixed JSON with a nested array does not abort the rename-plan run", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const rows = [
+      { trial_index: 0, mouse_tracking: [{ x: 1, y: 2 }] },
+      { trial_index: 1, mouse_tracking: [{ x: 3, y: 4 }] },
+    ];
+    fs.writeFileSync(path.join(srcDir, "raw-export.json"), "﻿" + JSON.stringify(rows));
+
+    const key = path.resolve(srcDir, "raw-export.json");
+    const columns = await analyzeOutputColumns(srcDir);
+    // The pre-pass must see the sidecar column despite the BOM, so the plan reserves a name for it.
+    expect(columns[0].arrayColumns).toEqual(["mouse_tracking"]);
+    const normalizedBases = new Map([[key, "subject-7"]]);
+    const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-7", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan });
+
+    expect(failed).toBe(0);
+    const written = fs.readdirSync(dataDir).filter((f) => f.endsWith(".csv")).sort();
+    expect(written).toEqual(["subject-7_data.csv", "subject-7_measure-mouseTracking_data.csv"]);
+  });
+
   test("aborts with RenamePlanError when the data produces a column the plan didn't approve", async () => {
     const srcDir = path.join(tmpDir, "src");
     const dataDir = path.join(tmpDir, "data");
