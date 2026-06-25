@@ -15,11 +15,13 @@ Running the tool without any flags launches interactive mode, which walks you th
 ```
 my-experiment/
 ├── data/                         Psych-DS compliant CSV copies of your data
-│   └── raw/                       your original files, untouched
+│   └── raw/                       JSON/JSONL inputs only: your originals, untouched
 ├── dataset_description.json      generated Psych-DS metadata
 ├── README.md                     placeholder for a human-readable description
 └── CHANGES.md                    placeholder for version tracking
 ```
+
+CSV inputs are already tabular, so they're written straight to `data/`; only JSON and JSON-Lines inputs are converted to CSV and additionally preserved under `data/raw/`. A CSV-only dataset has no `data/raw/` folder.
 
 ## Documentation
 
