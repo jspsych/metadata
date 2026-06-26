@@ -339,7 +339,12 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
   if (verbose) console.log("Reading file:", filePath);
 
   try {
-    const content = await fs.promises.readFile(filePath, "utf8");
+    let content = await fs.promises.readFile(filePath, "utf8");
+    // Strip a leading UTF-8 BOM (e.g. from Excel exports) so it is not written back into the
+    // Psych-DS data file. parseCSV strips it for parsing, but a clean CSV is written verbatim
+    // below; without this the persisted file keeps a BOM-prefixed first column that no longer
+    // matches the BOM-stripped variable name in the metadata, and validation fails.
+    if (content.charCodeAt(0) === 0xfeff) content = content.slice(1);
     const fileExtension = path.extname(file).toLowerCase();
 
     // Rows parsed from this file, reused by the conversion path below so the file is parsed

@@ -342,6 +342,34 @@ describe("processDirectory output-directory creation (#118)", () => {
     expect(failed).toBe(0);
     expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
   });
+
+  test("strips a leading UTF-8 BOM so the written data file and metadata agree on the first column", async () => {
+    // Excel-exported CSVs (like the OSF lip-kinematics dataset, osf.io/9v4t6) start with a UTF-8
+    // BOM. The persisted data file must not carry it forward, otherwise the validator sees a
+    // BOM-prefixed first column that no longer matches the BOM-stripped variable name in the
+    // metadata (CSV_COLUMN_MISSING_FROM_METADATA + VARIABLE_MISSING_FROM_CSV_COLUMNS).
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "project", "data");
+    fs.mkdirSync(srcDir);
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1.csv"),
+      "﻿Participant_ID,trial_type,rt\np01,jsPsych-html-keyboard-response,450",
+    );
+
+    const metadata = new JsPsychMetadata();
+    const { failed } = await processDirectory(metadata, srcDir, false, dataDir);
+    expect(failed).toBe(0);
+
+    // The written data file's first column has no BOM.
+    const written = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    expect(written.charCodeAt(0)).not.toBe(0xfeff);
+    expect(written.startsWith("Participant_ID,")).toBe(true);
+
+    // The metadata variable name matches it exactly.
+    const names = (metadata.getMetadata().variableMeasured as any[]).map((v) => v.name);
+    expect(names).toContain("Participant_ID");
+    expect(names).not.toContain("﻿Participant_ID");
+  });
 });
 
 describe("processDirectory JSON → CSV conversion", () => {
@@ -521,6 +549,36 @@ describe("processDirectory JSON → CSV conversion", () => {
 
     const key = path.resolve(srcDir, "raw-export.json");
     const columns = await analyzeOutputColumns(srcDir);
+    const normalizedBases = new Map([[key, "subject-7"]]);
+    const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-7", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan });
+
+    expect(failed).toBe(0);
+    const written = fs.readdirSync(dataDir).filter((f) => f.endsWith(".csv")).sort();
+    expect(written).toEqual(["subject-7_data.csv", "subject-7_measure-mouseTracking_data.csv"]);
+  });
+
+  // Regression: the BOM strip must reach the pre-pass (analyzeOutputColumns), not just processFile.
+  // A BOM-prefixed JSON/JSONL with a nested-array column used to throw in the pre-pass (parseJsonData
+  // choked on the BOM), so the rename plan reserved NO sidecar name; processFile then stripped the
+  // BOM, succeeded, and extracted the array — a sidecar the plan never approved, aborting the whole
+  // run with RenamePlanError. parseJsonData now strips the BOM, so the plan and the write agree.
+  test("a BOM-prefixed JSON with a nested array does not abort the rename-plan run", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const rows = [
+      { trial_index: 0, mouse_tracking: [{ x: 1, y: 2 }] },
+      { trial_index: 1, mouse_tracking: [{ x: 3, y: 4 }] },
+    ];
+    fs.writeFileSync(path.join(srcDir, "raw-export.json"), "﻿" + JSON.stringify(rows));
+
+    const key = path.resolve(srcDir, "raw-export.json");
+    const columns = await analyzeOutputColumns(srcDir);
+    // The pre-pass must see the sidecar column despite the BOM, so the plan reserves a name for it.
+    expect(columns[0].arrayColumns).toEqual(["mouse_tracking"]);
     const normalizedBases = new Map([[key, "subject-7"]]);
     const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-7", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
 

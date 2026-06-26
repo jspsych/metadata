@@ -181,3 +181,50 @@ describe("CSV / JSON parity for unambiguously-typed columns (stress)", () => {
     jest.restoreAllMocks();
   });
 });
+
+describe("CSV leading UTF-8 BOM handling (regression)", () => {
+  // Excel and similar tools prepend a UTF-8 BOM (U+FEFF) to CSV exports. Without bom:true in the
+  // csv-parse options, that BOM is folded into the first header, producing a corrupted variable
+  // name like "﻿Participant_ID" that is not valid Psych-DS. Mirrors the first column of the
+  // OSF lip-kinematics validation dataset (osf.io/9v4t6) that surfaced this.
+  const BOM = "﻿";
+  const csv =
+    `${BOM}Participant_ID,trial_type,trial_index,num\n` +
+    "p01,t,0,5\n" +
+    "p02,t,1,9\n";
+
+  test("strips the BOM so the first variable is named exactly Participant_ID", async () => {
+    (global as any).fetch = mockFetch;
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const metadata = new JsPsychMetadata();
+    await metadata.generate(csv, {}, "csv");
+    const names = metadata.getMetadata().variableMeasured.map((v: any) => v.name);
+
+    expect(names[0]).toBe("Participant_ID");
+    expect(names[0].charCodeAt(0)).not.toBe(0xfeff);
+    expect(names).not.toContain(`${BOM}Participant_ID`);
+
+    jest.restoreAllMocks();
+  });
+
+  test("JSON-Lines: strips the BOM so the first line parses and the variable is named Participant_ID", async () => {
+    // A BOM on the first JSONL line previously made JSON.parse throw, skipping the whole file.
+    // parseJsonData now strips it, mirroring parseCSV's bom:true.
+    (global as any).fetch = mockFetch;
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const jsonl =
+      `${BOM}{"Participant_ID":"p01","trial_type":"t","trial_index":0}\n` +
+      `{"Participant_ID":"p02","trial_type":"t","trial_index":1}\n`;
+
+    const metadata = new JsPsychMetadata();
+    await metadata.generate(jsonl, {}, "json");
+    const names = metadata.getMetadata().variableMeasured.map((v: any) => v.name);
+
+    expect(names).toContain("Participant_ID");
+    expect(names).not.toContain(`${BOM}Participant_ID`);
+
+    jest.restoreAllMocks();
+  });
+});
