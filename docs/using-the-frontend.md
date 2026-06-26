@@ -38,7 +38,13 @@ Upload your jsPsych data files:
 - Click **Choose folder** to browse for a directory (uses the browser's folder picker) **or** click **Upload zip** to upload a `.zip` containing your data files.
 - Each file is shown with a status indicator once processed.
 - Accepted formats: **CSV**, **JSON arrays**, the **`{ "trials": [...] }` wrapper** (e.g. OSF exports), and **JSON-Lines (`.jsonl`)**. JSON and JSONL are converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip both see compliant tables; your originals are preserved under `data/raw/`. CSV uploads are kept as-is.
-- If your data files contain **nested arrays**, the wizard checks whether `trial_index` uniquely identifies each row. If not, a **join-key chooser** lets you select additional columns before proceeding — these are used to name the separate CSV files the validator expects.
+- If your data files contain **nested arrays**, the wizard checks whether `trial_index` uniquely identifies each row. If not, a **join-key chooser** appears before processing continues.
+
+  **What is a join key?** jsPsych experiments sometimes produce nested data — for example, a survey trial might contain multiple responses stored as an array inside a single row. To save this as a flat table (CSV), each nested item needs to be matched back to its parent row. A join key is a column (or combination of columns) whose values are unique for every row. `trial_index` works fine for single-participant files, but if you merged data from multiple participants, each participant resets `trial_index` to 0 — making it non-unique.
+
+  In the chooser, `trial_index` is pre-selected. Additional candidate columns are listed below it; columns tagged **sufficient alone** make every row unique on their own (typically `source_record_id` or `participant_id`). Select one or more until the combination uniquely identifies each row, then click **Apply and process files**. If no combination works, check **Proceed anyway** — extracted CSVs may contain duplicate rows, but you can still continue.
+
+  Once files are processed, a **Re-configure join keys** button remains available on the Data step if you need to change your selection.
 
 > **For existing projects:** the Data step is pre-marked complete since your variables are already loaded from the uploaded `dataset_description.json`. You can still upload new data files to regenerate the variable list.
 
@@ -80,7 +86,7 @@ Inspect the generated `dataset_description.json` and download your project:
       └── <your data files>
   ```
 - If no data files were uploaded, a **Save `dataset_description.json`** button is shown instead.
-- **Validate dataset** runs the Psych-DS validator entirely in your browser (an internet connection is required) and lists any errors and warnings inline. Missing `README` / `CHANGES` warnings are expected here — the downloaded zip includes both files, so they clear when you validate the downloaded dataset (e.g. with `npx @jspsych/cli validate`). See the [frontend README](../packages/frontend/README.md#step-5--review) and the [frontend developer guide](dev/frontend-architecture.md) for the full validation flow.
+- **Validate dataset** runs the Psych-DS validator entirely in your browser (an internet connection is required) and lists any errors and warnings inline. Missing `README` / `CHANGES` warnings are expected here — the downloaded zip includes both files, so they clear when you validate the unzipped folder using the [Psych-DS web validator](https://psych-ds.github.io/validator/). See the [frontend README](../packages/frontend/README.md#step-5--review) and the [frontend developer guide](dev/frontend-architecture.md) for the full validation flow.
 
 The **{} Preview** pill button (visible on all steps except Review) opens a live JSON snapshot in a slide-in drawer, so you can check the output at any point without leaving the current step.
 
