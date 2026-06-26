@@ -228,3 +228,34 @@ describe("CSV leading UTF-8 BOM handling (regression)", () => {
     jest.restoreAllMocks();
   });
 });
+
+describe("CSV unquoted field with embedded quotes (regression)", () => {
+  // jsPsych writes the `stimulus` column as unquoted HTML that itself contains literal `"`
+  // (e.g. <div class = "EncodingBox">). That violates RFC-4180 quoting, so without
+  // relax_quotes:true csv-parse throws "Invalid Opening Quote" and the whole file is dropped —
+  // exactly what made the OSF working-memory dataset (osf.io/phxq4, 1258 files) 100% unreadable.
+  const stimulus = '<div class = "EncodingBox"><img src=a.png style="width:150px"> </div>';
+  const csv =
+    "rt,stimulus,trial_type,trial_index\n" +
+    `300,${stimulus},html-keyboard-response,0\n` +
+    `420,${stimulus},html-keyboard-response,1\n`;
+
+  test("parses the row instead of dropping the file, keeping the stimulus HTML verbatim", async () => {
+    (global as any).fetch = mockFetch;
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const metadata = new JsPsychMetadata();
+    // Before the fix this rejected with "Invalid Opening Quote" and produced no variables.
+    await expect(metadata.generate(csv, {}, "csv")).resolves.not.toThrow();
+
+    const vars = new Map(
+      metadata.getMetadata().variableMeasured.map((v: any) => [v.name, v]),
+    );
+    expect(vars.get("rt")).toMatchObject({ value: "number", minValue: 300, maxValue: 420 });
+    // The unquoted-but-quote-containing HTML is parsed as one field (not split on its inner
+    // quotes); it becomes a single categorical level, truncated by the usual 50-char level cap.
+    expect(vars.get("stimulus").levels).toEqual([stimulus.slice(0, 50) + "..."]);
+
+    jest.restoreAllMocks();
+  });
+});

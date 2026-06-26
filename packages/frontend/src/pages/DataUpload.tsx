@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
-import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, hasUnnamedColumns, isValidPsychDSDataFilename, parseCSV, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
+import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, hasUnnamedColumns, isValidPsychDSDataFilename, parseCSVForWrite, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import { createStagedFileStore, type StagedFileStore } from '../staging/stagedFileStore';
 import styles from './DataUpload.module.css';
@@ -315,8 +315,12 @@ const DataUpload: React.FC<DataUploadProps> = ({
           // Parse CSV rows so the builder can drop R-style unnamed row-index columns. A clean CSV
           // keeps its exact bytes (mainContent verbatim); record that eligibility before generate()
           // strips mainRows in place, since the builder can no longer detect the drop afterwards.
-          mainRows = (await parseCSV(content)) as Array<Record<string, unknown>>;
-          const csvVerbatimEligible = !hasUnnamedColumns(mainRows);
+          // verbatimSafe is false for a CSV that only parsed thanks to quote relaxation (e.g. jsPsych
+          // stimulus HTML with unescaped quotes) — written verbatim it would fail the validator's
+          // strict CSV parse, so re-serialise it instead.
+          const parsed = await parseCSVForWrite(content);
+          mainRows = parsed.rows;
+          const csvVerbatimEligible = parsed.verbatimSafe && !hasUnnamedColumns(mainRows);
           await jsPsychMetadata.generate(mainRows, {}, 'csv', {
             arrayJoinKeys: joinKeys,
             suppressJoinKeyWarning: suppressWarning,
