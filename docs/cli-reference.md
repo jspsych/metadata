@@ -44,10 +44,11 @@ npx @jspsych/metadata-cli \
 
 Non-interactive mode enforces stricter rules than interactive mode:
 
-- **Non-compliant filenames are a hard error.** In interactive mode, the tool prompts you to choose a keyword to bring non-compliant filenames into the Psych-DS naming pattern. In non-interactive mode, a non-compliant filename causes the tool to exit immediately with an error message and exit code 1. Rename your files before running (see [Data file naming](#data-file-naming) below).
+- **Non-compliant filenames are a hard error.** In interactive mode, the tool offers a menu of renaming strategies to bring non-compliant filenames into the Psych-DS naming pattern. In non-interactive mode, a non-compliant filename causes the tool to exit immediately with an error message and exit code 1. Rename your files before running (see [Data file naming](#data-file-naming) below).
 - **Unknown variable descriptions are not prompted.** Variables the tool cannot automatically describe are left as `"unknown"` in the output.
+- **Join keys are resolved automatically.** When nested-array rows aren't uniquely identified by `trial_index`, the tool picks the keys deterministically instead of prompting, and reports the choice (see [Nested arrays and join keys](#nested-arrays-and-join-keys)).
 
-Non-interactive mode is useful for running the tool on a schedule, in a script, or on a remote machine.
+The tool also runs without prompting whenever it isn't attached to an interactive terminal (for example, piped output or a CI job), even if you omit some flags. In that case it keeps the generated metadata defaults unless `--metadata-options` is supplied. Non-interactive mode is useful for running the tool on a schedule, in a script, or on a remote machine.
 
 ---
 
@@ -82,13 +83,13 @@ The tool accepts the following jsPsych data shapes:
 | **`{ "trials": [...] }` wrapper** | An object whose single key is `trials` holding the trial array (e.g. OSF exports). Automatically unwrapped, then treated as a JSON array. |
 | **JSON-Lines (`.jsonl`)** | One JSON value per line (JATOS and several labs export this way — often one participant's trial array per line). All lines are flattened into a single observation stream. |
 
-JSON and JSON-Lines files are automatically converted to CSV in the output (`data/` folder); the originals are preserved byte-for-byte in `data/raw/`. CSV files are copied to `data/` under their normalized name; originals are also preserved in `data/raw/`.
+JSON and JSON-Lines files are automatically converted to CSV in the output (`data/` folder); the originals are preserved byte-for-byte under `data/raw/`, and a top-level `.psychds-ignore` is written so the validator skips that raw copy. CSV files are written to `data/` under their normalized name; because they are already tabular, CSV inputs are **not** duplicated under `data/raw/` (so a CSV-only dataset has no `data/raw/` folder).
 
 Files of any other type are ignored during metadata generation.
 
 ### Nested arrays and join keys
 
-When a data file contains nested arrays inside a trial, the tool extracts each array into its own Psych-DS CSV. Those rows need a column that uniquely identifies them. If `trial_index` alone isn't unique, the tool prompts (interactively) for additional **join-key** columns, grouping candidates into "Sufficient alone" and "Reduces duplicates", with a "Proceed anyway" escape. For JSON-Lines input with no per-trial identifier, a `source_record_id` (the source line) is synthesized so the join key can be formed; it marks the source record, not a real participant.
+When a data file contains nested arrays inside a trial, the tool extracts each array into its own Psych-DS CSV. Those rows need a column that uniquely identifies them. If `trial_index` alone isn't unique, the tool prompts (interactively) for additional **join-key** columns, grouping candidates into "Sufficient alone" and "Reduces duplicates", with a "Proceed anyway" escape. In a non-interactive run there is nothing to prompt, so the keys are resolved automatically and the choice is reported in the output. For JSON-Lines input with no per-trial identifier, a `source_record_id` (the source line) is synthesized so the join key can be formed; it marks the source record, not a real participant.
 
 ### Folder depth
 
