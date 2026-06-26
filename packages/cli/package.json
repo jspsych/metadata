@@ -35,7 +35,7 @@
     "node-pty": "^1.1.0"
   },
   "dependencies": {
-    "@inquirer/prompts": "^5.1.2",
+    "@inquirer/prompts": "^8.5.2",
     "@jspsych/metadata": "*",
     "psychds-validator": "^1.5.1",
     "yargs": "^17.7.2"
