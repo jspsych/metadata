@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, hasUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, JoinKeyAnalysis, parseCSV, parseCSVForWrite, parseJsonData, objectsToCSV, isValidPsychDSDataFilename, buildPsychDSDataFiles, hasUnnamedColumns, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from "@jspsych/metadata";
 import { expandHomeDir, disambiguateFilename, fileStem } from "./utils";
 import { PlannedFile } from "./rename";
 
@@ -371,8 +371,12 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       // Hand the already-parsed rows to generate() so it doesn't re-parse the same content.
       await metadata.generate(parsedRows, {}, 'json', { ...options, synthesizedSourceRecordId: stats.synthesizedSourceRecordId === true });
     } else if (fileExtension === '.csv') {
-      parsedRows = (await parseCSV(content)) as Array<Record<string, any>>;
-      csvVerbatimEligible = !hasUnnamedColumns(parsedRows);
+      // verbatimSafe is false for a CSV that only parsed thanks to quote relaxation (e.g. jsPsych
+      // stimulus HTML with unescaped quotes); such a file must be re-serialised, not copied
+      // verbatim, or the Psych-DS validator rejects the malformed CSV it would otherwise contain.
+      const parsed = await parseCSVForWrite(content);
+      parsedRows = parsed.rows;
+      csvVerbatimEligible = parsed.verbatimSafe && !hasUnnamedColumns(parsedRows);
       await metadata.generate(parsedRows, {}, 'csv', options);
     } else {
       console.error(`"${file}" is not .csv, .json, or .jsonl format.`);

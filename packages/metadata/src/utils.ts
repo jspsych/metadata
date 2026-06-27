@@ -563,7 +563,7 @@ export function buildPsychDSDataFiles(args: BuildPsychDSDataFilesArgs): PsychDSD
   return out;
 }
 
-export async function parseCSV(input) {
+export async function parseCSV(input, { relaxQuotes = true }: { relaxQuotes?: boolean } = {}) {
   if (!parse) {
     throw new Error('Parser module not loaded');
   }
@@ -572,7 +572,13 @@ export async function parseCSV(input) {
     parse(input, {
       columns: true, // Treat the first row as headers
       delimiter: ',', // Specify the delimiter (e.g., comma)
-      bom: true // Strip a leading UTF-8 BOM so the first header name isn't corrupted (e.g. "﻿Participant_ID")
+      bom: true, // Strip a leading UTF-8 BOM so the first header name isn't corrupted (e.g. "﻿Participant_ID")
+      // Tolerate quotes inside unquoted fields. jsPsych writes unquoted `stimulus` HTML that
+      // contains literal `"` (e.g. `<div class = "EncodingBox">`); without relaxation csv-parse
+      // throws "Invalid Opening Quote" and the whole file is dropped. The write path probes with
+      // relaxQuotes:false (see parseCSVForWrite) to tell a clean file from one that only parsed
+      // thanks to this relaxation, so the latter is re-serialised rather than written verbatim.
+      relax_quotes: relaxQuotes
     }, (err, records) => {
       if (err) {
         reject(err);
@@ -581,4 +587,27 @@ export async function parseCSV(input) {
       }
     });
   });
+}
+
+/**
+ * Parse a CSV for the write path, also reporting whether it was already strictly RFC-4180 valid.
+ *
+ * `verbatimSafe` is true only when the content parses under strict quoting. When it's false the
+ * file parsed solely because of quote relaxation (e.g. jsPsych `stimulus` HTML with unescaped
+ * `"`), so its exact bytes are NOT safe to copy into the Psych-DS `data/` payload: the validator
+ * strict-parses CSV too and would reject the malformed file (`CSV_FORMATTING_ERROR`). Callers
+ * pass `mainContent` (verbatim) only when `verbatimSafe`, otherwise they re-serialise the parsed
+ * rows so the written CSV is well-formed. A clean file is parsed once; only a malformed one is
+ * parsed twice (strict probe, then lenient).
+ */
+export async function parseCSVForWrite(
+  input: string,
+): Promise<{ rows: Array<Record<string, any>>; verbatimSafe: boolean }> {
+  try {
+    const rows = (await parseCSV(input, { relaxQuotes: false })) as Array<Record<string, any>>;
+    return { rows, verbatimSafe: true };
+  } catch {
+    const rows = (await parseCSV(input)) as Array<Record<string, any>>;
+    return { rows, verbatimSafe: false };
+  }
 }

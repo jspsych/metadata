@@ -13,7 +13,8 @@ jest.mock("@jspsych/metadata", () => ({
   // return the parsed array so the join-key preflight runs. runGenerate then builds Psych-DS
   // files, which the component only iterates over — an empty list is sufficient for these tests.
   parseJsonData: jest.fn((content: string) => JSON.parse(content)),
-  parseCSV: jest.fn(() => []),
+  // runGenerate's CSV branch parses via parseCSVForWrite (rows + verbatim-safety flag).
+  parseCSVForWrite: jest.fn(async () => ({ rows: [], verbatimSafe: true })),
   hasUnnamedColumns: jest.fn(() => false),
   buildPsychDSDataFiles: jest.fn(() => []),
   deriveFallbackBase: jest.fn((stem: string) => `subject-${stem}`),
