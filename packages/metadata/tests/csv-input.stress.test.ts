@@ -258,4 +258,35 @@ describe("CSV unquoted field with embedded quotes (regression)", () => {
 
     jest.restoreAllMocks();
   });
+
+  // TARGET SPEC (test.failing): documents a gap the current fix does NOT close. jsPsych stimulus
+  // HTML frequently contains BOTH a literal `"` AND a `,` (instruction text, lists, key prompts).
+  // relax_quotes:true keeps the inner quote literal but does NOT stop the inner comma from
+  // splitting the field, so the row gets more fields than the header and csv-parse throws
+  // "Invalid Record Length" (CSV_RECORD_INCONSISTENT_COLUMNS) under relaxation too — the whole
+  // file is still dropped, the exact "0 files read" symptom the fix targets. Marked test.failing
+  // so CI stays green while tracking this; it will flip to a hard failure (prompting removal of
+  // the marker) once comma-bearing stimuli ingest correctly. See PR #132 review thread.
+  const stimulusWithComma = '<p>Press "F", "J" to respond</p>';
+  const csvWithComma =
+    "rt,stimulus,trial_type,trial_index\n" +
+    `300,${stimulusWithComma},html-keyboard-response,0\n` +
+    `420,${stimulusWithComma},html-keyboard-response,1\n`;
+
+  test.failing("parses a stimulus containing both quotes and commas instead of dropping the file", async () => {
+    (global as any).fetch = mockFetch;
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const metadata = new JsPsychMetadata();
+    await expect(metadata.generate(csvWithComma, {}, "csv")).resolves.not.toThrow();
+
+    const vars = new Map(
+      metadata.getMetadata().variableMeasured.map((v: any) => [v.name, v]),
+    );
+    expect(vars.get("rt")).toMatchObject({ value: "number", minValue: 300, maxValue: 420 });
+    // The whole quote+comma HTML should be one field, not split on its inner comma.
+    expect(vars.get("stimulus").levels).toEqual([stimulusWithComma]);
+
+    jest.restoreAllMocks();
+  });
 });
