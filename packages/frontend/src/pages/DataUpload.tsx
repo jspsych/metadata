@@ -296,6 +296,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
         // isn't a jsPsych trial table) before generate() runs — matching the CLI.
         let mainRows: Array<Record<string, any>> = [];
         let mainContent: string | undefined;
+        // A clean CSV written verbatim under its own compliant name is the only input with no
+        // separate "raw" form; everything else (JSON, a re-serialised CSV, or a renamed CSV) is
+        // transformed and its original is preserved under data/raw/ below. Stays false for JSON.
+        let csvVerbatimEligible = false;
         if (type === 'json') {
           // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the
           // main CSV carries the same join-key column generate() promotes for the sidecars.
@@ -320,7 +324,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           // strict CSV parse, so re-serialise it instead.
           const parsed = await parseCSVForWrite(content);
           mainRows = parsed.rows;
-          const csvVerbatimEligible = parsed.verbatimSafe && !hasUnnamedColumns(mainRows);
+          csvVerbatimEligible = parsed.verbatimSafe && !hasUnnamedColumns(mainRows);
           await jsPsychMetadata.generate(mainRows, {}, 'csv', {
             arrayJoinKeys: joinKeys,
             suppressJoinKeyWarning: suppressWarning,
@@ -340,8 +344,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
         });
         for (const f of built) await store.write(`data/${f.filename}`, f.content);
 
-        // Preserve the original JSON under data/raw/ (CSV inputs are already tabular).
-        if (type === 'json') {
+        // Preserve the untouched original under data/raw/ whenever the Psych-DS output is not a
+        // verbatim, same-named copy of the input: JSON is always converted to CSV; a CSV is
+        // transformed when it had to be re-serialised (csvVerbatimEligible === false) or when its
+        // filename changed to a compliant name (mainName !== file.name). data/raw/ is flat, so
+        // same-named originals from different source folders are disambiguated.
+        const mainName = built.find(f => f.kind === 'main')?.filename;
+        const transformed = type === 'json' || !csvVerbatimEligible || mainName !== file.name;
+        if (transformed) {
           const rawName = disambiguateFlatFilename(file.name, usedRawFilenames);
           usedRawFilenames.add(rawName);
           await store.write(`data/raw/${rawName}`, content);
