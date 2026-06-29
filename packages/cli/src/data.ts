@@ -425,27 +425,16 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         return name;
       };
 
-      // Preserve the original JSON under data/raw/ (CSV inputs are already tabular, so they
-      // have no separate "raw" form). data/raw/ is flat (one level deep is flattened), so
-      // same-named originals from different source subdirectories must be disambiguated or
-      // they would overwrite one another.
-      if (isJsonDataExt(fileExtension)) {
-        const rawDir = path.join(targetDirectoryPath, 'raw');
-        await fs.promises.mkdir(rawDir, { recursive: true });
-        const rawName = disambiguateFilename(file, usedRawFilenames);
-        usedRawFilenames.add(rawName);
-        if (rawName !== file) {
-          console.log(`  ! raw/"${file}" already exists; saving original as raw/"${rawName}" instead.`);
-        }
-        await fs.promises.writeFile(path.join(rawDir, rawName), content);
-      }
-
       // Sidecar CSVs: one per array-of-objects column and one per plain-object column
       // detected during generate(). Arrays get element_index in their priority columns;
       // objects get one row per trial (join keys only).
       const extractedArrays = metadata.getExtractedArrays();
       const extractedObjects = metadata.getExtractedObjects();
       const joinKeys = metadata.getArrayJoinKeys();
+
+      // The Psych-DS name written for this file's main table, captured by whichever write path
+      // runs below so the raw-preservation check can compare it against the input filename.
+      let mainOutputName: string | undefined;
 
       if (planned) {
         const priorityCols = [...joinKeys, 'element_index'];
@@ -482,6 +471,7 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
         };
 
         const mainName = reserve(planned.mainName, 'main output');
+        mainOutputName = mainName;
         // A clean CSV keeps its exact bytes; JSON or a dirty CSV (whose unnamed row-index columns
         // generate() already stripped from mainRows) is serialised from those cleaned rows.
         await fs.promises.writeFile(
@@ -520,6 +510,28 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
             console.log(`  → wrote ${what}`);
           }
         }
+        mainOutputName = built.find((f) => f.kind === 'main')?.filename;
+      }
+
+      // Preserve the untouched original under data/raw/ whenever the Psych-DS output is not a
+      // verbatim, same-named copy of the input. That covers: JSON/JSONL (always converted to
+      // CSV); a CSV that had to be re-serialised (csvVerbatimEligible === false, e.g. malformed
+      // quotes generate() repaired); and a CSV whose filename was changed to a compliant name
+      // (mainOutputName !== file). A clean CSV written verbatim under its own name is the only
+      // case with no separate raw form. data/raw/ is flat (one level deep is flattened), so
+      // same-named originals from different source subdirectories are disambiguated or they
+      // would overwrite one another.
+      const transformed =
+        isJsonDataExt(fileExtension) || !csvVerbatimEligible || mainOutputName !== file;
+      if (transformed) {
+        const rawDir = path.join(targetDirectoryPath, 'raw');
+        await fs.promises.mkdir(rawDir, { recursive: true });
+        const rawName = disambiguateFilename(file, usedRawFilenames);
+        usedRawFilenames.add(rawName);
+        if (rawName !== file) {
+          console.log(`  ! raw/"${file}" already exists; saving original as raw/"${rawName}" instead.`);
+        }
+        await fs.promises.writeFile(path.join(rawDir, rawName), content);
       }
     }
   } catch (err) {

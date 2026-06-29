@@ -330,8 +330,8 @@ describe("processDirectory output-directory creation (#118)", () => {
     // Mirrors an existing Psych-DS project with no data/ dir: the output path doesn't exist yet.
     const dataDir = path.join(tmpDir, "project", "data");
     fs.mkdirSync(srcDir);
-    // A CSV input (no data/raw/ is created for CSV, so nothing else would make data/ first).
-    // "subject-1" yields the compliant "subject-1_data.csv" without needing a rename plan.
+    // A CSV input renamed to the compliant "subject-1_data.csv" without needing a rename plan.
+    // (The rename means its original is now also preserved under data/raw/.)
     fs.writeFileSync(path.join(srcDir, "subject-1.csv"), "trial_type,rt\njsPsych-html-keyboard-response,450");
 
     expect(fs.existsSync(dataDir)).toBe(false);
@@ -369,6 +369,66 @@ describe("processDirectory output-directory creation (#118)", () => {
     const names = (metadata.getMetadata().variableMeasured as any[]).map((v) => v.name);
     expect(names).toContain("Participant_ID");
     expect(names).not.toContain("﻿Participant_ID");
+  });
+});
+
+describe("processDirectory CSV raw-original preservation", () => {
+  test("preserves the original under data/raw/ when a clean CSV is renamed to a compliant name", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    // Non-compliant name → renamed to "subject-7_data.csv"; content itself is clean (written verbatim).
+    const original = "trial_type,rt\njsPsych-html-keyboard-response,450";
+    fs.writeFileSync(path.join(srcDir, "trial.csv"), original);
+
+    const normalizedBases = new Map([[path.resolve(srcDir, "trial.csv"), "subject-7"]]);
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases });
+    expect(failed).toBe(0);
+
+    // Converted file is written under the new name; the original is kept under its old name in data/raw/.
+    expect(fs.existsSync(path.join(dataDir, "subject-7_data.csv"))).toBe(true);
+    const rawPath = path.join(dataDir, "raw", "trial.csv");
+    expect(fs.existsSync(rawPath)).toBe(true);
+    expect(fs.readFileSync(rawPath, "utf8")).toBe(original);
+    // A .psychds-ignore is dropped at the dataset root so the validator skips data/raw/.
+    expect(fs.existsSync(path.join(tmpDir, ".psychds-ignore"))).toBe(true);
+  });
+
+  test("does NOT create a raw original for an already-compliant, verbatim-copied CSV", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    // Already compliant AND clean → written byte-for-byte under its own name, so there is no
+    // separate "raw" form to preserve.
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.csv"), "trial_type,rt\njsPsych-html-keyboard-response,450");
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+    expect(failed).toBe(0);
+
+    expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, "raw"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".psychds-ignore"))).toBe(false);
+  });
+
+  test("preserves the original when a CSV must be re-serialised even though its name is unchanged", async () => {
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    // Compliant name, but the stimulus HTML has unescaped quotes — only parses via quote relaxation,
+    // so it is re-serialised (not byte-for-byte) and the malformed original is preserved under data/raw/.
+    const original = 'trial_type,stimulus\nhtml-keyboard-response,<div class = "Box">hi</div>';
+    fs.writeFileSync(path.join(srcDir, "subject-1_data.csv"), original);
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+    expect(failed).toBe(0);
+
+    expect(fs.existsSync(path.join(dataDir, "subject-1_data.csv"))).toBe(true);
+    const rawPath = path.join(dataDir, "raw", "subject-1_data.csv");
+    expect(fs.existsSync(rawPath)).toBe(true);
+    expect(fs.readFileSync(rawPath, "utf8")).toBe(original);
   });
 });
 

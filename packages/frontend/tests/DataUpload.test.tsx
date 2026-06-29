@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import JSZip from "jszip";
-import { analyzeJoinKeys } from "@jspsych/metadata";
+import { analyzeJoinKeys, buildPsychDSDataFiles, isValidPsychDSDataFilename, parseCSVForWrite } from "@jspsych/metadata";
 import DataUpload, { emptyDataSession } from "../src/pages/DataUpload";
 import type { DataSession } from "../src/pages/DataUpload";
 
@@ -29,6 +29,9 @@ jest.mock("jszip", () => ({
 }));
 
 const mockAnalyzeJoinKeys = analyzeJoinKeys as jest.Mock;
+const mockBuild = buildPsychDSDataFiles as jest.Mock;
+const mockIsValid = isValidPsychDSDataFilename as jest.Mock;
+const mockParseCSVForWrite = parseCSVForWrite as jest.Mock;
 const mockLoadAsync = (JSZip as { loadAsync: jest.Mock }).loadAsync;
 
 function makeFile(name: string, content = "col,val\n1,2", relativePath = "") {
@@ -325,6 +328,57 @@ describe("DataUpload", () => {
       const continueBtn = await screen.findByRole("button", { name: "Continue →" });
       await userEvent.click(continueBtn);
       expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    // ── raw-original preservation ──────────────────────────────────────────
+    // The original is kept under data/raw/ whenever the Psych-DS output is not a verbatim,
+    // same-named copy of the input. The store flows back through onSessionChange.
+    async function processedStore() {
+      let store: any;
+      await waitFor(() => {
+        const calls = onSessionChange.mock.calls;
+        store = calls[calls.length - 1]?.[0]?.convertedStore;
+        expect(store).not.toBeNull();
+      });
+      return store;
+    }
+
+    test("preserves a renamed CSV's original under data/raw/ with its old name", async () => {
+      // Clean CSV (verbatimSafe from the default mock) renamed sub01.csv → subject-sub01_data.csv.
+      mockBuild.mockReturnValueOnce([{ filename: "subject-sub01_data.csv", content: "rt\n100", kind: "main" }]);
+      const { container } = render(<DataUpload {...props()} />);
+      await pickAndProcess(makeFile("sub01.csv", "rt\n100"), container);
+      await screen.findByRole("button", { name: "Continue →" });
+
+      const store = await processedStore();
+      expect(store.paths()).toContain("data/raw/sub01.csv");
+      expect(store.paths()).toContain(".psychds-ignore");
+    });
+
+    test("does NOT preserve raw for an already-compliant, verbatim-copied CSV", async () => {
+      // compliantBase keeps the name; the builder writes it unchanged and verbatim → no raw form.
+      mockIsValid.mockReturnValue(true);
+      mockBuild.mockReturnValueOnce([{ filename: "subject-sub01_data.csv", content: "rt\n100", kind: "main" }]);
+      const { container } = render(<DataUpload {...props()} />);
+      await pickAndProcess(makeFile("subject-sub01_data.csv", "rt\n100"), container);
+      await screen.findByRole("button", { name: "Continue →" });
+
+      const store = await processedStore();
+      expect(store.paths().some((p: string) => p.startsWith("data/raw/"))).toBe(false);
+      expect(store.paths()).not.toContain(".psychds-ignore");
+    });
+
+    test("preserves raw when a CSV must be re-serialised even though its name is unchanged", async () => {
+      // verbatimSafe:false → the malformed original is re-serialised, so it's preserved under data/raw/.
+      mockParseCSVForWrite.mockResolvedValueOnce({ rows: [], verbatimSafe: false });
+      mockIsValid.mockReturnValue(true);
+      mockBuild.mockReturnValueOnce([{ filename: "subject-sub01_data.csv", content: "rt\n100", kind: "main" }]);
+      const { container } = render(<DataUpload {...props()} />);
+      await pickAndProcess(makeFile("subject-sub01_data.csv", 'stimulus\n<div class="x">'), container);
+      await screen.findByRole("button", { name: "Continue →" });
+
+      const store = await processedStore();
+      expect(store.paths()).toContain("data/raw/subject-sub01_data.csv");
     });
   });
 
