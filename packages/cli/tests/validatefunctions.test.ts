@@ -198,32 +198,39 @@ describe("validatePsychDS", () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
-  test("prints console.warn and returns without crashing when validate throws an Error", async () => {
+  test("reports a validator crash as a FAILURE (hasErrors:true), not a silent pass, when validate throws an Error", async () => {
+    // A crash means the dataset was never actually validated; treating it as hasErrors:false
+    // would let a never-checked dataset exit 0.
     mockValidate.mockRejectedValue(new Error("validator failed"));
     await expect(validatePsychDS("/some/dataset", false)).resolves.toEqual({
-      hasErrors: false,
+      hasErrors: true,
       missingRequiredFields: [],
       missingRecommendedFields: [],
     });
-    expect(warnSpy).toHaveBeenCalledWith(
-      "\nWarning: Psych-DS validation could not run: validator failed"
+    expect(errorSpy).toHaveBeenCalledWith(
+      "\n✘ Psych-DS validation could not run: validator failed"
     );
     expect(logSpy).not.toHaveBeenCalled();
-    expect(errorSpy).not.toHaveBeenCalled();
   });
 
-  test("prints the thrown value directly when validate throws a non-Error", async () => {
+  test("reports hasErrors:true and prints the thrown value directly when validate throws a non-Error", async () => {
     mockValidate.mockRejectedValue("something went wrong");
     await expect(validatePsychDS("/some/dataset", false)).resolves.toEqual({
-      hasErrors: false,
+      hasErrors: true,
       missingRequiredFields: [],
       missingRecommendedFields: [],
     });
-    expect(warnSpy).toHaveBeenCalledWith(
-      "\nWarning: Psych-DS validation could not run: something went wrong"
+    expect(errorSpy).toHaveBeenCalledWith(
+      "\n✘ Psych-DS validation could not run: something went wrong"
     );
     expect(logSpy).not.toHaveBeenCalled();
-    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  test("passes '.' to the validator when the dataset path IS the cwd (relative path is empty)", async () => {
+    // path.relative(cwd, cwd) === "" and validate("") throws; "." must be substituted.
+    mockValidate.mockResolvedValue(makeResult([]));
+    await validatePsychDS(process.cwd(), false);
+    expect(mockValidate).toHaveBeenCalledWith(".");
   });
 });
 
@@ -292,5 +299,16 @@ describe("validateJson", () => {
     const csvPath = path.join(tmpDir, "data.csv");
     fs.writeFileSync(csvPath, "a,b,c");
     expect(validateJson(csvPath)).toBe(false);
+  });
+
+  test("returns false for a .json file whose CONTENT is malformed JSON", () => {
+    // The whole point: a hand-edited dataset_description.json that got broken must be rejected
+    // here so the run aborts instead of silently overwriting it with regenerated defaults.
+    const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const badPath = path.join(tmpDir, "broken.json");
+    fs.writeFileSync(badPath, '{ "name": "oops",, }');
+    expect(validateJson(badPath)).toBe(false);
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("is not valid JSON"));
+    errSpy.mockRestore();
   });
 });

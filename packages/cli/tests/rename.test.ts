@@ -127,6 +127,18 @@ describe('reduceIdCandidates', () => {
     const result = reduceIdCandidates([{ rt: 500 }]);
     expect(result.get('subject_id')).toEqual(new Set());
   });
+
+  it('stops scanning once no present ID column can still qualify (early-exit fires when ID columns are absent)', () => {
+    // Without the early-exit, a file with no ID columns is scanned to the last row. Prove it stops
+    // at row 0: a later row whose subject_id getter throws must never be touched.
+    const poison: Record<string, any> = {};
+    Object.defineProperty(poison, 'subject_id', {
+      enumerable: true,
+      get() { throw new Error('scanned past the point where the outcome was already decided'); },
+    });
+    const rows: Array<Record<string, any>> = [{ rt: 1 }, poison];
+    expect(() => reduceIdCandidates(rows)).not.toThrow();
+  });
 });
 
 describe('findIdentifierColumn', () => {
