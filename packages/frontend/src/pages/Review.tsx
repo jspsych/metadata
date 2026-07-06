@@ -49,7 +49,13 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
   const handleDownload = async () => {
     if ('showSaveFilePicker' in window) {
       try {
-        const fileHandle = await (window as any).showSaveFilePicker({
+        const fileHandle = await (
+          window as unknown as {
+            showSaveFilePicker: (
+              opts: unknown,
+            ) => Promise<{ createWritable: () => Promise<{ write(d: string): Promise<void>; close(): Promise<void> }> }>;
+          }
+        ).showSaveFilePicker({
           suggestedName: FILENAME,
           types: [{ description: 'JSON file', accept: { 'application/json': ['.json'] } }],
         });

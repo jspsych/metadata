@@ -5,7 +5,7 @@ declare global {
   }
   
   interface JsPsychMetadataInstance {
-    generate: (data: any, metadataOptions?: object, csv?: boolean) => void;
+    generate: (data: unknown[] | string, metadataOptions?: object, csv?: boolean) => void;
     getMetadata: () => object;
   }
   

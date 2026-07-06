@@ -133,7 +133,8 @@ const DataUpload: React.FC<DataUploadProps> = ({
   }, [files, convertedStore, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
 
   useEffect(() => {
-    if (inputRef.current) (inputRef.current as any).webkitdirectory = true; // not in TS lib
+    // webkitdirectory is a nonstandard HTMLInputElement attribute not in TS lib.
+    if (inputRef.current) (inputRef.current as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true;
   }, []);
 
   const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,7 +211,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
         // flagged: trial_index alone repeats across records, but the identifier column (a
         // synthesized source_record_id, else a real participant_id) makes (id, trial_index) unique.
         const idColumn = (['source_record_id', 'participant_id'] as const).find((col) =>
-          parsed.some((row: any) => row && typeof row === 'object' && col in row));
+          parsed.some((row) => row && typeof row === 'object' && col in row));
         const keys = idColumn ? [idColumn, 'trial_index'] : ['trial_index'];
         const analysis = analyzeJoinKeys(parsed, keys);
         if (!analysis.isUnique) {
@@ -294,7 +295,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
         // happen immediately: getExtracted* reflect only the most recent generate() call. JSON
         // arrays are serialised to CSV; CSV is written verbatim. Non-array JSON is skipped (it
         // isn't a jsPsych trial table) before generate() runs — matching the CLI.
-        let mainRows: Array<Record<string, any>> = [];
+        let mainRows: Array<Record<string, unknown>> = [];
         let mainContent: string | undefined;
         if (type === 'json') {
           // Tag a per-line source_record_id for JSON-Lines (a no-op for a single array) so the

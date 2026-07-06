@@ -366,7 +366,7 @@ describe("processDirectory output-directory creation (#118)", () => {
     expect(written.startsWith("Participant_ID,")).toBe(true);
 
     // The metadata variable name matches it exactly.
-    const names = (metadata.getMetadata().variableMeasured as any[]).map((v) => v.name);
+    const names = ((metadata.getMetadata() as any).variableMeasured as any[]).map((v) => v.name);
     expect(names).toContain("Participant_ID");
     expect(names).not.toContain("﻿Participant_ID");
   });

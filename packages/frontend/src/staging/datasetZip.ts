@@ -125,11 +125,15 @@ export async function downloadDatasetZip(
     // falling back to blob, which would also fail if the disk is full).
     let sink: ZipSink | undefined;
     try {
-      const fileHandle = await (window as any).showSaveFilePicker({
+      const fileHandle = await (
+        window as unknown as {
+          showSaveFilePicker: (opts: unknown) => Promise<{ createWritable: () => Promise<ZipSink> }>;
+        }
+      ).showSaveFilePicker({
         suggestedName: filename,
         types: [{ description: 'ZIP file', accept: { 'application/zip': ['.zip'] } }],
       });
-      sink = await fileHandle.createWritable() as ZipSink;
+      sink = await fileHandle.createWritable();
     } catch (err) {
       if ((err as DOMException).name === 'AbortError') return false;
       // Picker or handle creation failed — fall through to blob download.
