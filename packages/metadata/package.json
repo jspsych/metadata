@@ -9,12 +9,12 @@
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": {
         "node": "./dist/index.js",
         "default": "./dist/index.esm.js"
       },
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "typings": "dist/index.d.ts",
@@ -30,24 +30,22 @@
     "test:watch": "npm test -- --watch",
     "build": "node esbuild.config.mjs && npx tsc",
     "build:watch": "npm run build -- --watch",
-    "build:types": "tsc --emitDeclarationOnly --declaration --project tsconfig.build.json",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jspsych/jsPsych.git",
+    "url": "git+https://github.com/jspsych/metadata.git",
     "directory": "packages/metadata"
   },
   "author": "Victor Zhang vzhang@vassar.edu",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jspsych/jsPsych/issues"
+    "url": "https://github.com/jspsych/metadata/issues"
   },
   "homepage": "https://www.jspsych.org/latest/metadata",
   "devDependencies": {
     "@jspsych/config": "^3.3.3",
     "@types/jest": "^29.5.12",
-    "husky": "^9.0.11",
     "ts-jest": "^29.1.4",
     "typescript": "^5.5.4"
   },

@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
-    "@jspsych/metadata": "*",
+    "@jspsych/metadata": "^0.0.3 || ^0.1.0",
     "psychds-validator": "^1.5.1",
     "yargs": "^17.7.2"
   }
