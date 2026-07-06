@@ -142,13 +142,23 @@ describe("VariablesMap", () => {
   });
 
   test("#getList", () => {
-    const compare: (VariableFields | {})[] = [];
+    // getList() returns COPIES with collapsed (string) descriptions. It must NOT mutate the
+    // stored variables (previously it wrote the collapsed string back in place, which corrupted
+    // per-plugin description maps across a second generate() pass — the destructive-getter bug).
+    const expected = variable_data.map((v) => ({
+      ...v,
+      // Each seed description is { default: "unknown", jsPsych: "…" }, collapsing to the jsPsych text.
+      description: (v.description as Record<string, string>)["jsPsych"],
+    }));
 
+    expect(variablesMap.getList()).toStrictEqual(expected);
+
+    // Non-mutation guarantee: the stored variables still hold their original object descriptions.
     for (const v of variable_data) {
-      compare.push(variablesMap.getVariable(v["name"]));
+      expect(variablesMap.getVariable(v["name"])).toStrictEqual(v);
     }
-
-    expect(variablesMap.getList()).toStrictEqual(compare);
+    // And a second call returns the same collapsed result (no drift from a prior collapse).
+    expect(variablesMap.getList()).toStrictEqual(expected);
   });
 
   test("#deleteVariables", () => {
@@ -299,10 +309,12 @@ describe("VariablesMap", () => {
       value: "string",
     };
 
+    // The user-edited "default" text is NOT the "unknown" placeholder, so it must survive and lead
+    // (it previously got silently dropped — the destructive collapse bug).
     let expected = {
       "@type": "PropertyValue",
       name: "animation style",
-      description: "what the user likes to eat",
+      description: "how tall the user is | what the user likes to eat",
       value: "string",
     };
 
@@ -326,11 +338,12 @@ describe("VariablesMap", () => {
       value: "string",
     };
 
-    // "default" is dropped, then the remaining distinct descriptions join into one Text value.
+    // The user-edited "default" text (not the "unknown" placeholder) leads, then the remaining
+    // distinct descriptions join into one Text value.
     let expected = {
       "@type": "PropertyValue",
       name: "animation style",
-      description: "what the user likes to eat | how many hamburgers the user ate",
+      description: "how tall the user is | what the user likes to eat | how many hamburgers the user ate",
       value: "string",
     };
 

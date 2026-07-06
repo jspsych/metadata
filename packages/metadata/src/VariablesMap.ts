@@ -39,6 +39,26 @@ export class VariablesMap {
   private variables: { [key: string]: VariableFields };
 
   /**
+   * Per-variable Set mirroring each variable's `levels` array, used for O(1) dedup while the
+   * serialized `levels` field stays a string[] in insertion order. Keyed by the stored variable
+   * object reference (a getter that returns a copy never poisons this). Rebuilt lazily from the
+   * array the first time a variable is seen (e.g. levels pre-loaded from an existing dataset).
+   *
+   * @private
+   */
+  private levelsSets: WeakMap<object, Set<string>> = new WeakMap();
+
+  /**
+   * Optional opt-in cap on the number of distinct levels stored per variable. `null` (default)
+   * means no cap — the stress suite codifies that there is NO default limit. When set, further
+   * distinct levels past the cap are dropped and a one-time warning is logged per variable.
+   *
+   * @private
+   */
+  private levelsCap: number | null = null;
+  private levelsCapWarned: Set<string> = new Set();
+
+  /**
    *  Creates the VariablesMap by initialising an empty variable map. The jsPsych system
    * variables (trial_type, trial_index, time_elapsed, extension_*) are NOT seeded here — they
    * are registered lazily when their column is actually observed in the data (see
@@ -127,7 +147,20 @@ export class VariablesMap {
   }
 
   /**
+   * Opt-in cap on the number of distinct levels stored per variable. Threaded from generate()'s
+   * options. `null` disables the cap (the default). Not a default limit — the stress suite relies
+   * on no cap being applied unless a caller explicitly asks for one.
+   */
+  setLevelsCap(cap: number | null): void {
+    this.levelsCap = cap;
+  }
+
+  /**
    * Returns a list of the variables instead of an object according to the Psych-DS format.
+   *
+   * This is a GETTER and must never mutate stored state. Each variable is shallow-copied and its
+   * description is collapsed on a copy, so calling getMetadata()/getList() then generate() again
+   * (the CLI's multi-file flow) can't corrupt the stored per-plugin description maps.
    *
    * @returns {{}[]} - The list of variables represented as objects.
    */
@@ -135,7 +168,9 @@ export class VariablesMap {
     var var_list = [];
 
     for (const key of Object.keys(this.variables)) {
-      const variable = this.variables[key];
+      // Shallow copy the variable; collapseDescription itself works on a copy of the description
+      // map, so the stored object (and its nested description) is left untouched.
+      const variable = { ...this.variables[key] };
       variable["description"] = this.collapseDescription(variable["description"]);
       var_list.push(variable);
     }
@@ -159,24 +194,30 @@ export class VariablesMap {
       return description;
     }
 
-    if (Object.keys(description).length === 0) {
+    // Operate on a copy — this is called from the getList() getter and must not mutate the
+    // stored per-plugin description map (doing so corrupted descriptions across a second
+    // generate() pass in the CLI's multi-file flow).
+    const desc = { ...description };
+
+    if (Object.keys(desc).length === 0) {
       console.error("Empty description");
       return "unknown";
     }
 
-    // Drop the synthetic "default" once real plugin descriptions exist.
-    if (Object.keys(description).length > 1 && "default" in description) {
-      delete description["default"];
-    }
-    // Drop placeholder "unknown" entries while at least one real description remains.
-    for (const descKey of Object.keys(description)) {
-      if (description[descKey] === "unknown" && Object.keys(description).length > 1) {
-        delete description[descKey];
-      }
-    }
+    // The user-edited default (the frontend stores user text as { default: userText, jsPsych: … })
+    // must win — never silently discard it. It only counts as real user text when it isn't the
+    // synthetic "unknown" placeholder; only then is it dropped in favour of plugin descriptions.
+    const userDefault =
+      "default" in desc && desc["default"] !== "unknown" ? String(desc["default"]) : null;
+    delete desc["default"];
 
-    // Join the remaining distinct descriptions into one Text value.
-    return (Object.values(description) as string[]).join(" | ");
+    // Remaining plugin descriptions, dropping placeholder "unknown" entries.
+    const pluginDescriptions = (Object.values(desc) as string[]).filter((v) => v !== "unknown");
+
+    // User text leads; identical texts are de-duplicated while preserving order.
+    const parts = userDefault !== null ? [userDefault, ...pluginDescriptions] : pluginDescriptions;
+    if (parts.length === 0) return "unknown";
+    return [...new Set(parts)].join(" | ");
   }
 
   /**
@@ -302,22 +343,48 @@ export class VariablesMap {
    * @param {*} added_value - The value being added to the levels field.
    */
   private updateLevels(updated_var, added_value): void {
-    if (typeof added_value === "object")
-      return;
+    // Objects/arrays/null are not valid levels (levels is a string[]).
+    if (typeof added_value === "object") return;
 
-    const MAX_LENGTH = 50;  // Define the maximum length for the added value
-    
+    // The public API accepts booleans/numbers; levels is a string[], so stringify primitives
+    // (e.g. true -> "true", 5 -> "5") rather than storing a raw non-string in the array.
+    let level: string = typeof added_value === "string" ? added_value : String(added_value);
+
+    const MAX_LENGTH = 50; // Define the maximum length for the added value
     // Trim the added value if it exceeds the maximum length
-    if (added_value.length > MAX_LENGTH) {
-      added_value = added_value.substring(0, MAX_LENGTH) + "...";
+    if (level.length > MAX_LENGTH) {
+      level = level.substring(0, MAX_LENGTH) + "...";
     }
-    
+
     if (!Array.isArray(updated_var["levels"])) {
       updated_var["levels"] = [];
     }
-    if (!updated_var["levels"].includes(added_value)) {
-      updated_var["levels"].push(added_value);
+
+    // Maintain a Set alongside the array so membership is O(1) instead of O(n) — a column with
+    // tens of thousands of distinct values would otherwise be O(n^2). The array remains the
+    // serialized, insertion-ordered string[]. The Set is rebuilt from the array the first time
+    // this variable object is seen (covers levels pre-loaded from an existing dataset).
+    let seen = this.levelsSets.get(updated_var);
+    if (!seen) {
+      seen = new Set(updated_var["levels"]);
+      this.levelsSets.set(updated_var, seen);
     }
+
+    if (seen.has(level)) return;
+
+    if (this.levelsCap !== null && updated_var["levels"].length >= this.levelsCap) {
+      const name = updated_var["name"];
+      if (!this.levelsCapWarned.has(name)) {
+        this.levelsCapWarned.add(name);
+        console.warn(
+          `Variable "${name}" reached the configured levelsCap (${this.levelsCap}); additional distinct levels are dropped.`
+        );
+      }
+      return;
+    }
+
+    seen.add(level);
+    updated_var["levels"].push(level);
   }
 
   /**
@@ -329,10 +396,14 @@ export class VariablesMap {
    * @param {*} field_name - The name of field that is being checked (min or max).
    */
   private updateMinMax(updated_var, added_value, field_name): void {
-    // check if min or max
-    if (!("minValue" in updated_var) || !("maxValue" in updated_var)) {
-      updated_var["maxValue"] = updated_var["minValue"] = added_value;
-      return;
+    // Initialise only the bound(s) that are actually missing. The old guard reset BOTH bounds
+    // whenever either was absent, so a user who pre-set only minValue would have it overwritten
+    // by the first observed value.
+    if (!("minValue" in updated_var)) {
+      updated_var["minValue"] = added_value;
+    }
+    if (!("maxValue" in updated_var)) {
+      updated_var["maxValue"] = added_value;
     }
 
     // redundant checks, including them because of current formatting but want to delete field_name
@@ -353,11 +424,25 @@ export class VariablesMap {
    * @param {*} added_value - The value to be added with the key being the name of the plugin and the key being the description field.
    */
   private updateDescription(updated_var, added_value): void {
+    // A plain string description (e.g. generate() options { variables: { rt: { description:
+    // "Reaction time" } } }, or a user-typed value) is treated as the user's default text. Without
+    // this, Object.keys("Reaction time") spread the string char-by-char into {"0":"R","1":"e",…}.
+    if (typeof added_value === "string") {
+      added_value = { default: added_value };
+    }
+
+    if (typeof added_value !== "object" || added_value === null) {
+      console.error("Description update passed in bad format", added_value);
+      return;
+    }
+
     // getting key and value for new value for clarity
     const add_key = Object.keys(added_value)[0];
     const add_value = Object.values(added_value)[0];
 
-    if (add_key === "undefined" || add_value === "undefined") {
+    // Guard against an empty object ({}), where Object.keys()[0] is actually undefined.
+    // (Previously this compared to the STRING "undefined", which never matched.)
+    if (add_key === undefined || add_value === undefined) {
       console.error("New value is passed in bad format", added_value);
       return;
     }
@@ -400,6 +485,26 @@ export class VariablesMap {
    */
   private updateName(updated_var, added_value): void {
     const old_name = updated_var["name"];
+
+    // Refuse to rename to an empty/falsy or non-string name — doing so previously made the
+    // variable vanish (it got keyed under "" / undefined and dropped from getVariableNames).
+    if (typeof added_value !== "string" || added_value === "") {
+      console.warn(
+        `Cannot rename variable "${old_name}" to an empty or non-string name. Rename skipped.`
+      );
+      return;
+    }
+
+    if (added_value === old_name) return; // no-op rename
+
+    // Refuse to rename onto an existing variable — doing so silently deleted the target.
+    if (this.containsVariable(added_value)) {
+      console.warn(
+        `Cannot rename variable "${old_name}" to "${added_value}": a variable with that name already exists. Rename skipped.`
+      );
+      return;
+    }
+
     updated_var["name"] = added_value;
     delete this.variables[old_name];
 
