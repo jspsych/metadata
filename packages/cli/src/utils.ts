@@ -2,11 +2,27 @@ import os from 'os';
 import path from 'path';
 
 export function expandHomeDir(directoryPath: string): string {
-  if (directoryPath.startsWith('~')) {
-    const homeDir = os.homedir();
-    return path.join(homeDir, directoryPath.slice(1));
+  // Only expand a bare "~" or a leading "~/" (or "~\" on Windows). A "~username"
+  // path refers to *another* user's home directory, which os.homedir() cannot
+  // resolve — expanding it would mangle the path (e.g. "~bob/x" → "<me>/bob/x"),
+  // so it is left untouched for the OS to handle.
+  if (directoryPath === '~') return os.homedir();
+  if (directoryPath.startsWith('~/') || directoryPath.startsWith('~\\')) {
+    return path.join(os.homedir(), directoryPath.slice(1));
   }
   return directoryPath;
+}
+
+/**
+ * Validates a project name entered at the prompt: it becomes a folder name and a metadata
+ * field, so it must be non-empty and free of path separators (which would create/redirect
+ * directories). Pure so it can be unit-tested and reused by the prompt's `validate` hook.
+ * Returns `true` when valid, else a human-readable error message.
+ */
+export function validateProjectName(name: string): true | string {
+  if (name.trim().length === 0) return 'Project name cannot be empty.';
+  if (/[\\/]/.test(name)) return 'Project name cannot contain path separators ("/" or "\\").';
+  return true;
 }
 
 /**
