@@ -28,14 +28,19 @@ export class PluginCache {
    * @throws Will throw an error if the fetch operation fails.
    */
   async getPluginInfo(pluginType: string, variableName: string, version: string, verbose: boolean, extension?: boolean) {
+    // Key the cache on (name, version, isExtension), not name alone. Keying on name alone meant a
+    // mixed-version dataset served the first-seen version's descriptions for every later version,
+    // and a plugin and an extension that share a name collided on the same entry.
+    const cacheKey = `${extension ? "extension" : "plugin"}:${pluginType}@${version ?? ""}`;
+
     // fetches if it doesn't exist
-    if (!(pluginType in this.pluginFields)) {
+    if (!(cacheKey in this.pluginFields)) {
       const fields = await this.generatePluginFields(pluginType, version, verbose, extension);
-      this.pluginFields[pluginType] = fields;
+      this.pluginFields[cacheKey] = fields;
     }
 
-    if (variableName in this.pluginFields[pluginType])
-      return this.pluginFields[pluginType][variableName];
+    if (variableName in this.pluginFields[cacheKey])
+      return this.pluginFields[cacheKey][variableName];
     else
       return {
         description: "unknown",
