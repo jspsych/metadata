@@ -36,6 +36,22 @@ if (typeof (Blob.prototype as any).arrayBuffer !== 'function') {
 URL.createObjectURL = jest.fn(() => "blob:mock-url");
 URL.revokeObjectURL = jest.fn();
 
+// jsdom doesn't implement <dialog>.showModal/close (used by Sidebar and PreviewDrawer). Stub them
+// so modal dialogs render as open and fire their close event on programmatic close.
+if (typeof HTMLDialogElement !== "undefined") {
+  HTMLDialogElement.prototype.showModal = jest
+    .fn()
+    .mockImplementation(function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    });
+  HTMLDialogElement.prototype.close = jest
+    .fn()
+    .mockImplementation(function (this: HTMLDialogElement) {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    });
+}
+
 beforeEach(() => {
   localStorage.clear();
 });
