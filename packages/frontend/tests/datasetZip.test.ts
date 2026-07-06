@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate';
-import { buildDatasetZipBlob } from '../src/staging/datasetZip';
+import { buildDatasetZipBlob, downloadDatasetZip } from '../src/staging/datasetZip';
 import { createStagedFileStore } from '../src/staging/stagedFileStore';
 
 async function readZip(blob: Blob): Promise<Record<string, string>> {
@@ -56,5 +56,67 @@ describe('buildDatasetZipBlob', () => {
 
     const files = await readZip(blob);
     expect(Object.keys(files).filter((k) => k.startsWith('data/'))).toHaveLength(0);
+  });
+});
+
+type PickerWindow = { showSaveFilePicker?: (...args: unknown[]) => Promise<unknown> };
+const pickerWindow = window as unknown as PickerWindow;
+
+describe('downloadDatasetZip', () => {
+  const originalPicker = pickerWindow.showSaveFilePicker;
+  afterEach(() => {
+    if (originalPicker === undefined) delete pickerWindow.showSaveFilePicker;
+    else pickerWindow.showSaveFilePicker = originalPicker;
+  });
+
+  test('returns false when the user aborts the save dialog', async () => {
+    pickerWindow.showSaveFilePicker = jest
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+
+    const result = await downloadDatasetZip({ metadataJson: '{"name":"x"}', projectName: 'x' }, 'x.zip');
+    expect(result).toBe(false);
+  });
+
+  test('streams to the picked file and returns true on success', async () => {
+    const written: Uint8Array[] = [];
+    const writable = {
+      write: jest.fn(async (d: Uint8Array) => { written.push(d); }),
+      close: jest.fn(async () => {}),
+      abort: jest.fn(async () => {}),
+    };
+    pickerWindow.showSaveFilePicker = jest
+      .fn()
+      .mockResolvedValue({ createWritable: jest.fn().mockResolvedValue(writable) });
+
+    const result = await downloadDatasetZip({ metadataJson: '{"name":"x"}', projectName: 'x' }, 'x.zip');
+    expect(result).toBe(true);
+    expect(writable.write).toHaveBeenCalled();
+    expect(writable.close).toHaveBeenCalled();
+    expect(writable.abort).not.toHaveBeenCalled();
+  });
+
+  test('propagates streaming errors and aborts the sink', async () => {
+    const writable = {
+      write: jest.fn().mockRejectedValue(new Error('disk full')),
+      close: jest.fn(async () => {}),
+      abort: jest.fn(async () => {}),
+    };
+    pickerWindow.showSaveFilePicker = jest
+      .fn()
+      .mockResolvedValue({ createWritable: jest.fn().mockResolvedValue(writable) });
+
+    await expect(
+      downloadDatasetZip({ metadataJson: '{"name":"x"}', projectName: 'x' }, 'x.zip'),
+    ).rejects.toThrow('disk full');
+    expect(writable.abort).toHaveBeenCalled();
+    expect(writable.close).not.toHaveBeenCalled();
+  });
+
+  test('falls back to a blob download when the file-system picker is unavailable', async () => {
+    delete pickerWindow.showSaveFilePicker;
+    const result = await downloadDatasetZip({ metadataJson: '{"name":"x"}', projectName: 'x' }, 'x.zip');
+    expect(result).toBe(true);
+    expect(URL.createObjectURL).toHaveBeenCalled();
   });
 });
