@@ -1,0 +1,7 @@
+.wizardFrame {
+  display: block;
+  width: 100%;
+  /* Fill the viewport below the fixed navbar so the wizard feels like the app. */
+  height: calc(100vh - var(--ifm-navbar-height));
+  border: 0;
+}

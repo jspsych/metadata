@@ -22,8 +22,8 @@ export default defineJspsychConfig({
   navbar: {
     title: 'jsPsych Metadata',
     items: [
-      {to: '/', label: 'Wizard', position: 'left', activeBaseRegex: '^/$'},
-      {type: 'doc', docId: 'introduction', position: 'left', label: 'Introduction'},
+      {to: '/wizard', label: 'Wizard', position: 'left'},
+      {type: 'doc', docId: 'introduction', position: 'left', label: 'What is Psych-DS?'},
       {type: 'docSidebar', sidebarId: 'guides', position: 'left', label: 'Guides'},
       {
         type: 'doc',
@@ -46,22 +46,8 @@ export default defineJspsychConfig({
     },
   },
 
-  footerLinks: [
-    {
-      title: 'Docs',
-      items: [
-        {label: 'Introduction', to: '/docs/introduction'},
-        {label: 'Using the wizard', to: '/docs/guides/using-the-wizard'},
-      ],
-    },
-    {
-      title: 'Community',
-      items: [
-        {
-          label: 'GitHub Discussions',
-          href: 'https://github.com/jspsych/jspsych/discussions',
-        },
-      ],
-    },
-  ],
+  // The footer UI is a custom single-row layout (see src/theme/Footer). This
+  // still needs to exist so Docusaurus mounts the footer slot; its contents are
+  // rendered by the swizzled component, not from here.
+  footer: {style: 'dark', links: []},
 });

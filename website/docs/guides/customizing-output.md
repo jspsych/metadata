@@ -6,7 +6,7 @@ description: Add authors, descriptions, and variable details to the generated da
 
 # Customizing the output
 
-The [web wizard](/) collects extra information — authors, a dataset description, variable descriptions — through its on-screen forms. The CLI has no forms, so you supply that same information as a JSON **options file**: the command-line equivalent of filling in those fields.
+The [web wizard](/wizard) collects extra information — authors, a dataset description, variable descriptions — through its on-screen forms. The CLI has no forms, so you supply that same information as a JSON **options file**: the command-line equivalent of filling in those fields.
 
 Pass it with the [`--metadata-options` flag](../reference/cli-reference.md#flags), or choose **Use a custom metadata file** when the CLI prompts you.
 
