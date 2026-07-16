@@ -1,0 +1,87 @@
+---
+title: Using the CLI
+sidebar_label: Using the CLI
+description: Turn raw jsPsych experiment data into a Psych-DS compliant dataset from the command line, step by step.
+---
+
+import {Steps, Step} from '@site/src/components/Steps';
+
+# Using the CLI
+
+The metadata CLI turns a folder of raw jsPsych data into a [Psych-DS](https://psychds-docs.readthedocs.io/en/latest/) compliant project. Prefer point-and-click? Use the **[web wizard](/)** instead — it does the same thing in your browser (see [Using the wizard](./using-the-wizard.mdx)).
+
+<Steps>
+
+<Step n={1} title="Install & run">
+
+You'll need **Node.js 18+** (check with `node --version`; install from [nodejs.org](https://nodejs.org)). Then run:
+
+```
+npx @jspsych/metadata-cli
+```
+
+The first run downloads the tool automatically; after that it launches immediately and prompts you through the steps below.
+
+</Step>
+
+<Step n={2} title="Create or update a project">
+
+Choose **Create a new project** (or **Update an existing project** if you've generated metadata for this dataset before). Then pick an **output folder** — an existing folder to create the project inside — and give the project a **name** (used as the new subfolder name and in the metadata; hyphens are fine, no spaces).
+
+</Step>
+
+<Step n={3} title="Point to your data">
+
+Give the path to the folder holding your jsPsych data files. They're read from that folder and one level of subfolders. Your originals are copied, never modified.
+
+<details>
+<summary>Which file formats are accepted?</summary>
+
+**CSV**, a **JSON array** (`[ {…}, {…} ]`), the **`{ "trials": [...] }` wrapper** (e.g. OSF exports), or **JSON-Lines (`.jsonl`)**. JSON and JSON-Lines are converted to CSV in `data/`, with originals preserved under `data/raw/`. CSV is kept as-is. Other file types are ignored.
+
+</details>
+
+</Step>
+
+<Step n={4} title="Fix file names (if needed)">
+
+Psych-DS names data files `keyword-value_data.csv` (e.g. `subject-01_data.csv`). If yours don't match, the CLI lists them and offers renaming **strategies**, each with a live preview on your real filenames.
+
+<details>
+<summary>The renaming strategies, and nested-array data</summary>
+
+The recommended strategy, when available, is **using the value found inside each file** — it reads an ID column from the data itself, so it works even when the old filenames are meaningless. Other options: keep only the differing part, assign fresh numbered names, or keep the whole old name as the value. For the full list see [Data file naming](../reference/cli-reference.md#data-file-naming).
+
+If a file contains **nested arrays** and `trial_index` isn't unique, the CLI asks you to pick additional **join-key** columns so each extracted row can be identified — see [Nested arrays and join keys](../reference/cli-reference.md#nested-arrays-and-join-keys). Flat, single-participant datasets skip this.
+
+</details>
+
+</Step>
+
+<Step n={5} title="Customize & fill in descriptions (optional)">
+
+The CLI generates metadata automatically and looks up variable descriptions from the jsPsych plugin that produced each column. Two optional prompts let you go further:
+
+- **Use a custom metadata file** to add authors, a study description, or override variable descriptions — the command-line equivalent of the wizard's forms. See [Customizing the output](./customizing-output.md).
+- **Fill in unknown descriptions** for any variables the lookup couldn't identify (or skip them).
+
+</Step>
+
+<Step n={6} title="Validate & get your project">
+
+The CLI validates the result against Psych-DS and reports pass/fail. You end up with a self-contained project in your chosen folder:
+
+```
+my-experiment/
+├── data/                       Psych-DS compliant copies of your data
+│   └── raw/                     originals, if inputs were JSON/JSON-Lines
+├── dataset_description.json    generated metadata
+├── README.md                   placeholder for a description
+└── CHANGES.md                  placeholder for a changelog
+```
+
+Open `dataset_description.json` to see the generated variables and their descriptions.
+
+</Step>
+
+</Steps>

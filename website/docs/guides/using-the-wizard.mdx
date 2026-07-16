@@ -1,0 +1,98 @@
+---
+title: Using the web wizard
+sidebar_label: Using the wizard
+description: A step-by-step walkthrough of the browser-based metadata wizard, from uploading data to downloading a Psych-DS project.
+---
+
+import {Steps, Step} from '@site/src/components/Steps';
+
+# Using the web wizard
+
+The **[wizard](/)** is the front page of this site — a browser-based tool that turns your raw jsPsych data into a [Psych-DS](https://psychds-docs.readthedocs.io/en/latest/) compliant project. Everything runs locally: your data never leaves your computer. Prefer the command line? See [Using the CLI](./using-the-cli.mdx).
+
+When you open it, pick a starting point:
+
+- **Create new project** — start from scratch with your data files (the path below).
+- **Open existing project** — upload an existing `dataset_description.json` to keep editing it, or to refresh the metadata after collecting more data.
+
+<Steps>
+
+<Step n={1} title="Project info">
+
+Give the dataset a **name** (required — it becomes the identifier and the downloaded folder name) and a plain-English **description**. Optional fields — license, funding source, keywords, citation — fill in the recommended Psych-DS metadata.
+
+<details>
+<summary>Starting from an existing project?</summary>
+
+You can upload an existing `dataset_description.json` here to pre-fill every field. When an uploaded value differs from something you've already typed, the wizard shows a before/after comparison so you can choose what to keep.
+
+</details>
+
+</Step>
+
+<Step n={2} title="Data — upload your raw data files">
+
+Click **Choose folder** to pick a directory of data files, or **Upload zip** to upload a `.zip`. Each file shows a status indicator once it's processed. Your originals are never modified.
+
+<details>
+<summary>Which file formats can I upload?</summary>
+
+- **CSV** — kept as-is.
+- **JSON array** (`[ {…}, {…} ]`) — the standard jsPsych export.
+- **`{ "trials": [...] }` wrapper** — e.g. OSF exports; unwrapped automatically.
+- **JSON-Lines (`.jsonl`)** — one JSON value per line.
+
+JSON and JSON-Lines are converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip see compliant tables. Your originals are preserved untouched under `data/raw/`.
+
+</details>
+
+<details>
+<summary>What's a "join key" and when will I be asked for one?</summary>
+
+If your files contain **nested arrays** (e.g. a survey trial holding multiple responses), each nested item has to be matched back to its parent row to store it as a flat CSV. A **join key** is a column whose values are unique for every row.
+
+The wizard checks whether `trial_index` uniquely identifies each row; if it doesn't (for example, merged multi-participant files where `trial_index` resets to 0 per person), a chooser appears. Columns tagged **sufficient alone** make every row unique by themselves (often `participant_id`); pick one or more until each row is uniquely identified, then **Apply and process files**. A **Re-configure join keys** button stays available if you need to change it later.
+
+</details>
+
+</Step>
+
+<Step n={3} title="Variables">
+
+The wizard detects every variable in your data and looks up what each one means from the jsPsych plugin that produced it. Review the list and fill in anything it couldn't identify automatically.
+
+- Variables with **unknown descriptions** appear expanded at the top; known ones start collapsed (**Expand all / Collapse all** toggles them).
+- Each row has a **Description** field and a **Type** dropdown — editing either updates the metadata immediately.
+
+</Step>
+
+<Step n={4} title="Authors">
+
+Add the people who contributed to the dataset. Click **Add author**, type a name, and press Tab to commit it. Expand a row for optional fields: given/family name, author type, and ORCID.
+
+<details>
+<summary>Adding lots of authors at once</summary>
+
+**Bulk import** lets you paste a list of names (one per line, optionally followed by an ORCID) to add many authors at once. Invalid ORCIDs are flagged with a warning.
+
+</details>
+
+</Step>
+
+<Step n={5} title="Review & download">
+
+Inspect the generated `dataset_description.json` in the syntax-highlighted preview, then download your project.
+
+- **Download `<project-name>.zip`** gives a complete Psych-DS project: `dataset_description.json`, `README.md`, `CHANGES.md`, and your `data/` folder. (No data files? A **Save `dataset_description.json`** button appears instead.)
+- **Validate dataset** runs the Psych-DS validator in your browser and lists any errors and warnings inline.
+
+<details>
+<summary>About the validation warnings</summary>
+
+Missing `README` / `CHANGES` warnings are expected in the in-browser check — the downloaded zip includes both files, so they clear when you validate the unzipped folder with the [Psych-DS web validator](https://psych-ds.github.io/validator/). The **`{}` Preview** pill (on every step except Review) opens a live JSON snapshot at any time.
+
+</details>
+
+</Step>
+
+</Steps>
