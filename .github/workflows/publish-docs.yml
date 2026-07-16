@@ -14,6 +14,9 @@ on:
     paths:
       - 'website/**'
       - 'packages/frontend/**'
+      # The deployed wizard bundles the LOCAL @jspsych/metadata, so library
+      # changes must redeploy it too.
+      - 'packages/metadata/**'
       - '.github/workflows/publish-docs.yml'
   workflow_dispatch:
 

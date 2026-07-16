@@ -15,6 +15,11 @@ It covers:
 ### Running the docs locally
 
 ```bash
+# From the repo root: install the workspaces and build the core library,
+# so the wizard build can resolve the local @jspsych/metadata.
+npm ci
+npm run build --workspace=@jspsych/metadata
+
 cd website
 npm install
 npm start      # dev server with hot reload
