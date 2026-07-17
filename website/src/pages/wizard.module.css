@@ -1,7 +1,10 @@
 .wizardFrame {
   display: block;
   width: 100%;
-  /* Fill the viewport below the fixed navbar so the wizard feels like the app. */
-  height: calc(100vh - var(--ifm-navbar-height));
+  /* Fill the viewport below the fixed navbar, leaving room for the site footer
+     so it seats at the bottom instead of sitting behind a dead scroll. The
+     4.5rem is the footer's single-row height; it wraps taller on narrow screens,
+     where a small scroll is fine. */
+  height: calc(100vh - var(--ifm-navbar-height) - 4.5rem);
   border: 0;
 }

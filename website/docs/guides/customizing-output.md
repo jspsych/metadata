@@ -106,3 +106,7 @@ Accepted variable fields:
 :::tip
 Run the tool once **without** an options file, open `dataset_description.json` to see what was generated, then use the options file to fill the gaps and re-run. Custom descriptions persist across re-runs — updating a project reloads the existing file first.
 :::
+
+---
+
+**Next:** the [CLI reference](../reference/cli-reference.md) for every flag and rule, or [Troubleshooting](./troubleshooting.md) if something looks off.

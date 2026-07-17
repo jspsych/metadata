@@ -7,8 +7,7 @@ export default function Wizard(): React.ReactElement {
   return (
     <Layout
       title="Wizard"
-      description="Generate Psych-DS compliant metadata for your jsPsych experiment data, right in your browser."
-      noFooter>
+      description="Generate Psych-DS compliant metadata for your jsPsych experiment data, right in your browser.">
       <WizardEmbed className={styles.wizardFrame} />
     </Layout>
   );

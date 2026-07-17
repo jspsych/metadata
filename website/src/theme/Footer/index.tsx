@@ -27,6 +27,9 @@ export default function Footer(): React.ReactElement {
           <Link className={styles.link} href="https://github.com/jspsych/jspsych/discussions">
             Discussions
           </Link>
+          <Link className={styles.link} to="/contact">
+            Contact Us
+          </Link>
         </nav>
 
         <Link className={styles.donate} href="https://opencollective.com/jspsych">

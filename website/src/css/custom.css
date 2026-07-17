@@ -144,3 +144,21 @@ html:not([data-theme='dark']) {
   border-width: 0.4em 0 0.4em 0.4em;
   border-color: transparent transparent transparent currentColor;
 }
+
+/**
+ * The wizard/CLI guides are built from <Steps> (JSX), so they have no markdown
+ * headings and their table of contents is empty. They set
+ * `hide_table_of_contents` to reclaim that column; without a cap the content
+ * would then stretch edge to edge, so hold it to a comfortable reading measure
+ * and center it, keeping the page from looking either blank or over-wide.
+ */
+html[class*='docs-doc-id-guides/using-the-wizard'] .theme-doc-markdown,
+html[class*='docs-doc-id-guides/using-the-wizard'] .theme-doc-footer,
+html[class*='docs-doc-id-guides/using-the-wizard'] .pagination-nav,
+html[class*='docs-doc-id-guides/using-the-cli'] .theme-doc-markdown,
+html[class*='docs-doc-id-guides/using-the-cli'] .theme-doc-footer,
+html[class*='docs-doc-id-guides/using-the-cli'] .pagination-nav {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}

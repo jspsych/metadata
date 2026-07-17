@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
     'guides/using-the-wizard',
     'guides/using-the-cli',
     'guides/customizing-output',
+    'guides/troubleshooting',
   ],
 };
 
