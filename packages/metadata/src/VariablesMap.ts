@@ -206,9 +206,12 @@ export class VariablesMap {
 
     // The user-edited default (the frontend stores user text as { default: userText, jsPsych: … })
     // must win — never silently discard it. It only counts as real user text when it isn't the
-    // synthetic "unknown" placeholder; only then is it dropped in favour of plugin descriptions.
+    // synthetic "unknown" placeholder or an empty string (a cleared wizard field); otherwise it
+    // is dropped in favour of plugin descriptions.
     const userDefault =
-      "default" in desc && desc["default"] !== "unknown" ? String(desc["default"]) : null;
+      "default" in desc && desc["default"] !== "unknown" && String(desc["default"]).trim() !== ""
+        ? String(desc["default"])
+        : null;
     delete desc["default"];
 
     // Remaining plugin descriptions, dropping placeholder "unknown" entries.

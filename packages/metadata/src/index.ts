@@ -626,12 +626,16 @@ export default class JsPsychMetadata {
         // is NaN, which previously leaked through as NaN min/max (serialized as null) for string columns.
         const trimmed = value.trim();
         const asNumber = Number(trimmed);
-        // Only treat a string cell as numeric when it ROUND-TRIPS: String(Number(v)) === v.trim().
-        // This keeps identifier-like strings as string levels instead of mangling them —
-        // "007" (Number 7, "7" !== "007"), 17-digit ids that lose precision, and "1e5" (-> "100000")
-        // all stay strings, while genuine numerics like "5" and "0.5" convert cleanly.
+        // Treat a string cell as numeric when it ROUND-TRIPS (String(Number(v)) === v.trim())
+        // OR is a decimal-fraction literal. The round-trip keeps identifier-like strings as
+        // string levels instead of mangling them — "007" (Number 7, "7" !== "007"), 17-digit
+        // ids that lose precision, and "1e5" (-> "100000") all stay strings. But R/pandas
+        // float exports write non-canonical decimals ("450.0", "5.50") that fail the
+        // round-trip while being genuinely numeric; those identifier risks are all
+        // integer/exponent-shaped, so a fraction literal (no leading zeros) is safe to accept.
         // Number.isFinite also rejects NaN/Infinity, which would otherwise serialize to null min/max.
-        if (trimmed !== "" && Number.isFinite(asNumber) && String(asNumber) === trimmed) {
+        const isFractionLiteral = /^[+-]?(0|[1-9]\d*)\.\d+$/.test(trimmed);
+        if (trimmed !== "" && Number.isFinite(asNumber) && (String(asNumber) === trimmed || isFractionLiteral)) {
           type = "number";
           value = asNumber;
           // NOTE: "true"/"false" strings are intentionally left as strings (not coerced to

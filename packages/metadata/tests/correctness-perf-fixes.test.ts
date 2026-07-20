@@ -124,6 +124,18 @@ describe("user-edited default description survives collapse (frontend bug)", () 
     const after = (meta.getMetadata()["variableMeasured"] as any[]).find((v) => v.name === "foo");
     expect(after.description).toContain("MY TEXT");
   });
+
+  test("a cleared (empty-string) default is dropped like the 'unknown' placeholder — no leading ' | '", async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate([{ trial_type: "mock-plugin", trial_index: 0, foo: "bar" }]);
+
+    // A wizard user clearing the description field stores { default: "" }.
+    meta.updateVariable("foo", "description", { default: "" });
+
+    const after = (meta.getMetadata()["variableMeasured"] as any[]).find((v) => v.name === "foo");
+    expect(after.description).toMatch(/Plugin foo description/);
+    expect(after.description).not.toMatch(/^\s*\|/);
+  });
 });
 
 // ─── A2/A3: getMetadata() is non-mutating and safe to interleave with generate() ───
@@ -237,6 +249,45 @@ describe("numeric round-trip coercion", () => {
 
     expect(vars.get("big").value).toBe("string");
     expect(vars.get("big").levels).toContain("12345678901234567");
+  });
+
+  test('decimal-fraction literals ("1.0", "450.0", "5.50") are numeric despite failing the round-trip', async () => {
+    // R/pandas float exports write trailing-zero decimals; they must land as min/max,
+    // not as a categorical level list.
+    const meta = new JsPsychMetadata();
+    await meta.generate(
+      toCSV([
+        { trial_type: "mock-plugin", trial_index: "0", rt: "450.0", score: "5.50", neg: "-3.25" },
+        { trial_type: "mock-plugin", trial_index: "1", rt: "1.0", score: "5.75", neg: "-1.0" },
+      ]),
+      {},
+      "csv"
+    );
+    const vars = new Map((meta.getMetadata()["variableMeasured"] as any[]).map((v) => [v.name, v]));
+
+    expect(vars.get("rt")).toMatchObject({ value: "number", minValue: 1, maxValue: 450 });
+    expect(vars.get("score")).toMatchObject({ value: "number", minValue: 5.5, maxValue: 5.75 });
+    expect(vars.get("neg")).toMatchObject({ value: "number", minValue: -3.25, maxValue: -1 });
+  });
+
+  test('identifier protection survives the fraction relaxation ("007.5", "1e3", ".5" stay strings)', async () => {
+    const meta = new JsPsychMetadata();
+    await meta.generate(
+      toCSV([
+        { trial_type: "mock-plugin", trial_index: "0", padded: "007.5", exp: "1e3", bare: ".5" },
+        { trial_type: "mock-plugin", trial_index: "1", padded: "008.5", exp: "1e4", bare: ".25" },
+      ]),
+      {},
+      "csv"
+    );
+    const vars = new Map((meta.getMetadata()["variableMeasured"] as any[]).map((v) => [v.name, v]));
+
+    // Leading zeros disqualify even with a fraction; exponent and bare-dot notation
+    // stay under the strict round-trip rule.
+    expect(vars.get("padded").value).toBe("string");
+    expect(vars.get("padded").levels).toContain("007.5");
+    expect(vars.get("exp").value).toBe("string");
+    expect(vars.get("bare").value).toBe("string");
   });
 });
 
