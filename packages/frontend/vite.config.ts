@@ -26,6 +26,9 @@ const validatorWeb = path.join(
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Served at the site root during local dev; the docs deploy builds it with
+  // VITE_BASE=/wizard-app/ so it can be embedded as the metadata site homepage.
+  base: process.env.VITE_BASE || '/',
   plugins: [react()],
   resolve: {
     alias: {

@@ -25,24 +25,6 @@ const Landing: React.FC<LandingProps> = ({ onStart }) => {
         </p>
       </div>
 
-      <div className={styles.cards}>
-        <button className={styles.card} onClick={() => onStart(true)}>
-          <span className={styles.cardIcon}>+</span>
-          <span className={styles.cardTitle}>Create new project</span>
-          <span className={styles.cardDesc}>
-            Start from scratch with your experiment data files
-          </span>
-        </button>
-
-        <button className={styles.card} onClick={() => fileInputRef.current?.click()}>
-          <span className={styles.cardIconAmber}>↑</span>
-          <span className={styles.cardTitle}>Open existing project</span>
-          <span className={styles.cardDesc}>
-            Upload a <code>dataset_description.json</code> to continue editing
-          </span>
-        </button>
-      </div>
-
       <div className={styles.psychDs}>
         <button
           className={styles.psychDsToggle}
@@ -59,14 +41,32 @@ const Landing: React.FC<LandingProps> = ({ onStart }) => {
             (<code>dataset_description.json</code>) that makes your experiment data
             easier to share, archive, and reuse.{' '}
             <a
-              href="https://psychds-docs.readthedocs.io/en/latest/"
+              href="https://metadata.jspsych.org/docs/introduction"
               target="_blank"
               rel="noreferrer"
             >
-              Read the documentation →
+              Learn more →
             </a>
           </p>
         )}
+      </div>
+
+      <div className={styles.cards}>
+        <button className={styles.card} onClick={() => onStart(true)}>
+          <span className={styles.cardIcon}>+</span>
+          <span className={styles.cardTitle}>Create new project</span>
+          <span className={styles.cardDesc}>
+            Start from scratch with your experiment data files
+          </span>
+        </button>
+
+        <button className={styles.card} onClick={() => fileInputRef.current?.click()}>
+          <span className={styles.cardIconAmber}>↑</span>
+          <span className={styles.cardTitle}>Open existing project</span>
+          <span className={styles.cardDesc}>
+            Upload a <code>dataset_description.json</code> to continue editing
+          </span>
+        </button>
       </div>
 
       <input

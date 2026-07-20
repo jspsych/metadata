@@ -3,6 +3,15 @@ import { StepId } from './AppShell';
 import styles from './Sidebar.module.css';
 import logo from '../assets/jspsych-logo-no-text.svg';
 
+/** True when running inside an iframe (embedded on the docs site). */
+const isEmbedded = () => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
 interface Step {
   id: StepId;
   label: string;
@@ -34,10 +43,14 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <nav className={styles.sidebar}>
-      <div className={styles.header}>
-        <img src={logo} alt="" className={styles.logo} />
-        <span className={styles.appTitle}>jsPsych Metadata</span>
-      </div>
+      {/* When embedded on the docs site, the site navbar already shows the
+          brand, so hide this duplicate header. */}
+      {!isEmbedded() && (
+        <div className={styles.header}>
+          <img src={logo} alt="" className={styles.logo} />
+          <span className={styles.appTitle}>jsPsych Metadata</span>
+        </div>
+      )}
       <ul className={styles.stepList}>
         {steps.map((step) => {
           const isActive = step.id === currentStep;
@@ -73,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className={styles.footer}>
         <a
           className={styles.psychdsLink}
-          href="https://psychds-docs.readthedocs.io/en/latest/"
+          href="https://metadata.jspsych.org/docs/introduction"
           target="_blank"
           rel="noreferrer"
         >

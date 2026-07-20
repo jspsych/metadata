@@ -1,0 +1,164 @@
+/**
+ * Site-specific overrides, loaded AFTER the shared jsPsych theme CSS
+ * (see `customCss` in docusaurus.config.ts).
+ *
+ * Adopts DataPipe's (pipe.jspsych.org) typography: DataPipe uses the plain
+ * system font stack rather than the theme's Lexend display face, which reads a
+ * touch smaller and tighter. The brand colors already match the theme, so only
+ * the font family is changed here.
+ */
+:root {
+  --ifm-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+
+  /* Smaller headings, closer to DataPipe (defaults are 2 / 1.5 / 1.25rem). */
+  --ifm-h1-font-size: 1.6rem;
+  --ifm-h2-font-size: 1.15rem;
+  --ifm-h3-font-size: 1.05rem;
+  --ifm-h4-font-size: 1rem;
+}
+
+/**
+ * Docusaurus sizes markdown headings via `.markdown > hN` (h1 3rem, h2 1.5rem,
+ * …), which beats the :root vars above on specificity — so override those rules
+ * directly to keep titles/subtitles small.
+ */
+.markdown h1:first-child {
+  --ifm-h1-font-size: 1.8rem !important;
+}
+
+.markdown h2 {
+  --ifm-h2-font-size: 1.25rem !important;
+}
+
+.markdown h3 {
+  --ifm-h3-font-size: 1.05rem !important;
+}
+
+/**
+ * Light mode: brighten the primary green so links and active nav/TOC items are
+ * clearly green — the theme default (#00683e) is so dark it reads almost like
+ * plain text. Scoped to light mode; dark mode keeps its brighter green.
+ */
+html:not([data-theme='dark']) {
+  --ifm-color-primary: #0d8d5b;
+  --ifm-color-primary-dark: #0c7f52;
+  --ifm-color-primary-darker: #0b784d;
+  --ifm-color-primary-darkest: #09623f;
+  --ifm-color-primary-light: #0e9b64;
+  --ifm-color-primary-lighter: #10a56b;
+  --ifm-color-primary-lightest: #14bd7c;
+}
+
+/**
+ * Tables: one shade for the header, one uniform shade for the body — the
+ * default alternating zebra stripes are hard to read.
+ */
+.markdown table thead tr {
+  background-color: var(--ifm-color-emphasis-200);
+}
+
+.markdown table tbody tr,
+.markdown table tbody tr:nth-child(2n) {
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+/**
+ * Sidebar "collapse" control: by default it's a full-width bar pinned to the
+ * bottom of the sidebar. Shrink it to a small icon button and move it to the
+ * top-right instead. Targeted by the (stable) title attribute because
+ * Docusaurus hashes the component's classname.
+ */
+.theme-doc-sidebar-container button[title='Collapse sidebar'] {
+  order: -1; /* above the menu (sidebar is a flex column) */
+  align-self: flex-end;
+  width: fit-content;
+  min-height: 0;
+  height: auto;
+  position: static;
+  margin: 0.35rem 0.5rem 0 0;
+  padding: 0.1rem;
+  border: none;
+  background: transparent;
+  color: var(--ifm-color-emphasis-500);
+  opacity: 0.6;
+}
+
+.theme-doc-sidebar-container button[title='Collapse sidebar']:hover {
+  opacity: 1;
+  background: transparent;
+}
+
+/* Replace the arrow glyph with a small solid triangle caret (like the
+   ecosystem-switcher dropdown), pointing left to collapse. */
+.theme-doc-sidebar-container button[title='Collapse sidebar'] svg {
+  display: none;
+}
+
+.theme-doc-sidebar-container button[title='Collapse sidebar']::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  /* same 0.4em proportions as the ecosystem-switcher dropdown caret */
+  border-width: 0.4em 0.4em 0.4em 0;
+  border-color: transparent currentColor transparent transparent;
+}
+
+/**
+ * Expand control (shown when the sidebar is collapsed). By default it's a
+ * full-height grey stripe; shrink it to a small arrow at the top-right to match
+ * the collapse button. It's a <div title="Expand sidebar">, not a <button>.
+ */
+.theme-doc-sidebar-container [title='Expand sidebar'] {
+  /* Keep the full-height click strip but make it invisible (no grey fill) and
+     pin the triangle to the top, below the fixed navbar, so it lines up with
+     the collapse button instead of hiding behind the navbar. */
+  align-items: flex-start;
+  padding-top: calc(var(--ifm-navbar-height) + 0.45rem);
+  background: transparent;
+  color: var(--ifm-color-emphasis-500);
+  opacity: 0.6;
+}
+
+.theme-doc-sidebar-container [title='Expand sidebar']:hover,
+.theme-doc-sidebar-container [title='Expand sidebar']:focus {
+  background: transparent;
+  opacity: 1;
+}
+
+/* Same triangle caret, pointing right to expand. */
+.theme-doc-sidebar-container [title='Expand sidebar'] svg {
+  display: none;
+}
+
+.theme-doc-sidebar-container [title='Expand sidebar']::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  /* same 0.4em proportions as the ecosystem-switcher dropdown caret */
+  border-width: 0.4em 0 0.4em 0.4em;
+  border-color: transparent transparent transparent currentColor;
+}
+
+/**
+ * The wizard/CLI guides are built from <Steps> (JSX), so they have no markdown
+ * headings and their table of contents is empty. They set
+ * `hide_table_of_contents` to reclaim that column; without a cap the content
+ * would then stretch edge to edge, so hold it to a comfortable reading measure
+ * and center it, keeping the page from looking either blank or over-wide.
+ */
+html[class*='docs-doc-id-guides/using-the-wizard'] .theme-doc-markdown,
+html[class*='docs-doc-id-guides/using-the-wizard'] .theme-doc-footer,
+html[class*='docs-doc-id-guides/using-the-wizard'] .pagination-nav,
+html[class*='docs-doc-id-guides/using-the-cli'] .theme-doc-markdown,
+html[class*='docs-doc-id-guides/using-the-cli'] .theme-doc-footer,
+html[class*='docs-doc-id-guides/using-the-cli'] .pagination-nav {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
