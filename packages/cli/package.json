@@ -12,6 +12,9 @@
   "repository": {
     "url": "https://github.com/jspsych/metadata"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "bin": {
     "jspsych-metadata-cli": "./dist/cjs/index.cjs"
   },
@@ -25,18 +28,20 @@
     "build:esm": "esbuild src/index.ts --bundle --format=esm --platform=node --external:psychds-validator --outfile=dist/esm/index.js",
     "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --external:psychds-validator --outfile=dist/cjs/index.cjs",
     "cli": "node dist/cjs/index.cjs",
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@sucrase/jest-plugin": "^3.0.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.0.0",
     "jest": "^29.7.0",
-    "node-pty": "^1.1.0"
+    "node-pty": "^1.1.0",
+    "typescript": "^5.5.4"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
-    "@jspsych/metadata": "*",
+    "@jspsych/metadata": ">=0.0.3 <0.2.0",
     "psychds-validator": "^1.5.1",
     "yargs": "^17.7.2"
   }

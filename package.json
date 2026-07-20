@@ -1,12 +1,17 @@
 {
+  "name": "metadata",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "jest",
-    "build": "npm run build --workspaces --platform=node",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "changeset": "changeset",
     "changeset:version": "changeset version",
     "changeset:publish": "npm run build && changeset publish"
