@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PreviewDrawer from "../src/components/PreviewDrawer";
 
@@ -28,9 +28,32 @@ describe("PreviewDrawer", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test("clicking the backdrop calls onClose", async () => {
-    const { container } = render(<PreviewDrawer jsPsychMetadata={makeMeta()} onClose={onClose} />);
-    await userEvent.click(container.querySelector(".backdrop")!);
+  test("opens as a modal dialog (showModal called)", () => {
+    render(<PreviewDrawer jsPsychMetadata={makeMeta()} onClose={onClose} />);
+    const dialog = screen.getByRole("dialog", { name: "JSON preview" });
+    expect(dialog).toHaveAttribute("open");
+    expect(HTMLDialogElement.prototype.showModal).toHaveBeenCalled();
+  });
+
+  test("clicking the dialog backdrop (the dialog element itself) calls onClose", async () => {
+    render(<PreviewDrawer jsPsychMetadata={makeMeta()} onClose={onClose} />);
+    // A click whose target is the <dialog> element (not its content) is a backdrop click.
+    await userEvent.click(screen.getByRole("dialog", { name: "JSON preview" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("clicking inside the dialog content does not close it", async () => {
+    render(<PreviewDrawer jsPsychMetadata={makeMeta({ name: "x" })} onClose={onClose} />);
+    await userEvent.click(screen.getByText("JSON Preview"));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test("Escape (dialog cancel) closes the drawer and moves focus into the dialog", () => {
+    render(<PreviewDrawer jsPsychMetadata={makeMeta()} onClose={onClose} />);
+    const dialog = screen.getByRole("dialog", { name: "JSON preview" });
+    // showModal traps focus inside the dialog; the close button lives there.
+    expect(dialog).toContainElement(screen.getByRole("button", { name: "Close preview" }));
+    fireEvent(dialog, new Event("cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

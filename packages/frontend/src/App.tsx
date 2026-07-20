@@ -10,7 +10,7 @@ function App() {
   const [page, setPage] = useState<AppPage>('landing');
   const [jsPsychMetadata, setJsPsychMetadata] = useState(() => new JsPsychMetadata());
   const [existingMetadataFile, setExistingMetadataFile] = useState<File | undefined>();
-  const { isDark, toggle: toggleTheme } = useTheme();
+  const { isDark, toggle: toggleTheme, embedded } = useTheme();
 
   const handleStart = (isNew: boolean, file?: File) => {
     if (!isNew && file) setExistingMetadataFile(file);
@@ -25,9 +25,13 @@ function App() {
 
   return (
     <>
-      <button className="themeToggle" onClick={toggleTheme}>
-        {isDark ? '☀ Light' : '☾ Dark'}
-      </button>
+      {/* When embedded on the docs site, the host navbar's toggle drives the
+          theme, so we hide our own to avoid two controls. */}
+      {!embedded && (
+        <button className="themeToggle" onClick={toggleTheme}>
+          {isDark ? '☀ Light' : '☾ Dark'}
+        </button>
+      )}
       {page === 'landing'
         ? <Landing onStart={handleStart} />
         : <AppShell

@@ -10,6 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+
+# Workspace member: deps are resolved from the root lockfile, so a lockfile
+# here would break the @jspsych/metadata workspace link. Never commit one.
+package-lock.json
 *.local
 
 # Editor directories and files

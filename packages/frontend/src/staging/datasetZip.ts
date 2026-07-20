@@ -1,16 +1,23 @@
 // Builds and streams the downloadable Psych-DS dataset zip from the staged file store.
 //
-// Uses fflate's AsyncZipDeflate (DEFLATE compressed, worker-backed when available) to emit
-// output chunks as each file finishes compressing — so neither the full input set nor the
-// complete output zip ever lives in the JS heap at once. On Chromium (showSaveFilePicker) each
-// chunk is written to the user-chosen file as it arrives, bounding peak heap to roughly one
-// file's working set. On other browsers (or if the picker fails) chunks are collected into a
-// Blob and downloaded via an object URL.
+// Files are compressed strictly one at a time. For each entry we create a single fflate
+// AsyncZipDeflate, feed the file's bytes in bounded ~1 MiB slices (read lazily from the
+// disk-backed Blob), and wait for that entry's final compressed chunk before starting the next
+// one. fflate spawns one worker per live AsyncZipDeflate and buffers later entries until earlier
+// ones finish, so processing sequentially keeps exactly one worker (and roughly one file's
+// working set) resident at a time rather than N workers plus most of the compressed dataset in
+// the heap. Output chunks are emitted as they are produced: on Chromium (showSaveFilePicker) each
+// is written to the user-chosen file as it arrives, bounding peak heap to about one file's
+// working set; on other browsers (or if the picker fails) chunks are collected into a Blob and
+// downloaded via an object URL.
 
 import { Zip, AsyncZipDeflate } from 'fflate';
 import { DATASET_DESCRIPTION_FILENAME } from '../datasetLayout';
 import { blobDownload } from '../download';
 import type { DatasetFileSource } from './stagedFileStore';
+
+/** Slice size for feeding a file into the deflater — bounds peak heap to ~one slice per file. */
+const PUSH_CHUNK_BYTES = 1 << 20; // 1 MiB
 
 const readmeContents = (projectName: string): string =>
   `# ${projectName}\nHuman-readable description of the project and dataset.`;
@@ -36,35 +43,68 @@ interface ZipSink {
 
 /**
  * Runs the zip build and routes each output chunk to `onChunk`. Resolves once the zip is
- * complete (all chunks delivered). Each data file is read from the store one at a time.
+ * complete (all chunks delivered). Entries are compressed strictly one at a time: each file is
+ * read from the store lazily, pushed into its own deflater in ~1 MiB slices, and awaited to its
+ * final compressed chunk before the next entry's deflater is created.
  */
 async function buildZip(opts: BuildDatasetZipOptions, onChunk: (dat: Uint8Array) => void): Promise<void> {
   return new Promise((resolve, reject) => {
+    let failed = false;
+    const fail = (err: unknown) => { if (!failed) { failed = true; reject(err); } };
+
     const zip = new Zip((err, dat, final) => {
-      if (err) { reject(err); return; }
+      if (err) { fail(err); return; }
       onChunk(dat);
       if (final) resolve();
     });
 
-    const addEntry = (filename: string, content: Uint8Array): void => {
+    // Add one entry, feed it in bounded slices, and resolve only once its final compressed chunk
+    // has been emitted — so no second AsyncZipDeflate (hence no second worker) is created until
+    // this one is done.
+    const addEntrySequential = (filename: string, content: Blob): Promise<void> => {
       const entry = new AsyncZipDeflate(filename, { level: 6 });
       zip.add(entry);
-      entry.push(content, true);
+      // zip.add installs the routing handler that streams this entry's bytes into the archive;
+      // wrap it so we also learn when this entry has emitted its final chunk.
+      const routeToZip = entry.ondata!;
+      return new Promise<void>((resolveEntry, rejectEntry) => {
+        entry.ondata = (err, dat, final) => {
+          routeToZip(err, dat, final);
+          if (err) rejectEntry(err);
+          else if (final) resolveEntry();
+        };
+        void (async () => {
+          try {
+            const size = content.size;
+            if (size === 0) { entry.push(new Uint8Array(0), true); return; }
+            for (let off = 0; off < size; off += PUSH_CHUNK_BYTES) {
+              const end = Math.min(off + PUSH_CHUNK_BYTES, size);
+              const slice = new Uint8Array(await content.slice(off, end).arrayBuffer());
+              entry.push(slice, end >= size);
+            }
+          } catch (e) {
+            rejectEntry(e);
+          }
+        })();
+      });
     };
 
     (async () => {
       try {
-        addEntry(DATASET_DESCRIPTION_FILENAME, new TextEncoder().encode(opts.metadataJson));
+        await addEntrySequential(
+          DATASET_DESCRIPTION_FILENAME,
+          new Blob([new TextEncoder().encode(opts.metadataJson)]),
+        );
         if (opts.dataFiles) {
           for await (const [path, blob] of opts.dataFiles.entries()) {
-            addEntry(path, new Uint8Array(await blob.arrayBuffer()));
+            await addEntrySequential(path, blob);
           }
         }
-        addEntry('README.md', new TextEncoder().encode(readmeContents(opts.projectName)));
-        addEntry('CHANGES.md', new TextEncoder().encode(CHANGES_CONTENTS));
+        await addEntrySequential('README.md', new Blob([readmeContents(opts.projectName)]));
+        await addEntrySequential('CHANGES.md', new Blob([CHANGES_CONTENTS]));
         zip.end();
       } catch (e) {
-        reject(e);
+        fail(e);
       }
     })();
   });

@@ -300,3 +300,172 @@ describe("non-interactive run (headless, no pty)", () => {
     expect(status).toBe(0);
   });
 });
+
+/**
+ * Exit-code + silent-failure hardening (this PR). Drives the built bundle headless (piped stdio)
+ * and asserts the differentiated exit-code scheme:
+ *   0 success · 1 error/abort · 2 usage/invalid-input · 3 validation failure · 4 partial ingestion.
+ */
+describe("exit codes and silent-failure aborts (headless E2E)", () => {
+  let tmpDir: string;
+  let projectDir: string;
+  let dataDir: string;
+  let optionsPath: string;
+
+  beforeAll(() => {
+    execSync("npm run build", { cwd: CLI_ROOT, stdio: "ignore" });
+  });
+
+  function makeProject(descriptionJson: string) {
+    fs.mkdirSync(path.join(projectDir, "data"), { recursive: true });
+    fs.writeFileSync(path.join(projectDir, "dataset_description.json"), descriptionJson);
+  }
+
+  function validDescription(): string {
+    const metadata = new JsPsychMetadata();
+    metadata.setMetadataField("name", "exitcodes-e2e");
+    metadata.setMetadataField("description", "Fixture project for exit-code tests.");
+    return JSON.stringify(metadata.getMetadata(), null, 2);
+  }
+
+  function writeGoodCsv() {
+    fs.writeFileSync(
+      path.join(dataDir, "task-resp_data.csv"),
+      [
+        "subject_id,trial_type,trial_index,time_elapsed,rt",
+        "P01,html-keyboard-response,0,500,450",
+        "P02,html-keyboard-response,0,500,450",
+      ].join("\n")
+    );
+  }
+
+  function runHeadless(args: string[]) {
+    const res = spawnSync(process.execPath, [CLI_BUNDLE, ...args], {
+      cwd: CLI_ROOT,
+      input: "",
+      encoding: "utf8",
+      env: process.env as Record<string, string>,
+    });
+    return { status: res.status, output: (res.stdout ?? "") + (res.stderr ?? "") };
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-exitcode-test-"));
+    projectDir = path.join(tmpDir, "project");
+    dataDir = path.join(tmpDir, "source");
+    fs.mkdirSync(dataDir);
+    optionsPath = path.join(tmpDir, "options.json");
+    fs.writeFileSync(
+      optionsPath,
+      JSON.stringify({ name: "exitcodes-e2e", description: "Exit-code run.", author: [{ name: "T" }] })
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("--version prints the package version and exits 0", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(CLI_ROOT, "package.json"), "utf8"));
+    const { status, output } = runHeadless(["--version"]);
+    expect(output).toContain(pkg.version);
+    expect(status).toBe(0);
+  });
+
+  test("a malformed existing dataset_description.json aborts (exit 2) and is NOT overwritten", () => {
+    const original = '{ "name": "hand edited",, broken }';
+    makeProject(original);
+    writeGoodCsv();
+
+    const { status } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    expect(status).toBe(2);
+    // The user's (broken) file must be left exactly as it was, never clobbered with defaults.
+    expect(fs.readFileSync(path.join(projectDir, "dataset_description.json"), "utf8")).toBe(original);
+  });
+
+  test("a malformed --metadata-options file aborts with a usage error (exit 2)", () => {
+    makeProject(validDescription());
+    writeGoodCsv();
+    const badOptions = path.join(tmpDir, "bad-options.json");
+    fs.writeFileSync(badOptions, "{ not valid json ]");
+
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", badOptions,
+    ]);
+
+    expect(status).toBe(2);
+    expect(output).toContain("metadata-options");
+  });
+
+  test("an invalid --data-dir path aborts with a usage error (exit 2) instead of prompting", () => {
+    makeProject(validDescription());
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", path.join(tmpDir, "does-not-exist"),
+      "--metadata-options", optionsPath,
+    ]);
+
+    expect(status).toBe(2);
+    expect(output).toContain("directory not found");
+  });
+
+  test("a dataset that fails Psych-DS validation exits 3", () => {
+    makeProject(validDescription());
+    // No data files at all: the run completes, but the validator errors with
+    // MISSING_DATAFILE (data/ must contain at least one CSV) — the run must exit 3,
+    // not report success for an empty dataset.
+
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    expect(output).toContain("validation failed");
+    expect(status).toBe(3);
+  });
+
+  test("an unexpected write failure exits 1 (saveTextToPath rethrows instead of logging)", () => {
+    makeProject(validDescription());
+    writeGoodCsv();
+    // Make the final dataset_description.json write fail: the file is readable (load and
+    // validation of the flag succeed) but not writable, so saveTextToPath's rethrow must
+    // surface as the generic error exit code — not a fake success.
+    fs.chmodSync(path.join(projectDir, "dataset_description.json"), 0o444);
+
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    // Restore write permission so afterEach can clean up the tmp dir.
+    fs.chmodSync(path.join(projectDir, "dataset_description.json"), 0o644);
+    expect(output).toContain("Error writing to file");
+    expect(status).toBe(1);
+  });
+
+  test("a partial ingestion failure (one good file, one corrupt) exits 4", () => {
+    makeProject(validDescription());
+    writeGoodCsv();
+    // Compliant name, right extension, but unparseable content → a real ingestion failure
+    // (not silently skipped like a non-data file would be).
+    fs.writeFileSync(path.join(dataDir, "task-bad_data.json"), "{ corrupt json ]");
+
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    expect(output).toContain("could not be ingested");
+    expect(status).toBe(4);
+  });
+});

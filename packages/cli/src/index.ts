@@ -9,8 +9,30 @@ import path from 'path';
 import { processDirectory, processOptions, saveTextToPath, loadMetadata, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, OutputColumns, isDataExt } from "./data";
 import { validateDirectory, validateJson, validatePsychDS } from './validatefunctions';
 import { createDirectoryWithStructure } from './handlefiles';
-import { fileStem } from './utils';
+import { fileStem, validateProjectName } from './utils';
 import { extractVaryingMiddles, findIdentifierColumn, reduceIdCandidates, sequentialBases, planRenames, PlannedFile, FileColumns, unofficialKeywords, PSYCH_DS_KEYWORDS } from './rename';
+// Bundled inline by esbuild (resolveJsonModule); read once so --version reflects the shipped package.
+import { version as CLI_VERSION } from '../package.json';
+
+/**
+ * Process exit codes, so callers (and CI) can distinguish outcomes:
+ *   0 SUCCESS   — ran to completion, dataset valid.
+ *   1 ERROR     — unexpected/internal error, or an interactive prompt was aborted (Ctrl+C).
+ *   2 USAGE     — bad flags, invalid paths, or invalid/malformed JSON inputs.
+ *   3 VALIDATION— the generated dataset failed Psych-DS validation.
+ *   4 PARTIAL   — some data files could not be ingested (partial success).
+ * Thrown as an ExitError and mapped to process.exit() by main()'s catch, so every abort
+ * path funnels through one place.
+ */
+const EXIT = { SUCCESS: 0, ERROR: 1, USAGE: 2, VALIDATION: 3, PARTIAL: 4 } as const;
+
+/** An abort carrying an explicit process exit code (see {@link EXIT}). */
+export class ExitError extends Error {
+  constructor(message: string, public readonly code: number) {
+    super(message);
+    this.name = 'ExitError';
+  }
+}
 
 // Define a type for the parsed arguments
 interface Argv {
@@ -44,7 +66,9 @@ const argv = yargs(hideBin(process.argv))
     type: 'string',
     description: 'Path to a metadata-options.json file.',
   })
+  .version(CLI_VERSION)
   .help()
+  .epilogue('For more information, see https://github.com/jspsych/metadata/tree/main/docs')
   .argv as Argv;
 
 /**
@@ -132,7 +156,7 @@ async function promptJoinKeys(
   return currentKeys;
 }
 
-async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean){
+export async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean){
   const answer = await select({
     message: 'Would you like to customize the metadata?',
     choices: [
@@ -154,20 +178,23 @@ async function metadataOptionsPrompt(metadata: JsPsychMetadata, verbose: boolean
   if (answer){
     optionsPath = await input({
       message: 'Path to metadata options .json file:',
+      // validateJson now actually parses the file, so malformed JSON is rejected here and the
+      // user is re-prompted instead of the broken options being silently ignored.
       validate: async (input) => {
         if (validateJson(input)) return true;
         return "File not found or not valid JSON — check the path and try again.";
       }
     });
 
-    await processOptions(metadata, optionsPath, verbose);
+    const ok = await processOptions(metadata, optionsPath, verbose);
+    if (!ok) throw new ExitError(`Could not apply metadata options from ${optionsPath}.`, EXIT.USAGE);
   }
 
   return optionsPath;
 
 }
 
-const promptProjectStructure = async (metadata: JsPsychMetadata) => {
+export const promptProjectStructure = async (metadata: JsPsychMetadata): Promise<[string, boolean]> => {
   const answer = await select({
     message: 'What would you like to do?',
     choices: [
@@ -184,51 +211,50 @@ const promptProjectStructure = async (metadata: JsPsychMetadata) => {
     ],
   });
 
-  let project_path: string = "";
+  // Note: no swallowing try/catch here. A prompt abort (Ctrl+C → ExitPromptError) must propagate
+  // to main()'s catch so the run exits non-zero, rather than silently falling through and returning
+  // a malformed value that later writes output to "./undefined/data".
+  if (answer === "update") {
+    const project_path = await input({
+      message: 'Path to existing project folder (must contain dataset_description.json):',
+      validate: async (input) => {
+        if (await validateDirectory(input) && validateJson(input + "/dataset_description.json", "dataset_description.json")) {
+          return true;
+        }
+        return "This folder is not a valid Psych-DS project (dataset_description.json not found or invalid). Please enter the path to an existing Psych-DS project folder.";
+      }
+    });
 
-  try {
-    switch(answer){
-      case "generate":
-        project_path = await input({
-          message: 'Path to the folder where the new project will be created:',
-          validate: async (input) => {
-            if (await validateDirectory(input)) return true;
-            return "Not a valid folder — check the path and try again.";
-          }
-        });
-        return [project_path, true];
-      case "update":
-        project_path = await input({
-          message: 'Path to existing project folder (must contain dataset_description.json):',
-          validate: async (input) => {
-            try {
-              if (await validateDirectory(input) && await validateJson(input + "/dataset_description.json", "dataset_description.json")){
-                return true;
-              }
-              return "This folder is not a valid Psych-DS project (dataset_description.json not found). Please enter the path to an existing Psych-DS project folder.";
-            } catch (err) {
-              console.error(err);
-              return "This folder is not a valid Psych-DS project (dataset_description.json not found). Please enter the path to an existing Psych-DS project folder.";
-            }
-          }
-        });
-
-        await loadMetadata(metadata, project_path + "/dataset_description.json");
-
-        return [project_path, false];
+    const loaded = await loadMetadata(metadata, project_path + "/dataset_description.json");
+    if (!loaded) {
+      throw new ExitError(
+        `Could not load existing metadata from ${project_path}/dataset_description.json (missing or invalid JSON).`,
+        EXIT.USAGE,
+      );
     }
-  } catch (err){ } // should be no errors
 
-  return project_path;
+    return [project_path, false];
+  }
+
+  // Default / "generate": create a new project from raw data.
+  const project_path = await input({
+    message: 'Path to the folder where the new project will be created:',
+    validate: async (input) => {
+      if (await validateDirectory(input)) return true;
+      return "Not a valid folder — check the path and try again.";
+    }
+  });
+  return [project_path, true];
 }
 
-// should only do if generating 
-const promptName = async () => {
+// should only do if generating
+export const promptName = async (): Promise<string> => {
   const project_name = await input({
-    message: 'Enter the project name (used as the folder name and in the metadata):'
+    message: 'Enter the project name (used as the folder name and in the metadata):',
+    validate: validateProjectName,
   });
 
-  return project_name;
+  return project_name.trim();
 }
 
 const promptDataDir = async (): Promise<string> => {
@@ -522,6 +548,26 @@ interface FilenameNormalization {
   plan: Map<string, PlannedFile> | null;
 }
 
+/**
+ * Cheap pre-check (directory listing + filename-pattern sweep, no file parsing) for whether the
+ * rename flow will actually do anything: any non-compliant data filename, or — only when we can
+ * prompt — any technically-valid name using an unofficial keyword. Lets the caller skip the
+ * expensive analyzeOutputColumns dry run when nothing needs renaming. Mirrors exactly the
+ * conditions under which resolveFilenameNormalization consumes the column inventory.
+ */
+async function needsFilenameNormalization(dataDir: string, canPrompt: boolean): Promise<boolean> {
+  const files = await enumerateDataFiles(dataDir);
+  for (const { name } of files) {
+    if (name === 'dataset_description.json') continue;
+    const ext = path.extname(name).toLowerCase();
+    if (!isDataExt(ext)) continue;
+    const stem = fileStem(name);
+    if (!isValidPsychDSDataFilename(`${stem}_data.csv`)) return true;
+    if (canPrompt && unofficialKeywords(stem).length > 0) return true;
+  }
+  return false;
+}
+
 async function resolveFilenameNormalization(
   dataDir: string,
   canPrompt: boolean,
@@ -531,10 +577,6 @@ async function resolveFilenameNormalization(
   const bases = new Map<string, string>();
   const nonCompliant: Array<{ filePath: string; name: string }> = [];
   const unofficial: Array<{ filePath: string; name: string; keywords: string[] }> = [];
-
-  // Extracted-column inventory per file, used to show (and reserve names for) sidecars in
-  // the preview. Files in `columns` are in the writer's canonical order.
-  const columnsByKey = new Map(columns.map((c) => [c.key, c]));
 
   for (const { filePath, name } of files) {
     if (name === 'dataset_description.json') continue;
@@ -557,12 +599,12 @@ async function resolveFilenameNormalization(
 
   if (!canPrompt && nonCompliant.length > 0) {
     const fileList = nonCompliant.map((f) => `    ${f.name}`).join('\n');
-    console.error(
-      `\n✘ ${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
+    throw new ExitError(
+      `${nonCompliant.length} data file(s) do not follow the Psych-DS naming pattern ` +
       `([keyword-value_]+data.csv), and this is a non-interactive run:\n${fileList}\n` +
-      `  Rename them to a compliant name (e.g. subject-001_data.csv) and re-run.`
+      `  Rename them to a compliant name (e.g. subject-001_data.csv) and re-run.`,
+      EXIT.USAGE,
     );
-    process.exit(1);
   }
 
   if (nonCompliant.length > 0) {
@@ -677,19 +719,30 @@ const main = async () => {
   const verbose = argv.verbose ? argv.verbose : false;
   const metadata = new JsPsychMetadata(verbose);
 
-  var project_path, new_project;
+  let project_path: string;
+  let new_project: boolean;
 
-  if (argv['psych-ds-dir'] 
-    && await validateDirectory(argv['psych-ds-dir']) 
-    && await validateJson(argv['psych-ds-dir'] + "/dataset_description.json", "dataset_description.json")){  
-      project_path = argv['psych-ds-dir'];
-      new_project = false;
-      await loadMetadata(metadata, project_path + "/dataset_description.json"); // maybe shoudl add verbose
-      // NOTE: we intentionally do NOT validate here. At this point the data files have not been
-      // copied into the project yet, so validation would always fail with MISSING_DATA_DIRECTORY
-      // and print a misleading "✘ validation failed" to stderr. The real validation runs after the
-      // data is written (see below).
-      if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
+  if (argv['psych-ds-dir'] !== undefined) {
+    // A flag was given but is invalid: fail with a clear message and a usage exit code,
+    // rather than silently dropping into an interactive prompt the user didn't ask for.
+    const dir = argv['psych-ds-dir'];
+    if (!await validateDirectory(dir)) {
+      throw new ExitError(`directory not found: ${dir}`, EXIT.USAGE);
+    }
+    if (!validateJson(dir + "/dataset_description.json", "dataset_description.json")) {
+      throw new ExitError(`not a valid Psych-DS project (missing or invalid dataset_description.json): ${dir}`, EXIT.USAGE);
+    }
+    project_path = dir;
+    new_project = false;
+    const loaded = await loadMetadata(metadata, project_path + "/dataset_description.json");
+    if (!loaded) {
+      throw new ExitError(`Could not load existing metadata from ${project_path}/dataset_description.json.`, EXIT.USAGE);
+    }
+    // NOTE: we intentionally do NOT validate here. At this point the data files have not been
+    // copied into the project yet, so validation would always fail with MISSING_DATA_DIRECTORY
+    // and print a misleading "✘ validation failed" to stderr. The real validation runs after the
+    // data is written (see below).
+    if (verbose) console.log(`\n\n-------------------------- Reading existing metadata --------------------------\n\n${JSON.stringify(metadata.getMetadata(), null, 2)}`);
   }
   else {
     [ project_path, new_project ] = await promptProjectStructure(metadata);
@@ -702,32 +755,46 @@ const main = async () => {
     metadata.setMetadataField("name", project_name); // same as above
   }
 
-  // Determine data directory path (from flag or interactive prompt)
+  // Determine data directory path (from flag or interactive prompt). A given-but-invalid flag
+  // is a usage error, not a reason to silently fall back to a prompt.
   let dataDir: string;
-  if (argv['data-dir'] && await validateDirectory(argv['data-dir'])) {
+  if (argv['data-dir'] !== undefined) {
+    if (!await validateDirectory(argv['data-dir'])) {
+      throw new ExitError(`directory not found: ${argv['data-dir']}`, EXIT.USAGE);
+    }
     dataDir = argv['data-dir'];
   } else {
     dataDir = await promptDataDir();
   }
 
-  const isNonInteractive = !!(
-    argv['psych-ds-dir'] && await validateDirectory(argv['psych-ds-dir']) &&
-    argv['data-dir'] && await validateDirectory(argv['data-dir']) &&
-    argv['metadata-options'] && validateJson(argv['metadata-options'])
-  );
+  // A --metadata-options flag that is present but malformed is a usage error, surfaced
+  // immediately — before its presence can force a non-interactive run below and suppress the
+  // rename/join-key prompts a terminal user would otherwise have gotten, and before any
+  // ingestion work is wasted on a run that was always going to abort.
+  if (argv['metadata-options'] !== undefined && !validateJson(argv['metadata-options'])) {
+    throw new ExitError(`invalid or malformed --metadata-options file: ${argv['metadata-options']}`, EXIT.USAGE);
+  }
+
+  // All three flags present ⇒ a fully-specified, non-interactive run. Each flag has already
+  // been validated above, so a plain presence check is enough here.
+  const isNonInteractive = !!(argv['psych-ds-dir'] && argv['data-dir'] && argv['metadata-options']);
 
   if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
-
-  // Dry run: discover which array/object columns each file will extract to sidecar CSVs, so
-  // the rename preview can show every output name (main + sidecars). Column names don't depend
-  // on the join keys, so the defaults are fine before the join-key prompt below.
-  const outputColumns = await analyzeOutputColumns(dataDir, { arrayJoinKeys: ['trial_index'] });
 
   // Pre-pass: resolve Psych-DS-compliant output names, prompting once for any non-compliant
   // filenames. Without an interactive terminal we cannot prompt, so this fails rather than
   // inventing a keyword. When a rename happens this also returns the complete, approved
   // output-name plan the writer must honor exactly.
   const canPrompt = !isNonInteractive && !!process.stdin.isTTY && !!process.stdout.isTTY;
+
+  // The only consumer of analyzeOutputColumns' result is the rename preview (sidecar names). When
+  // no file needs renaming, resolveFilenameNormalization returns before touching those columns, so
+  // skip the expensive per-file generate() dry run entirely. needsFilenameNormalization does only a
+  // cheap directory listing + name-pattern sweep (no parsing).
+  const outputColumns = (await needsFilenameNormalization(dataDir, canPrompt))
+    ? await analyzeOutputColumns(dataDir, { arrayJoinKeys: ['trial_index'] })
+    : [];
+
   const { bases: normalizedBases, plan: renamePlan } = await resolveFilenameNormalization(dataDir, canPrompt, outputColumns);
 
   // Pre-flight: check whether the join key is unique. preAnalyzeDirectory mirrors generate()'s
@@ -760,12 +827,25 @@ const main = async () => {
 
   // The pre-flight prompt above already surfaced any join-key uniqueness issue to the
   // user, so suppress the library's per-file warning to avoid repeating it.
-  await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases, renamePlan: renamePlan ?? undefined });
+  const ingest = await processDirectory(metadata, dataDir, verbose, `${project_path}/data`, { arrayJoinKeys, suppressJoinKeyWarning: true, normalizedBases, renamePlan: renamePlan ?? undefined });
 
-  // check if it's a valid path and then prompt the options
-  if (argv['metadata-options'] && validateJson(argv['metadata-options'])){
+  // A partial (or total) ingestion failure must not be reported as success. Defer the actual
+  // exit until after the metadata is written and validated below, so the user still gets a
+  // dataset_description.json for the files that did succeed — but remember to exit non-zero.
+  const ingestFailed = ingest.failed > 0;
+  if (ingestFailed) {
+    console.error(
+      `\n✘ ${ingest.failed} of ${ingest.total} data file(s) could not be ingested. ` +
+      `The metadata below covers only the files that succeeded.`
+    );
+  }
+
+  // Apply metadata options (the file was already syntax-validated before the pre-pass above);
+  // processOptions failing after a valid path is fatal, not a silent skip.
+  if (argv['metadata-options'] !== undefined) {
     if (verbose) console.log("\n\n-------------------------- Reading and writing metadata-option --------------------------n\n");
-    await processOptions(metadata, argv['metadata-options'], verbose);
+    const ok = await processOptions(metadata, argv['metadata-options'], verbose);
+    if (!ok) throw new ExitError(`could not apply metadata options from ${argv['metadata-options']}.`, EXIT.USAGE);
   }
   else if (canPrompt) await metadataOptionsPrompt(metadata, verbose); // passing in options file to overwite existing file
   // No options file and no terminal to prompt at: don't block — keep the generated defaults.
@@ -777,41 +857,62 @@ const main = async () => {
   if (argv.verbose) console.log("\n\n-------------------------- Final metadata string --------------------------\n\n", metadataString);
   await saveTextToPath(metadataString,`${project_path}/dataset_description.json`);
 
-  if (typeof project_path === 'string') {
-    const validation = await validatePsychDS(project_path, verbose);
+  const validation = await validatePsychDS(project_path, verbose);
 
-    if (validation.missingRequiredFields.length > 0) {
-      if (canPrompt) {
-        console.log('\nSome required fields are missing. Please provide values:');
-        for (const field of validation.missingRequiredFields) {
-          const value = await input({ message: `Value for required field "${field}":` });
-          if (value.trim()) {
-            metadata.setMetadataField(field, value.trim());
-          } else {
-            console.warn(`  Skipped "${field}" — this field is still required. Validation may still fail.`);
-          }
+  if (validation.missingRequiredFields.length > 0) {
+    if (canPrompt) {
+      console.log('\nSome required fields are missing. Please provide values:');
+      for (const field of validation.missingRequiredFields) {
+        const value = await input({ message: `Value for required field "${field}":` });
+        if (value.trim()) {
+          metadata.setMetadataField(field, value.trim());
+        } else {
+          console.warn(`  Skipped "${field}" — this field is still required. Validation may still fail.`);
         }
-        const updatedMetadata = JSON.stringify(metadata.getMetadata(), null, 2);
-        await saveTextToPath(updatedMetadata, `${project_path}/dataset_description.json`);
-        const revalidation = await validatePsychDS(project_path, verbose);
-        if (revalidation.hasErrors) process.exit(1);
-        if (revalidation.missingRecommendedFields.length > 0) {
-          console.log(`\nConsider adding these recommended fields to your metadata: ${revalidation.missingRecommendedFields.join(', ')}`);
-        }
-      } else {
-        process.exit(1);
       }
-    } else if (validation.hasErrors) {
-      process.exit(1);
-    } else if (validation.missingRecommendedFields.length > 0) {
-      console.log(`\nConsider adding these recommended fields to your metadata: ${validation.missingRecommendedFields.join(', ')}`);
+      const updatedMetadata = JSON.stringify(metadata.getMetadata(), null, 2);
+      await saveTextToPath(updatedMetadata, `${project_path}/dataset_description.json`);
+      const revalidation = await validatePsychDS(project_path, verbose);
+      if (revalidation.hasErrors) throw new ExitError('', EXIT.VALIDATION);
+      if (revalidation.missingRecommendedFields.length > 0) {
+        console.log(`\nConsider adding these recommended fields to your metadata: ${revalidation.missingRecommendedFields.join(', ')}`);
+      }
+    } else {
+      throw new ExitError('', EXIT.VALIDATION);
     }
+  } else if (validation.hasErrors) {
+    throw new ExitError('', EXIT.VALIDATION);
+  } else if (validation.missingRecommendedFields.length > 0) {
+    console.log(`\nConsider adding these recommended fields to your metadata: ${validation.missingRecommendedFields.join(', ')}`);
   }
+
+  // Validation passed (or only had recommended-field notices), but if some data files failed to
+  // ingest the overall run is a partial failure — signal it with a distinct exit code.
+  if (ingestFailed) throw new ExitError('', EXIT.PARTIAL);
 };
 
-main().catch((err) => {
-  // Surface aborts (e.g. a rename-plan mismatch) cleanly with a non-zero exit instead of an
-  // unhandled-rejection stack trace.
-  console.error(`\n✘ ${err instanceof Error ? err.message : err}`);
-  process.exit(1);
-});
+/**
+ * True when the auto-run guard should launch main(): i.e. this module is being executed as the
+ * CLI bin, not imported. In the published CJS bundle (the bin) require.main === module holds when
+ * run as `node index.cjs`, and is false when the package is require()'d. In the ESM bundle `module`
+ * is undefined, so the guard is inert there (note that bundle is not currently importable anyway:
+ * package.json declares `type: "commonjs"`, so Node parses dist/esm/index.js as CJS and rejects its
+ * export syntax — the bin always runs the CJS bundle). Under Jest, require.main is Jest's own entry,
+ * so importing this file for unit tests is likewise side-effect-free.
+ */
+function invokedAsScript(): boolean {
+  return typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module;
+}
+
+if (invokedAsScript()) {
+  main().catch((err) => {
+    // Map ExitError (a deliberate abort) to its exit code; everything else is an unexpected
+    // failure or a prompt abort (Ctrl+C → ExitPromptError), both exit code 1.
+    if (err instanceof ExitError) {
+      if (err.message) console.error(`\n✘ ${err.message}`);
+      process.exit(err.code);
+    }
+    console.error(`\n✘ ${err instanceof Error ? err.message : err}`);
+    process.exit(EXIT.ERROR);
+  });
+}

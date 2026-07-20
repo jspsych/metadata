@@ -8,15 +8,15 @@ description file.
 
 This is a monorepo (npm workspaces) with three packages:
 
-| Package                                | Description                                                          |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| [`@jspsych/metadata`](packages/metadata) | Core library: reads jsPsych data and builds Psych-DS metadata.        |
-| [`@jspsych/metadata-cli`](packages/cli)  | Terminal tool for local folders and scripted/automated pipelines.    |
-| `frontend`                               | Browser wizard — upload data, fill in a few fields, download a project. |
+| Package                                  | Description                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------ |
+| [`@jspsych/metadata`](packages/metadata) | Core library: reads jsPsych data and builds Psych-DS metadata.           |
+| [`@jspsych/metadata-cli`](packages/cli)  | Terminal tool for local folders and scripted/automated pipelines.        |
+| [`frontend`](packages/frontend)          | Browser wizard — upload data, fill in a few fields, download a project.  |
 
 ## Quick start (CLI)
 
-Requires Node.js 20 or later.
+Requires Node.js 22 or later.
 
 ```
 npx @jspsych/metadata-cli
@@ -26,17 +26,39 @@ Running it with no flags launches interactive mode, which walks you through poin
 folder of jsPsych data files (`.csv`, `.json`, or `.jsonl`) and writes a self-contained
 Psych-DS project alongside them (`data/`, `dataset_description.json`, `README.md`, `CHANGES.md`).
 
-Prefer a browser? The web wizard needs no install — see
-[Using the Web Wizard](docs/using-the-frontend.md).
+Prefer a browser? The web wizard needs no install — use it at
+[metadata.jspsych.org/wizard](https://metadata.jspsych.org/wizard).
 
 ## Documentation
 
-- **[Getting Started](docs/getting-started.md)** — overview and which tool to use (CLI vs. web wizard).
-- **[CLI Guide](docs/cli-guide.md)** — step-by-step walkthrough, accepted data formats, renaming strategies.
-- **[CLI Reference](docs/cli-reference.md)** — flags, exit codes, filename rules, non-interactive usage.
-- **[Using the Web Wizard](docs/using-the-frontend.md)** — the browser-based alternative to the CLI.
-- **[Metadata Options](docs/metadata-options.md)** — the optional JSON file for authors, descriptions, etc.
-- **[What is Psych-DS?](docs/what-is-psych-ds.md)** — background on the standard.
+The docs site lives in [`website/`](./website) and is built with
+[Docusaurus](https://docusaurus.io/) on the shared
+[jsPsych docs theme](https://github.com/jspsych/jspsych-docs-theme). Once deployed it is
+available at **https://metadata.jspsych.org**, with the web wizard (built from
+[`packages/frontend`](./packages/frontend)) embedded at
+[`/wizard`](https://metadata.jspsych.org/wizard). It covers:
+
+- **What is Psych-DS?** — [what the standard is and what the tools generate](./website/docs/introduction.md).
+- **Guides** — [using the wizard](./website/docs/guides/using-the-wizard.mdx), [using the CLI](./website/docs/guides/using-the-cli.mdx), and [customizing the output](./website/docs/guides/customizing-output.md) with an options file.
+- **Reference** — the [CLI reference](./website/docs/reference/cli-reference.md) (flags, exit codes, filename rules).
+
+### Running the docs locally
+
+```bash
+# From the repo root: install the workspaces and build the core library,
+# so the wizard build can resolve the local @jspsych/metadata.
+npm ci
+npm run build --workspace=@jspsych/metadata
+
+cd website
+npm install
+npm start      # dev server with hot reload
+npm run build  # production build into website/build
+```
+
+`npm start` and `npm run build` automatically run `npm run build:wizard` first, which builds
+the wizard from `packages/frontend` into `website/static/wizard-app/` (gitignored) so the
+`/wizard` page can embed it.
 
 ## Development
 

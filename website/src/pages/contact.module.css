@@ -1,0 +1,22 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--ifm-navbar-height) - 6rem);
+  padding: 3rem 1.5rem;
+}
+
+.inner {
+  max-width: 720px;
+  text-align: left;
+}
+
+.inner h1 {
+  margin-bottom: 1.75rem;
+}
+
+.inner p {
+  line-height: 1.7;
+  color: var(--ifm-color-emphasis-800);
+  margin-bottom: 1.5rem;
+}

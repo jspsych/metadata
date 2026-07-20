@@ -101,6 +101,10 @@ export function reduceIdCandidates(rows: Array<Record<string, any>>): Map<string
   const colUniques = new Map<string, Set<string>>();
   for (const col of ID_COLUMNS) colUniques.set(col, new Set<string>());
 
+  // Every row must be checked for every ID column: jsPsych JSON/JSONL rows are
+  // heterogeneous, so a column absent from early rows (e.g. a preload trial) can
+  // still appear — and qualify — later in the file. The early-exit below only
+  // fires once every column has accumulated two distinct values.
   for (const row of rows) {
     let undecided = 0;
     for (const col of ID_COLUMNS) {
