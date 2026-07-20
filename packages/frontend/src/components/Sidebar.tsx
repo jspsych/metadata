@@ -24,6 +24,8 @@ interface SidebarProps {
   canNavigateTo: (stepId: StepId) => boolean;
   onNavigate: (stepId: StepId) => void;
   onStartOver: () => void;
+  /** When true (e.g. data is processing) all navigation is disabled so a run can't be orphaned. */
+  locked?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -33,6 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   canNavigateTo,
   onNavigate,
   onStartOver,
+  locked = false,
 }) => {
   const [confirming, setConfirming] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -55,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {steps.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = completedSteps.has(step.id);
-          const isLocked = !canNavigateTo(step.id) && !isActive;
+          const isLocked = locked || (!canNavigateTo(step.id) && !isActive);
 
           const cls = [
             styles.step,
@@ -92,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           What is Psych-DS? ↗
         </a>
-        <button className={styles.startOver} onClick={() => setConfirming(true)}>
+        <button className={styles.startOver} onClick={() => setConfirming(true)} disabled={locked}>
           ← Start over
         </button>
       </div>

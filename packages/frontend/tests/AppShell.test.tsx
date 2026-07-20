@@ -26,22 +26,38 @@ jest.mock("../src/components/PreviewDrawer", () => ({
   ),
 }));
 
-jest.mock("../src/pages/ProjectInfo", () => ({
-  __esModule: true,
-  default: ({ onComplete }: any) => (
-    <div>
-      <span>ProjectInfo page</span>
-      <button onClick={onComplete}>Complete ProjectInfo</button>
-    </div>
-  ),
-  emptyProjectInfoSession: () => ({ name: "", description: "", optional: {}, optionalOpen: false }),
-  OPTIONAL_FIELDS: [],
-}));
+jest.mock("../src/pages/ProjectInfo", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require("react");
+  return {
+    __esModule: true,
+    // Real ProjectInfo reports a successful existing-metadata load into the session; the shell
+    // gates Data pre-completion on that, so the stub mirrors it when a file is present.
+    default: ({ onComplete, existingMetadataFile, session, onSessionChange }: any) => {
+      React.useEffect(() => {
+        if (existingMetadataFile) {
+          onSessionChange({ ...session, loadStatus: "loaded", loadToken: "tok" });
+        }
+      }, []);
+      return (
+        <div>
+          <span>ProjectInfo page</span>
+          <button onClick={onComplete}>Complete ProjectInfo</button>
+        </div>
+      );
+    },
+    emptyProjectInfoSession: () => ({
+      name: "", description: "", optional: {}, optionalOpen: false, loadStatus: "idle", loadToken: null,
+    }),
+    OPTIONAL_FIELDS: [],
+    applyProjectInfoFields: jest.fn(),
+  };
+});
 
 // A fake staged store the DataUpload stub can push into the session, so Start Over cleanup can be
 // asserted. The `mock` prefix lets the hoisted jest.mock factory reference it (jest rule).
 const mockStagedClear = jest.fn();
-const mockStagedStore = { clear: mockStagedClear } as any;
+const mockStagedStore = { clear: mockStagedClear, paths: () => [] } as any;
 
 jest.mock("../src/pages/DataUpload", () => ({
   __esModule: true,

@@ -14,7 +14,10 @@ export type FileStatus = {
 };
 
 export type DataSession = {
+  /** Every uploaded file processed into the current staged payload, accumulated across batches. */
   files: File[];
+  /** Display name of the last picked folder/zip (component-local state moved here so it survives remounts). */
+  sourceName: string;
   /**
    * Staged Psych-DS `data/` payload built from the uploaded files (dataset-relative paths such as
    * `data/subject-sub01_data.csv`, `data/raw/sub01.json`). JSON is converted to Psych-DS-named CSV
@@ -23,6 +26,13 @@ export type DataSession = {
    * held in the heap; null until the first processing run. See {@link StagedFileStore}.
    */
   convertedStore: StagedFileStore | null;
+  /**
+   * Filenames already used for converted CSVs / preserved raw originals in the staged store.
+   * Persisted so a later additive batch disambiguates against the whole output directory (not just
+   * its own files), keeping the staged data and the metadata's variableMeasured in agreement.
+   */
+  usedArrayFilenames: string[];
+  usedRawFilenames: string[];
   joinKeyCandidates: JoinKeyCandidate[];
   joinKeyProblemFile: string;
   selectedKeys: string[];
@@ -31,7 +41,10 @@ export type DataSession = {
 
 export const emptyDataSession: DataSession = {
   files: [],
+  sourceName: '',
   convertedStore: null,
+  usedArrayFilenames: [],
+  usedRawFilenames: [],
   joinKeyCandidates: [],
   joinKeyProblemFile: '',
   selectedKeys: ['trial_index'],
@@ -43,6 +56,13 @@ interface DataUploadProps {
   dataProcessed: boolean;
   existingMetadataLoaded?: boolean;
   onComplete: () => void;
+  /**
+   * Full data reset for the "replace all data" flow: clears generated variables so metadata stops
+   * describing the discarded dataset (see AppShell). Called before staging a replacement batch.
+   */
+  onResetMetadata?: () => void | Promise<void>;
+  /** Reports whether a run is in flight so the shell can lock navigation while processing. */
+  onBusyChange?: (busy: boolean) => void;
   session: DataSession;
   onSessionChange: (s: DataSession) => void;
 }
@@ -97,23 +117,53 @@ const disambiguateFlatFilename = (name: string, used: Set<string>): string => {
   return `${stem}${n}${ext}`;
 };
 
+/** Confirmation shown before a destructive "replace all data" — clears staged data and metadata. */
+const ReplaceConfirm: React.FC<{ onConfirm: () => void; onCancel: () => void }> = ({ onConfirm, onCancel }) => (
+  <div className={styles.replaceConfirm} role="alertdialog" aria-labelledby="replace-confirm-title">
+    <p id="replace-confirm-title" className={styles.replaceConfirmMsg}>
+      Replace all uploaded data? This discards the data you already staged and the variables generated
+      from it, then lets you pick a new folder or zip.
+    </p>
+    <div className={styles.replaceConfirmBtns}>
+      <button className={styles.replaceConfirmYes} onClick={onConfirm}>Yes, replace</button>
+      <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+    </div>
+  </div>
+);
+
 const DataUpload: React.FC<DataUploadProps> = ({
   jsPsychMetadata,
   dataProcessed,
   existingMetadataLoaded,
   onComplete,
+  onResetMetadata,
+  onBusyChange,
   session,
   onSessionChange,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
 
-  const initialPhase: Phase = dataProcessed ? 'hasData' : existingMetadataLoaded ? 'fromExisting' : 'idle';
+  // Restore 'ready' when files were picked but never processed, so a navigation round-trip doesn't
+  // silently drop the selection (files live in the session, which survives the page remount).
+  const initialPhase: Phase = dataProcessed
+    ? 'hasData'
+    : session.files.length > 0
+      ? 'ready'
+      : existingMetadataLoaded
+        ? 'fromExisting'
+        : 'idle';
   const [phase, setPhase] = useState<Phase>(initialPhase);
+  // `files` is the accumulated set backing the session; `batch` is the not-yet-processed pick that
+  // the ready list shows and runGenerate processes. On mount both start from the session so an
+  // unprocessed selection reappears.
   const [files, setFiles] = useState<File[]>(session.files);
-  const [sourceName, setSourceName] = useState('');
+  const [batch, setBatch] = useState<File[]>(session.files);
+  const [sourceName, setSourceName] = useState(session.sourceName);
   const [pickError, setPickError] = useState('');
   const [convertedStore, setConvertedStore] = useState<StagedFileStore | null>(session.convertedStore);
+  const [usedArrayFilenames, setUsedArrayFilenames] = useState<string[]>(session.usedArrayFilenames);
+  const [usedRawFilenames, setUsedRawFilenames] = useState<string[]>(session.usedRawFilenames);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>(session.fileStatuses);
   const [joinKeyCandidates, setJoinKeyCandidates] = useState<JoinKeyCandidate[]>(session.joinKeyCandidates);
   const [joinKeyProblemFile, setJoinKeyProblemFile] = useState(session.joinKeyProblemFile);
@@ -122,59 +172,114 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [proceedAnyway, setProceedAnyway] = useState(false);
   const [joinKeyReturnPhase, setJoinKeyReturnPhase] = useState<Phase>('ready');
   const [showJoinKeyHelp, setShowJoinKeyHelp] = useState(false);
+  // 'additive' appends the next batch to the existing staged data + metadata; 'replace' starts the
+  // data over (after a confirm + full reset). Set when the user picks a folder/zip.
+  const [pendingMode, setPendingMode] = useState<'replace' | 'additive'>('replace');
+  // Which picker to open once the user confirms a destructive replace, or null when no confirm is pending.
+  const [replaceConfirm, setReplaceConfirm] = useState<null | 'folder' | 'zip'>(null);
 
   // Keep parent session in sync
   const onSessionChangeRef = useRef(onSessionChange);
   onSessionChangeRef.current = onSessionChange;
   useEffect(() => {
     onSessionChangeRef.current({
-      files, convertedStore, joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
+      files, sourceName, convertedStore, usedArrayFilenames, usedRawFilenames,
+      joinKeyCandidates, joinKeyProblemFile, selectedKeys: committedKeys, fileStatuses,
     });
-  }, [files, convertedStore, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
+  }, [files, sourceName, convertedStore, usedArrayFilenames, usedRawFilenames, joinKeyCandidates, joinKeyProblemFile, committedKeys, fileStatuses]);
 
+  // Report processing state so the shell can lock navigation while a run is in flight — otherwise
+  // navigating away mid-run orphans the staged data and loses the partially-generated variables.
+  const onBusyChangeRef = useRef(onBusyChange);
+  onBusyChangeRef.current = onBusyChange;
   useEffect(() => {
-    if (inputRef.current) (inputRef.current as any).webkitdirectory = true; // not in TS lib
-  }, []);
+    onBusyChangeRef.current?.(phase === 'preflight' || phase === 'processing');
+  }, [phase]);
+
+  /** Whether a prior run already staged data (so replacing it needs a confirm + reset). */
+  const hasStagedData = (): boolean => (convertedStore?.paths().length ?? 0) > 0;
+
+  // Open a picker. A destructive replace over already-staged data asks for confirmation first;
+  // everything else (first pick, additional files) opens immediately.
+  const requestPick = (kind: 'folder' | 'zip', mode: 'replace' | 'additive') => {
+    setPickError('');
+    if (mode === 'replace' && hasStagedData()) {
+      setReplaceConfirm(kind);
+      return;
+    }
+    setPendingMode(mode);
+    (kind === 'folder' ? inputRef : zipInputRef).current?.click();
+  };
+
+  // Confirmed replace: wipe the staged data and reset the metadata variables so both start empty,
+  // then open the chosen picker to stage the replacement (as a fresh, non-additive run).
+  const confirmReplace = async () => {
+    const kind = replaceConfirm;
+    setReplaceConfirm(null);
+    await onResetMetadata?.();
+    await convertedStore?.clear();
+    setConvertedStore(null);
+    setFiles([]);
+    setBatch([]);
+    setFileStatuses([]);
+    setUsedArrayFilenames([]);
+    setUsedRawFilenames([]);
+    setJoinKeyCandidates([]);
+    setJoinKeyProblemFile('');
+    setSourceName('');
+    setPendingMode('replace');
+    setPhase('idle');
+    if (kind === 'folder') inputRef.current?.click();
+    else if (kind === 'zip') zipInputRef.current?.click();
+  };
 
   const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
+    if (!e.target.files) { return; }
     const picked = [...e.target.files].filter(f => !f.name.startsWith('.'));
     const folderName = picked[0]?.webkitRelativePath.split('/')[0] ?? '';
-    setFiles(picked);
+    // Reset the input value so re-picking the same folder fires change again.
+    e.target.value = '';
+    if (picked.length === 0) return;
+    setBatch(picked);
+    if (pendingMode === 'replace') setFiles(picked);
     setSourceName(folderName);
     setPickError('');
     setPhase('ready');
-    setFileStatuses([]);
   };
 
   const handleZipChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const zipFile = e.target.files?.[0];
+    // Reset input so the same file can be re-selected.
+    e.target.value = '';
     if (!zipFile) return;
     setPickError('');
     try {
       const zip = await JSZip.loadAsync(zipFile);
+      // Extract entries sequentially as Blobs (not concurrently as strings) so the whole archive
+      // isn't inflated into the heap at once. Use the entry basename for the File name — the full
+      // in-archive path defeats the Psych-DS compliant-name check and produces nested data/raw/
+      // paths — while keeping the path on webkitRelativePath for display and disambiguation.
       const extracted: File[] = [];
-      await Promise.all(
-        Object.values(zip.files).map(async entry => {
-          if (entry.dir) return;
-          if (entry.name.startsWith('__MACOSX') || entry.name.split('/').pop()?.startsWith('.')) return;
-          const text = await entry.async('text');
-          extracted.push(new File([text], entry.name));
-        })
-      );
+      for (const entry of Object.values(zip.files)) {
+        if (entry.dir) continue;
+        const base = entry.name.split('/').pop() ?? entry.name;
+        if (entry.name.startsWith('__MACOSX') || base.startsWith('.')) continue;
+        const blob = await entry.async('blob');
+        const file = new File([blob], base);
+        Object.defineProperty(file, 'webkitRelativePath', { value: entry.name, configurable: true });
+        extracted.push(file);
+      }
       if (extracted.length === 0) {
         setPickError('No readable files found in the zip archive.');
         return;
       }
-      setFiles(extracted);
+      setBatch(extracted);
+      if (pendingMode === 'replace') setFiles(extracted);
       setSourceName(zipFile.name.replace(/\.zip$/i, ''));
       setPhase('ready');
-      setFileStatuses([]);
     } catch {
       setPickError('Could not read the zip file — make sure it is a valid .zip archive.');
     }
-    // Reset input so the same file can be re-selected
-    e.target.value = '';
   };
 
   const handleProcess = async () => {
@@ -189,7 +294,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
     // upload is never resident in the heap at once (File objects are already disk-backed
     // by the browser). The trade-off is that JSON files are read again in runGenerate —
     // intentional: this step bounds peak memory, not total I/O.
-    for (const file of files) {
+    for (const file of batch) {
       const name = file.webkitRelativePath || file.name;
       if (dataFileType(file.name) !== 'json') continue;
       if (name === 'dataset_description.json' || name.endsWith('/dataset_description.json')) continue;
@@ -245,24 +350,30 @@ const DataUpload: React.FC<DataUploadProps> = ({
     suppressWarning: boolean
   ) => {
     setPhase('processing');
-    const initial: FileStatus[] = files.map(f => ({ name: f.name, status: 'pending' }));
-    setFileStatuses(initial);
+    // Additive runs append this batch's outcomes below the previous batches'; replace runs start
+    // the status list (and the staged data) over.
+    const additive = pendingMode === 'additive';
+    const priorStatuses = additive ? fileStatuses : [];
+    const offset = priorStatuses.length;
+    const initial: FileStatus[] = batch.map(f => ({ name: f.name, status: 'pending' }));
+    setFileStatuses([...priorStatuses, ...initial]);
 
     const update = (i: number, patch: Partial<FileStatus>) =>
-      setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s));
+      setFileStatuses(prev => prev.map((s, idx) => idx === offset + i ? { ...s, ...patch } : s));
 
     // Psych-DS `data/` payload built alongside metadata generation, staged to disk (OPFS) as each
     // file is produced so the whole study is never resident in the heap at once. The name sets are
     // shared across all files so converted CSVs are disambiguated against the whole output
     // directory (mirrors the CLI's processDirectory), and `data/raw/` is flat so originals too.
-    // Reuse the existing store across re-processing runs, clearing stale output first.
+    // An additive run keeps the existing staged files and seeds the name sets from the session so
+    // the new batch is disambiguated against them; a replace run starts from an empty store.
     const store = convertedStore ?? createStagedFileStore();
-    await store.clear();
-    const usedArrayFilenames = new Set<string>();
-    const usedRawFilenames = new Set<string>();
+    if (!additive) await store.clear();
+    const arrayNames = new Set<string>(additive ? usedArrayFilenames : []);
+    const rawNames = new Set<string>(additive ? usedRawFilenames : []);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (let i = 0; i < batch.length; i++) {
+      const file = batch[i];
 
       update(i, { status: 'loading' });
 
@@ -332,15 +443,21 @@ const DataUpload: React.FC<DataUploadProps> = ({
           extractedArrays: jsPsychMetadata.getExtractedArrays(),
           extractedObjects: jsPsychMetadata.getExtractedObjects(),
           joinKeys: jsPsychMetadata.getArrayJoinKeys(),
-          usedArrayFilenames,
+          usedArrayFilenames: arrayNames,
         });
         for (const f of built) await store.write(`data/${f.filename}`, f.content);
 
         // Preserve the original JSON under data/raw/ (CSV inputs are already tabular).
         if (type === 'json') {
-          const rawName = disambiguateFlatFilename(file.name, usedRawFilenames);
-          usedRawFilenames.add(rawName);
+          const rawName = disambiguateFlatFilename(file.name, rawNames);
+          rawNames.add(rawName);
           await store.write(`data/raw/${rawName}`, content);
+          // Tell the validator to skip data/raw/ so preserved originals don't surface as
+          // FILE_NOT_CHECKED. Written inside the per-file try (guarded against re-writing) so an
+          // OPFS failure is reported as this file's error instead of hanging the run in 'processing'.
+          if (!store.has(PSYCHDS_IGNORE_FILENAME)) {
+            await store.write(PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT);
+          }
         }
 
         update(i, { status: 'success' });
@@ -349,13 +466,11 @@ const DataUpload: React.FC<DataUploadProps> = ({
       }
     }
 
-    // When we preserved raw originals, tell the validator to skip data/raw/ so they don't
-    // surface as FILE_NOT_CHECKED (shared definition with the CLI in @jspsych/metadata).
-    if (usedRawFilenames.size > 0) {
-      await store.write(PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT);
-    }
-
+    // Persist the accumulated name sets and staged store so a later additive batch stays consistent.
+    setUsedArrayFilenames([...arrayNames]);
+    setUsedRawFilenames([...rawNames]);
     setConvertedStore(store);
+    setFiles(prev => (additive ? [...prev, ...batch] : batch));
     setPhase('done');
   };
 
@@ -367,9 +482,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
     return <span className={styles.iconPending}>·</span>;
   };
 
-  // Drop into join key chooser, preserving the previously chosen keys
+  // Drop into join key chooser, preserving the previously chosen keys. Re-configuring reprocesses
+  // the whole accumulated dataset with the new keys as a fresh replace run (clears the store and
+  // rebuilds it), so batch is reset to every uploaded file and the mode to 'replace' — otherwise an
+  // additive re-run would double-stage the last batch.
   const enterReConfigureJoinKeys = (returnTo: Phase) => {
     setProceedAnyway(false);
+    setBatch(files);
+    setPendingMode('replace');
     setJoinKeyReturnPhase(returnTo);
     setPhase('joinKeys');
   };
@@ -394,16 +514,17 @@ const DataUpload: React.FC<DataUploadProps> = ({
           Optionally, upload your data folder to add new variables or refresh levels and ranges.
         </p>
         <div className={styles.pickerRow}>
-          <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+          <button className={styles.browseBtn} onClick={() => requestPick('folder', 'replace')}>
             Upload data folder (optional)
           </button>
           <span className={styles.pickerOr}>or</span>
-          <button className={styles.browseBtn} onClick={() => zipInputRef.current?.click()}>
+          <button className={styles.browseBtn} onClick={() => requestPick('zip', 'replace')}>
             Upload .zip (optional)
           </button>
         </div>
-        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} />
+        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} {...{ webkitdirectory: '' }} />
         <input ref={zipInputRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleZipChange} />
+        {pickError && <p className={styles.pickError} role="alert">{pickError}</p>}
         <div className={styles.doneActions}>
           <button className={styles.continueBtn} onClick={onComplete}>
             Continue →
@@ -456,16 +577,26 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
         <div className={styles.additionalDivider}>Upload additional files</div>
         <div className={styles.pickerRow}>
-          <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
+          <button className={styles.browseBtn} onClick={() => requestPick('folder', 'additive')}>
             Choose folder
           </button>
           <span className={styles.pickerOr}>or</span>
-          <button className={styles.browseBtn} onClick={() => zipInputRef.current?.click()}>
+          <button className={styles.browseBtn} onClick={() => requestPick('zip', 'additive')}>
             Upload .zip
           </button>
         </div>
-        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} />
+        <p className={styles.additionalHint}>
+          New files are added to your dataset.{' '}
+          <button type="button" className={styles.replaceLink} onClick={() => requestPick('folder', 'replace')}>
+            Replace all data instead
+          </button>
+        </p>
+        {pickError && <p className={styles.pickError} role="alert">{pickError}</p>}
+        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} {...{ webkitdirectory: '' }} />
         <input ref={zipInputRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleZipChange} />
+        {replaceConfirm && (
+          <ReplaceConfirm onConfirm={confirmReplace} onCancel={() => setReplaceConfirm(null)} />
+        )}
       </div>
       </>
     );
@@ -481,16 +612,16 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
       {/* Pickers */}
       <div className={styles.pickerRow}>
-        <button className={styles.browseBtn} onClick={() => inputRef.current?.click()}>
-          {files.length > 0 ? 'Change folder' : 'Choose folder'}
+        <button className={styles.browseBtn} onClick={() => requestPick('folder', 'replace')}>
+          {batch.length > 0 ? 'Change folder' : 'Choose folder'}
         </button>
         <span className={styles.pickerOr}>or</span>
-        <button className={styles.browseBtn} onClick={() => zipInputRef.current?.click()}>
+        <button className={styles.browseBtn} onClick={() => requestPick('zip', 'replace')}>
           Upload .zip
         </button>
-        {files.length > 0 && sourceName && (
+        {batch.length > 0 && sourceName && (
           <span className={styles.folderName}>
-            {sourceName} ({files.length} file{files.length !== 1 ? 's' : ''})
+            {sourceName} ({batch.length} file{batch.length !== 1 ? 's' : ''})
           </span>
         )}
         <input
@@ -499,6 +630,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           multiple
           style={{ display: 'none' }}
           onChange={handleFolderChange}
+          {...{ webkitdirectory: '' }}
         />
         <input
           ref={zipInputRef}
@@ -508,13 +640,17 @@ const DataUpload: React.FC<DataUploadProps> = ({
           onChange={handleZipChange}
         />
       </div>
-      {pickError && <p className={styles.pickError}>{pickError}</p>}
+      {pickError && <p className={styles.pickError} role="alert">{pickError}</p>}
+
+      {replaceConfirm && (
+        <ReplaceConfirm onConfirm={confirmReplace} onCancel={() => setReplaceConfirm(null)} />
+      )}
 
       {/* File list (before processing) */}
       {phase === 'ready' && (
         <>
           <ul className={styles.fileList}>
-            {files.map(f => (
+            {batch.map(f => (
               <li key={f.webkitRelativePath || f.name} className={styles.fileItem}>
                 <span className={styles.iconPending}>·</span>
                 <span>{f.webkitRelativePath || f.name}</span>
@@ -529,7 +665,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
       {/* Pre-flight spinner */}
       {phase === 'preflight' && (
-        <p className={styles.preflight}>Reading files…</p>
+        <p className={styles.preflight} aria-live="polite">Reading files…</p>
       )}
 
       {/* Join key chooser */}
@@ -617,15 +753,26 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
       {/* Per-file status (processing + done) */}
       {(phase === 'processing' || phase === 'done') && (
-        <ul className={styles.statusList}>
-          {fileStatuses.map((s, i) => (
-            <li key={i} className={styles.statusItem}>
-              {statusIcon(s.status)}
-              <span className={styles.statusName}>{s.name}</span>
-              {s.detail && <span className={styles.statusDetail}>{s.detail}</span>}
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className={styles.processSummary} aria-live="polite">
+            {(() => {
+              const total = fileStatuses.length;
+              const done = fileStatuses.filter(s => s.status !== 'pending' && s.status !== 'loading').length;
+              return phase === 'processing'
+                ? `Processing… ${done} of ${total} file${total !== 1 ? 's' : ''} processed.`
+                : `Done. ${done} of ${total} file${total !== 1 ? 's' : ''} processed.`;
+            })()}
+          </p>
+          <ul className={styles.statusList}>
+            {fileStatuses.map((s, i) => (
+              <li key={i} className={styles.statusItem}>
+                {statusIcon(s.status)}
+                <span className={styles.statusName}>{s.name}</span>
+                {s.detail && <span className={styles.statusDetail}>{s.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {phase === 'done' && (

@@ -100,6 +100,23 @@ describe("Sidebar", () => {
     });
   });
 
+  // ── navigation lock (while data is processing) ─────────────────────────────
+
+  describe("locked", () => {
+    test("locks every step and Start over so a run can't be orphaned", async () => {
+      render(
+        <Sidebar {...props({ completedSteps: new Set(["projectInfo"] as const), canNavigateTo: () => true, locked: true })} />,
+      );
+      // Even otherwise-navigable steps are disabled while locked.
+      expect(screen.getByRole("button", { name: /Project Info/ })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /^Data/ })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "← Start over" })).toBeDisabled();
+
+      await userEvent.click(screen.getByRole("button", { name: /^Data/ }));
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+  });
+
   // ── start over dialog ─────────────────────────────────────────────────────
 
   describe("start over dialog", () => {

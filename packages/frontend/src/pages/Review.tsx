@@ -17,18 +17,29 @@ interface ReviewProps {
    * at a time to drive both validation and the zip. Null/absent when no data was uploaded.
    */
   dataFiles?: StagedFileStore | null;
+  /** Called after a successful download so the shell can drop its unsaved-work unload guard. */
+  onDownloaded?: () => void;
 }
 
 type ValidationStatus = 'idle' | 'running' | 'done' | 'unavailable';
+
+/** Strip characters that are invalid in filenames on common platforms so the .zip name is safe. */
+function sanitizeFilename(name: string): string {
+  // Replace the characters reserved/illegal on Windows + POSIX (and any whitespace) with '_', then
+  // drop trailing dots (invalid on Windows). Falls back to "dataset" if nothing usable remains.
+  const cleaned = name.replace(/[<>:"/\\|?*\s]/g, '_').replace(/\.+$/, '');
+  return cleaned || 'dataset';
+}
 
 // Warnings the downloadable zip already resolves: it ships a README.md and CHANGES.md the
 // in-browser validator can't see (it only checks the metadata + data files). When these show
 // up, we reassure the user rather than letting them think the dataset is incomplete.
 const ZIP_RESOLVED_WARNINGS = new Set(['MISSING_README_DOC', 'MISSING_CHANGES_DOC']);
 
-const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
+const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloaded }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
+  const [zipping, setZipping] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
   const [valStatus, setValStatus] = useState<ValidationStatus>('idle');
   const [valResult, setValResult] = useState<PsychDSValidationResult | null>(null);
@@ -57,27 +68,34 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
         await writable.write(metadataJson);
         await writable.close();
         setDownloaded(true);
+        onDownloaded?.();
       } catch (err) {
         if ((err as DOMException).name === 'AbortError') return;
         blobDownload(new Blob([metadataJson], { type: 'application/json' }), FILENAME);
         setDownloaded(true);
+        onDownloaded?.();
       }
     } else {
       blobDownload(new Blob([metadataJson], { type: 'application/json' }), FILENAME);
       setDownloaded(true);
+      onDownloaded?.();
     }
   };
 
   const handleDownloadZip = async () => {
+    if (zipping) return;
     setZipError(null);
+    setZipping(true);
     try {
       const didDownload = await downloadDatasetZip(
         { metadataJson, projectName, dataFiles: dataFiles ?? undefined },
-        `${projectName}.zip`,
+        `${sanitizeFilename(projectName)}.zip`,
       );
-      if (didDownload) setZipped(true);
+      if (didDownload) { setZipped(true); onDownloaded?.(); }
     } catch (err) {
       setZipError(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setZipping(false);
     }
   };
 
@@ -121,11 +139,11 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
         {hasDataFiles ? (
           <>
             <div className={styles.actionGroup}>
-              <button className={styles.downloadBtn} onClick={handleDownloadZip}>
-                {zipped ? '✓ Downloaded' : `Download ${projectName}.zip`}
+              <button className={styles.downloadBtn} onClick={handleDownloadZip} disabled={zipping}>
+                {zipping ? 'Preparing…' : zipped ? '✓ Downloaded' : `Download ${projectName}.zip`}
               </button>
               {zipError && (
-                <div className={`${styles.resultBanner} ${styles.resultUnavailable}`}>
+                <div className={`${styles.resultBanner} ${styles.resultUnavailable}`} role="alert">
                   {zipError}
                 </div>
               )}
@@ -178,6 +196,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
               : 'Re-validate'}
         </button>
 
+        <div aria-live="polite">
         {valStatus === 'unavailable' && valError && (
           <div className={`${styles.resultBanner} ${styles.resultUnavailable}`}>
             {valError}
@@ -244,6 +263,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles }) => {
             )}
           </>
         )}
+        </div>
 
         <details className={styles.cliAlt}>
           <summary className={styles.cliAltSummary}>Prefer the command line?</summary>
