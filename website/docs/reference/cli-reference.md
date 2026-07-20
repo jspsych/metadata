@@ -24,11 +24,12 @@ With no flags, the tool runs interactively and prompts you for everything it nee
 | `--data-dir` | `-d` | path | Path to the folder containing your raw jsPsych data files (`.csv`, `.json`, or `.jsonl`). |
 | `--metadata-options` | `-m` | path | Path to a metadata options `.json` file. See [Customizing the output](../guides/customizing-output.md). |
 | `--verbose` | `-v` | boolean | Print detailed output at each processing step. Shows plugin fetching, variable resolution, and full validation warnings. |
+| `--version` | | boolean | Print the CLI version and exit. |
 
 ### Notes on flag behaviour
 
 - Paths can use `~` for your home directory (e.g. `--data-dir=~/experiments/raw`).
-- If a flag is provided but the path is invalid, the tool falls back to prompting for that step interactively.
+- If a flag is provided but the path is invalid (or the `--metadata-options` file is not valid JSON), the tool exits immediately with a usage error (exit code `2`). It does **not** fall back to an interactive prompt — a flag you passed explicitly failing silently would hide mistakes in scripts.
 - `--psych-ds-dir` implies **update mode** — the tool loads the existing `dataset_description.json` before processing new data. Without this flag, the tool asks whether to create or update.
 
 ## Non-interactive mode
@@ -44,7 +45,7 @@ npx @jspsych/metadata-cli \
 
 Non-interactive mode enforces stricter rules than interactive mode:
 
-- **Non-compliant filenames are a hard error.** In interactive mode, the tool offers a menu of renaming strategies to bring non-compliant filenames into the Psych-DS naming pattern. In non-interactive mode, a non-compliant filename causes the tool to exit immediately with an error message and exit code 1. Rename your files before running (see [Data file naming](#data-file-naming) below).
+- **Non-compliant filenames are a hard error.** In interactive mode, the tool offers a menu of renaming strategies to bring non-compliant filenames into the Psych-DS naming pattern. In non-interactive mode, a non-compliant filename causes the tool to exit immediately with an error message and exit code `2` (usage error). Rename your files before running (see [Data file naming](#data-file-naming) below).
 - **Unknown variable descriptions are not prompted.** Variables the tool cannot automatically describe are left as `"unknown"` in the output.
 - **Join keys are resolved automatically.** When nested-array rows aren't uniquely identified by `trial_index`, the tool picks the keys deterministically instead of prompting, and reports the choice (see [Nested arrays and join keys](#nested-arrays-and-join-keys)).
 
@@ -55,15 +56,24 @@ The tool also runs without prompting whenever it isn't attached to an interactiv
 | Code | Meaning |
 |------|---------|
 | `0` | Completed successfully. Psych-DS validation passed (warnings are allowed). |
-| `1` | Psych-DS validation failed with one or more errors, or a non-compliant filename was found in non-interactive mode. |
+| `1` | Unexpected internal error, or an interactive prompt was aborted (e.g. Ctrl+C). |
+| `2` | Usage error: bad flags, a flag pointing at a missing directory, an invalid or malformed JSON input (`--metadata-options`, `dataset_description.json`), or a non-compliant data filename in non-interactive mode. |
+| `3` | The generated dataset failed Psych-DS validation with one or more errors. |
+| `4` | Partial success: some data files could not be ingested. The metadata written covers only the files that succeeded. |
 
-You can use the exit code in a shell script to handle failures:
+If a run both fails validation and has ingestion failures, validation takes precedence: the tool exits `3`. Any non-zero code means the output should not be trusted as a complete, valid Psych-DS dataset.
+
+You can use the exit code in a shell script to distinguish failures:
 
 ```bash
 npx @jspsych/metadata-cli --psych-ds-dir=./project --data-dir=./data --metadata-options=./options.json
-if [ $? -ne 0 ]; then
-  echo "Metadata generation failed — check the output above for errors."
-fi
+case $? in
+  0) echo "Success." ;;
+  2) echo "Bad flags or inputs — check the command line." ;;
+  3) echo "Psych-DS validation failed — check the errors above." ;;
+  4) echo "Some data files could not be ingested — metadata is incomplete." ;;
+  *) echo "Metadata generation failed — check the output above for errors." ;;
+esac
 ```
 
 ## Data file requirements

@@ -13,7 +13,7 @@
     "url": "https://github.com/jspsych/metadata"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "bin": {
     "jspsych-metadata-cli": "./dist/cjs/index.cjs"
@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.5.2",
-    "@jspsych/metadata": "^0.0.3 || ^0.1.0",
+    "@jspsych/metadata": ">=0.0.3 <0.2.0",
     "psychds-validator": "^1.5.1",
     "yargs": "^17.7.2"
   }
