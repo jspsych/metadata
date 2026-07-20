@@ -70,6 +70,11 @@ export default class JsPsychMetadata {
   private extractedObjects: Map<string, Array<Record<string, any>>> = new Map();
   private arrayJoinKeys: string[] = ['trial_index'];
   private mixedColumns = new Set<string>();
+  // Memoizes (extension, pluginType, version, variable) tuples whose plugin/extension description
+  // has already been fetched+merged during the current generate() call. The description for a
+  // given (variable, plugin) pair is identical on every row, so after the first row we skip the
+  // await and the redundant updateDescription merge. Reset at the start of each generate().
+  private seenDescriptionPairs = new Set<string>();
 
   /**
    * Creates an instance of JsPsychMetadata while passing in JsPsych object to have access to context
@@ -78,7 +83,7 @@ export default class JsPsychMetadata {
    * @constructor
    * @param {JsPsych} JsPsych
    */
-  constructor(verbose?: boolean) {
+  constructor(verbose: boolean = false) {
     this.metadata = {};
     // generates default metadata
     this.setMetadataField("name", "title");
@@ -143,7 +148,11 @@ export default class JsPsychMetadata {
    * @returns {{}} - Final Metadata object
    */
   getMetadata(): {} {
-    const res = this.metadata;
+    // Assemble on a FRESH object each call. Assigning author/variableMeasured onto the live
+    // private `metadata` leaked them into internal state (containsMetadataField("author") would
+    // become true) and, combined with getList()'s old in-place collapse, corrupted descriptions
+    // when generate() ran again afterwards (the CLI's multi-file flow).
+    const res = { ...this.metadata };
     res["author"] = this.authors.getList();
     res["variableMeasured"] = this.variables.getList();
 
@@ -170,7 +179,9 @@ export default class JsPsychMetadata {
    * @returns {{}} - Final Metadata object
    */
     getMetadataFields(): {} {
-      const res = this.metadata;
+      // Operate on a COPY so we never delete keys from (or otherwise mutate) the live private
+      // metadata object — this is a getter.
+      const res = { ...this.metadata };
       delete res["author"];
       delete res["variableMeasured"];
 
@@ -363,9 +374,10 @@ export default class JsPsychMetadata {
   }
 
   /**
-   * Method that allows you to display metadata at the end of an experiment.
+   * Method that allows you to display metadata at the end of an experiment by appending a
+   * formatted <pre> block into the provided element.
    *
-   * @param {string} [elementId="jspsych-metadata-display"] - Id for how to style the metadata. Defaults to default styling.
+   * @param {HTMLElement} display_element - The DOM element to append the metadata display into.
    */
   displayMetadata(display_element) {
     const elementId = "jspsych-metadata-display";
@@ -431,10 +443,14 @@ export default class JsPsychMetadata {
    * @param {'json'|'csv'} [ext='json'] - Format of a string `data`; ignored when `data` is already an array.
    * @param {Object} [options={}] - arrayJoinKeys / suppressJoinKeyWarning, plus synthesizedSourceRecordId for pre-parsed callers that tagged a synthetic source_record_id themselves.
    */
-  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean; synthesizedSourceRecordId?: boolean } = {}) {
+  async generate(data, metadata = {}, ext = 'json', options: { arrayJoinKeys?: string[]; suppressJoinKeyWarning?: boolean; synthesizedSourceRecordId?: boolean; levelsCap?: number } = {}) {
     this.extractedArrays = new Map();
     this.extractedObjects = new Map();
     this.arrayJoinKeys = options.arrayJoinKeys ?? ['trial_index'];
+    this.seenDescriptionPairs = new Set();
+    // Opt-in only: no cap unless a caller explicitly passes one (the scale stress suite relies on
+    // there being no default cap).
+    this.variables.setLevelsCap(options.levelsCap ?? null);
 
     var parsed_data;
 
@@ -463,6 +479,18 @@ export default class JsPsychMetadata {
 
     if (!Array.isArray(parsed_data)) {
       throw new Error("Parsed data is not in correct format: Expected an array of observations");
+    }
+
+    // Skip non-object observations (a null row in the JSON array, a JSONL `null` line, or a bare
+    // primitive/array). Downstream code (stripUnnamedColumns -> Object.keys, generateObservation)
+    // assumes each observation is a plain object and would otherwise crash on null.
+    const isObservationObject = (o: any) => o !== null && typeof o === "object" && !Array.isArray(o);
+    const skipped = (parsed_data as any[]).filter((o) => !isObservationObject(o)).length;
+    if (skipped > 0) {
+      console.warn(
+        `Skipping ${skipped} non-object observation${skipped > 1 ? "s" : ""} (e.g. a null row) in the input data.`
+      );
+      parsed_data = (parsed_data as any[]).filter(isObservationObject);
     }
 
     // Drop unnamed columns (empty/whitespace-only headers) before processing. These can't be
@@ -544,8 +572,13 @@ export default class JsPsychMetadata {
     const version = observation["plugin_version"] ? observation["plugin_version"] : null; // changed
     const pluginType = observation["trial_type"];
 
-    const extensionType = observation["extension_type"]; // fix for non-list (single item extension)
-    const extensionVersion = observation["extension_version"];
+    // Normalize extension_type / extension_version to arrays. Inputs vary by source: JSON gives a
+    // real array; CSV gives a JSON string like '["mouse-tracking"]'; some exports carry a single
+    // bare string; either may be missing entirely. Reading them raw crashed generate() (.map is not
+    // a function on a string; indexing an undefined extension_version). Normalizing here makes the
+    // extension loop below uniform and crash-free.
+    const extensionType = this.normalizeToArray(observation["extension_type"]);
+    const extensionVersion = this.normalizeToArray(observation["extension_version"]);
 
     // extension_type / extension_version are jsPsych system columns and register lazily in the
     // column loop below (registerSystemVariable), exactly like trial_type / trial_index /
@@ -591,10 +624,18 @@ export default class JsPsychMetadata {
         // misdetected as numeric. Require non-empty trimmed content, and use Number (not parseFloat)
         // for the conversion so the numeric test and the stored value never disagree — parseFloat(" ")
         // is NaN, which previously leaked through as NaN min/max (serialized as null) for string columns.
-        const asNumber = Number(value);
-        // Number.isFinite (not !isNaN) also rejects "Infinity"/"-Infinity", which would otherwise
-        // serialize to null min/max. The trim guard is still needed because Number(" ") is 0 (finite).
-        if (value.trim() !== "" && Number.isFinite(asNumber)) {
+        const trimmed = value.trim();
+        const asNumber = Number(trimmed);
+        // Treat a string cell as numeric when it ROUND-TRIPS (String(Number(v)) === v.trim())
+        // OR is a decimal-fraction literal. The round-trip keeps identifier-like strings as
+        // string levels instead of mangling them — "007" (Number 7, "7" !== "007"), 17-digit
+        // ids that lose precision, and "1e5" (-> "100000") all stay strings. But R/pandas
+        // float exports write non-canonical decimals ("450.0", "5.50") that fail the
+        // round-trip while being genuinely numeric; those identifier risks are all
+        // integer/exponent-shaped, so a fraction literal (no leading zeros) is safe to accept.
+        // Number.isFinite also rejects NaN/Infinity, which would otherwise serialize to null min/max.
+        const isFractionLiteral = /^[+-]?(0|[1-9]\d*)\.\d+$/.test(trimmed);
+        if (trimmed !== "" && Number.isFinite(asNumber) && (String(asNumber) === trimmed || isFractionLiteral)) {
           type = "number";
           value = asNumber;
           // NOTE: "true"/"false" strings are intentionally left as strings (not coerced to
@@ -647,12 +688,15 @@ export default class JsPsychMetadata {
           await this.generateMetadata(variable, value, pluginType, version);
         }
 
-        // Extension descriptions apply to all non-ignored variables regardless of type.
-        if (extensionType) {
+        // Extension descriptions apply to all non-ignored variables regardless of type. The
+        // extension only contributes a DESCRIPTION here — the value's fields (min/max/levels) were
+        // already folded in by the primary branch above, so generateMetadata skips updateFields for
+        // extensions (avoids double-counting). extension_version may be absent for a given index;
+        // generateMetadata/getPluginInfo handle an undefined version.
+        if (extensionType.length > 0) {
           await Promise.all(
             extensionType.map(async (ext, index) => {
-              if (ext && extensionVersion[index])
-                await this.generateMetadata(variable, value, ext, extensionVersion[index], true);
+              if (ext) await this.generateMetadata(variable, value, ext, extensionVersion?.[index], true);
             })
           );
         }
@@ -698,16 +742,28 @@ export default class JsPsychMetadata {
 
     // Plugin/extension description lookup needs a plugin type. Rows without one (e.g. a row missing
     // trial_type) keep the default "unknown" description but are still typed and counted.
+    //
+    // The description for a given (variable, pluginType) pair is identical on every row, so we
+    // fetch + merge it only once per generate() call. Memoizing here skips both the await and the
+    // redundant updateVariable("description", …) merge on every subsequent row for that pair — the
+    // dominant per-cell cost on large datasets.
     if (pluginType) {
-      const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
-      const description = pluginInfo["description"];
-      const new_description = description
-        ? { [pluginType]: description }
-        : { [pluginType]: "unknown" };
-      this.updateVariable(variable, "description", new_description);
+      const pairKey = `${extension ? "1" : "0"} ${pluginType} ${version ?? ""} ${variable}`;
+      if (!this.seenDescriptionPairs.has(pairKey)) {
+        this.seenDescriptionPairs.add(pairKey);
+        const pluginInfo = await this.getPluginInfo(pluginType, variable, version, extension);
+        const description = pluginInfo["description"];
+        const new_description = description
+          ? { [pluginType]: description }
+          : { [pluginType]: "unknown" };
+        this.updateVariable(variable, "description", new_description);
+      }
     }
 
-    this.updateFields(variable, value, type);
+    // Extensions only contribute a description; the value's fields were already folded in by the
+    // primary (non-extension) processing of this same cell, so skip updateFields to avoid
+    // double-counting the value into min/max/levels.
+    if (!extension) this.updateFields(variable, value, type);
   }
 
   /**
@@ -1092,6 +1148,26 @@ export default class JsPsychMetadata {
    */
   private async getPluginInfo(pluginType: string, variableName: string, version, extension?) {
     return this.pluginCache.getPluginInfo(pluginType, variableName, version, this.verbose, extension);
+  }
+
+  /**
+   * Normalizes an extension_type / extension_version cell into an array. Handles the shapes seen
+   * across data sources: a real array (JSON) is returned as-is; a JSON-array string (CSV export,
+   * e.g. '["mouse-tracking"]') is parsed; a single bare string is wrapped; null/undefined/empty
+   * becomes []. Any other primitive is wrapped in a single-element array.
+   */
+  private normalizeToArray(value: any): any[] {
+    if (value === null || value === undefined || value === "") return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.startsWith("[")) {
+        const parsed = tryParseJSON(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [value]; // single-string extension
+    }
+    return [value];
   }
 }
 

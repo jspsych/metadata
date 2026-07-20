@@ -28,48 +28,6 @@ export function saveTextToFile(textstr: string, filename: string) {
   link.click();
 }
 
-// this function based on code suggested by StackOverflow users:
-// http://stackoverflow.com/users/64741/zachary
-// http://stackoverflow.com/users/317/joseph-sturtevant
-
-export function JSON2CSV(objArray) {
-  const array = typeof objArray != "object" ? JSON.parse(objArray) : objArray;
-  let line = "";
-  let result = "";
-  const columns = [];
-
-  for (const row of array) {
-    for (const key in row) {
-      let keyString = key + "";
-      keyString = '"' + keyString.replace(/"/g, '""') + '",';
-      if (!columns.includes(key)) {
-        columns.push(key);
-        line += keyString;
-      }
-    }
-  }
-
-  line = line.slice(0, -1); // removes last comma
-  result += line + "\r\n";
-
-  for (const row of array) {
-    line = "";
-    for (const col of columns) {
-      let value = typeof row[col] === "undefined" ? "" : row[col];
-      if (typeof value == "object") {
-        value = JSON.stringify(value);
-      }
-      const valueString = value + "";
-      line += '"' + valueString.replace(/"/g, '""') + '",';
-    }
-
-    line = line.slice(0, -1);
-    result += line + "\r\n";
-  }
-
-  return result;
-}
-
 export function tryParseJSON(value: string): any | null {
   try {
     return JSON.parse(value);
@@ -165,7 +123,9 @@ export function parseJsonData(
       );
     }
     parsedAny = true;
-    const observations = Array.isArray(value) ? value : [value];
+    // A JSONL line of `null` (or a per-line array containing null) yields null observations that
+    // crash downstream consumers (Object.keys(null)); drop them here so the output is object rows.
+    const observations = (Array.isArray(value) ? value : [value]).filter((o) => o !== null && o !== undefined);
     // In JSON-Lines each line is typically one participant's submission (JATOS-style export),
     // but a line is only guaranteed to be one *source record* — the per-line boundary is the
     // only identifier these raw jsPsych exports carry. So — when asked — stamp every object
@@ -386,7 +346,9 @@ export function objectsToCSV(rows: Array<Record<string, any>>, priorityCols: str
       ? `"${str.replace(/"/g, '""')}"` : str;
   };
 
-  const lines = [headers.join(',')];
+  // Escape header names too — a column key containing a comma or quote would otherwise produce a
+  // structurally corrupt CSV (header row with a different field count than the data rows).
+  const lines = [headers.map(escape).join(',')];
   for (const row of rows) {
     lines.push(headers.map(h => escape(row[h])).join(','));
   }
