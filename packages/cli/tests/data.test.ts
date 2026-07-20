@@ -30,6 +30,11 @@ describe("saveTextToPath", () => {
     await saveTextToPath("new content", filePath);
     expect(fs.readFileSync(filePath, "utf8")).toBe("new content");
   });
+
+  test("rethrows write failures instead of swallowing them", async () => {
+    const filePath = path.join(tmpDir, "no-such-dir", "output.json");
+    await expect(saveTextToPath("content", filePath)).rejects.toThrow();
+  });
 });
 
 describe("processOptions", () => {

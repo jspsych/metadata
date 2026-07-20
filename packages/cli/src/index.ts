@@ -767,9 +767,16 @@ const main = async () => {
     dataDir = await promptDataDir();
   }
 
-  // All three flags present ⇒ a fully-specified, non-interactive run. Each flag, if present, has
-  // already been validated above (or is validated at use for --metadata-options), so a plain
-  // presence check is enough here.
+  // A --metadata-options flag that is present but malformed is a usage error, surfaced
+  // immediately — before its presence can force a non-interactive run below and suppress the
+  // rename/join-key prompts a terminal user would otherwise have gotten, and before any
+  // ingestion work is wasted on a run that was always going to abort.
+  if (argv['metadata-options'] !== undefined && !validateJson(argv['metadata-options'])) {
+    throw new ExitError(`invalid or malformed --metadata-options file: ${argv['metadata-options']}`, EXIT.USAGE);
+  }
+
+  // All three flags present ⇒ a fully-specified, non-interactive run. Each flag has already
+  // been validated above, so a plain presence check is enough here.
   const isNonInteractive = !!(argv['psych-ds-dir'] && argv['data-dir'] && argv['metadata-options']);
 
   if (verbose) console.log("\n\n-------------------------- Reading and writing data files --------------------------\n\n");
@@ -833,12 +840,9 @@ const main = async () => {
     );
   }
 
-  // Apply metadata options. A --metadata-options flag that is present but invalid/malformed is a
-  // usage error (not a silent skip); processOptions failing after a valid path is likewise fatal.
+  // Apply metadata options (the file was already syntax-validated before the pre-pass above);
+  // processOptions failing after a valid path is fatal, not a silent skip.
   if (argv['metadata-options'] !== undefined) {
-    if (!validateJson(argv['metadata-options'])) {
-      throw new ExitError(`invalid or malformed --metadata-options file: ${argv['metadata-options']}`, EXIT.USAGE);
-    }
     if (verbose) console.log("\n\n-------------------------- Reading and writing metadata-option --------------------------n\n");
     const ok = await processOptions(metadata, argv['metadata-options'], verbose);
     if (!ok) throw new ExitError(`could not apply metadata options from ${argv['metadata-options']}.`, EXIT.USAGE);
@@ -891,7 +895,9 @@ const main = async () => {
  * True when the auto-run guard should launch main(): i.e. this module is being executed as the
  * CLI bin, not imported. In the published CJS bundle (the bin) require.main === module holds when
  * run as `node index.cjs`, and is false when the package is require()'d. In the ESM bundle `module`
- * is undefined, so importing it never triggers a run. Under Jest, require.main is Jest's own entry,
+ * is undefined, so the guard is inert there (note that bundle is not currently importable anyway:
+ * package.json declares `type: "commonjs"`, so Node parses dist/esm/index.js as CJS and rejects its
+ * export syntax — the bin always runs the CJS bundle). Under Jest, require.main is Jest's own entry,
  * so importing this file for unit tests is likewise side-effect-free.
  */
 function invokedAsScript(): boolean {

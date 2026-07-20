@@ -101,19 +101,13 @@ export function reduceIdCandidates(rows: Array<Record<string, any>>): Map<string
   const colUniques = new Map<string, Set<string>>();
   for (const col of ID_COLUMNS) colUniques.set(col, new Set<string>());
 
-  // Only ID columns actually present in the data can ever qualify (findIdentifierColumn
-  // needs exactly one unique value, and an absent column stays at zero). Columns missing
-  // from the first row are excluded from the decided/undecided accounting below — otherwise
-  // their permanently-empty sets would keep `undecided` non-zero and defeat the early-exit,
-  // forcing a full scan of every row for a file that has no usable ID column at all. They
-  // are still returned as empty sets, so the map keeps its full-ID_COLUMNS shape.
-  const first = rows[0];
-  const active =
-    first && typeof first === 'object' ? ID_COLUMNS.filter((col) => col in first) : [];
-
+  // Every row must be checked for every ID column: jsPsych JSON/JSONL rows are
+  // heterogeneous, so a column absent from early rows (e.g. a preload trial) can
+  // still appear — and qualify — later in the file. The early-exit below only
+  // fires once every column has accumulated two distinct values.
   for (const row of rows) {
     let undecided = 0;
-    for (const col of active) {
+    for (const col of ID_COLUMNS) {
       const unique = colUniques.get(col)!;
       if (unique.size >= 2) continue;
       const v = row[col];

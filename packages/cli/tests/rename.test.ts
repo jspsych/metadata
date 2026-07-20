@@ -128,15 +128,28 @@ describe('reduceIdCandidates', () => {
     expect(result.get('subject_id')).toEqual(new Set());
   });
 
-  it('stops scanning once no present ID column can still qualify (early-exit fires when ID columns are absent)', () => {
-    // Without the early-exit, a file with no ID columns is scanned to the last row. Prove it stops
-    // at row 0: a later row whose subject_id getter throws must never be touched.
+  it('finds an ID column that is absent from the first rows (heterogeneous JSON trials)', () => {
+    // jsPsych JSON data often starts with a preload/fullscreen trial that lacks
+    // subject_id; the column must still qualify from later rows.
+    const rows = [
+      { trial_type: 'preload', trial_index: 0 },
+      { trial_type: 'html-keyboard-response', subject_id: 'P01', rt: 500 },
+      { trial_type: 'html-keyboard-response', subject_id: 'P01', rt: 600 },
+    ];
+    expect(reduceIdCandidates(rows).get('subject_id')).toEqual(new Set(['P01']));
+  });
+
+  it('stops scanning once every ID column is disqualified', () => {
+    // Once every ID column has two distinct values, no further row can change the
+    // outcome. Prove the scan stops: a later row whose subject_id getter throws
+    // must never be touched.
+    const disqualifying = ID_COLUMNS.flatMap((col) => [{ [col]: 'a' }, { [col]: 'b' }]);
     const poison: Record<string, any> = {};
     Object.defineProperty(poison, 'subject_id', {
       enumerable: true,
       get() { throw new Error('scanned past the point where the outcome was already decided'); },
     });
-    const rows: Array<Record<string, any>> = [{ rt: 1 }, poison];
+    const rows: Array<Record<string, any>> = [...disqualifying, poison];
     expect(() => reduceIdCandidates(rows)).not.toThrow();
   });
 });

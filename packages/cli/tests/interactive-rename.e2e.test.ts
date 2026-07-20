@@ -416,6 +416,42 @@ describe("exit codes and silent-failure aborts (headless E2E)", () => {
     expect(output).toContain("directory not found");
   });
 
+  test("a dataset that fails Psych-DS validation exits 3", () => {
+    makeProject(validDescription());
+    // No data files at all: the run completes, but the validator errors with
+    // MISSING_DATAFILE (data/ must contain at least one CSV) — the run must exit 3,
+    // not report success for an empty dataset.
+
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    expect(output).toContain("validation failed");
+    expect(status).toBe(3);
+  });
+
+  test("an unexpected write failure exits 1 (saveTextToPath rethrows instead of logging)", () => {
+    makeProject(validDescription());
+    writeGoodCsv();
+    // Make the final dataset_description.json write fail: the file is readable (load and
+    // validation of the flag succeed) but not writable, so saveTextToPath's rethrow must
+    // surface as the generic error exit code — not a fake success.
+    fs.chmodSync(path.join(projectDir, "dataset_description.json"), 0o444);
+
+    const { status, output } = runHeadless([
+      "--psych-ds-dir", projectDir,
+      "--data-dir", dataDir,
+      "--metadata-options", optionsPath,
+    ]);
+
+    // Restore write permission so afterEach can clean up the tmp dir.
+    fs.chmodSync(path.join(projectDir, "dataset_description.json"), 0o644);
+    expect(output).toContain("Error writing to file");
+    expect(status).toBe(1);
+  });
+
   test("a partial ingestion failure (one good file, one corrupt) exits 4", () => {
     makeProject(validDescription());
     writeGoodCsv();

@@ -45,6 +45,12 @@ describe("validateProjectName", () => {
     expect(typeof validateProjectName("   ")).toBe("string");
   });
 
+  test('rejects "." and ".." (would escape the chosen base directory)', () => {
+    expect(typeof validateProjectName(".")).toBe("string");
+    expect(typeof validateProjectName("..")).toBe("string");
+    expect(typeof validateProjectName(" .. ")).toBe("string");
+  });
+
   test("rejects a name containing a path separator", () => {
     expect(typeof validateProjectName("a/b")).toBe("string");
     expect(typeof validateProjectName("a\\b")).toBe("string");

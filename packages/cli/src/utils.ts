@@ -22,6 +22,9 @@ export function expandHomeDir(directoryPath: string): string {
 export function validateProjectName(name: string): true | string {
   if (name.trim().length === 0) return 'Project name cannot be empty.';
   if (/[\\/]/.test(name)) return 'Project name cannot contain path separators ("/" or "\\").';
+  // "." and ".." would resolve outside the chosen base directory when joined into the
+  // project path, silently writing the project into (or above) the parent folder.
+  if (name.trim() === '.' || name.trim() === '..') return 'Project name cannot be "." or "..".';
   return true;
 }
 
