@@ -432,6 +432,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
           const parsed = await parseCSVForWrite(content);
           mainRows = parsed.rows;
           const csvVerbatimEligible = parsed.verbatimSafe && !hasUnnamedColumns(mainRows);
+          if (!parsed.verbatimSafe) {
+            console.warn(`"${file.name}" is not strictly valid CSV; it was parsed leniently and the staged copy is re-serialised as well-formed CSV.`);
+          }
           await jsPsychMetadata.generate(mainRows, {}, 'csv', {
             arrayJoinKeys: joinKeys,
             suppressJoinKeyWarning: suppressWarning,

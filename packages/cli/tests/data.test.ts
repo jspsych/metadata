@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, parseCSV } from "@jspsych/metadata";
 import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
 import { planRenames } from "../src/rename";
 
@@ -388,6 +388,35 @@ describe("processDirectory output-directory creation (#118)", () => {
     const names = ((metadata.getMetadata() as any).variableMeasured as any[]).map((v) => v.name);
     expect(names).toContain("Participant_ID");
     expect(names).not.toContain("﻿Participant_ID");
+  });
+
+  test("re-serialises a CSV whose stimulus has embedded quotes AND commas into strictly valid output", async () => {
+    // The quote+comma shape (e.g. '<p>Press "F", "J"</p>') fails even relax_quotes and used to
+    // drop the file ("0 files read"). The repair fallback reassembles the row; the written
+    // data file must be well-formed RFC-4180 (quoted field, doubled quotes) so the Psych-DS
+    // validator's strict parse accepts it.
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "project", "data");
+    fs.mkdirSync(srcDir);
+    const stimulus = '<p>Press "F", "J" to respond</p>';
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1.csv"),
+      `rt,stimulus,trial_type,trial_index\n300,${stimulus},html-keyboard-response,0\n`,
+    );
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { total, failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+    warn.mockRestore();
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+
+    const written = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    // Strict parse must succeed and reproduce the stimulus exactly — one field, commas intact.
+    const rows = (await parseCSV(written, { relaxQuotes: false })) as Array<Record<string, any>>;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].stimulus).toBe(stimulus);
+    expect(rows[0].rt).toBe("300");
   });
 });
 

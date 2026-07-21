@@ -357,6 +357,11 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
       const parsed = await parseCSVForWrite(content);
       parsedRows = parsed.rows;
       csvVerbatimEligible = parsed.verbatimSafe && !hasUnnamedColumns(parsedRows);
+      // Tell the user their bytes are being reinterpreted — a lenient parse is a judgment
+      // call, and a silently rewritten file would hide that it was ever malformed.
+      if (!parsed.verbatimSafe) {
+        console.warn(`⚠  "${file}" is not strictly valid CSV; it was parsed leniently and the output will be re-serialised as well-formed CSV.`);
+      }
       await metadata.generate(parsedRows, {}, 'csv', options);
     } else {
       console.error(`"${file}" is not .csv, .json, or .jsonl format.`);
