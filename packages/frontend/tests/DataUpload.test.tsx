@@ -1,9 +1,10 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import JSZip from "jszip";
-import { analyzeJoinKeys } from "@jspsych/metadata";
+import { analyzeJoinKeys, buildPsychDSDataFiles } from "@jspsych/metadata";
 import DataUpload, { emptyDataSession } from "../src/pages/DataUpload";
 import type { DataSession } from "../src/pages/DataUpload";
+import { createStagedFileStore } from "../src/staging/stagedFileStore";
 
 jest.mock("@jspsych/metadata", () => ({
   __esModule: true,
@@ -451,7 +452,10 @@ describe("DataUpload", () => {
       await waitFor(() => {
         const lastCall = onSessionChange.mock.calls.at(-1)?.[0] as DataSession;
         expect(lastCall?.files).toHaveLength(1);
-        expect(lastCall.files[0].name).toBe("data/sub01.csv");
+        // Zip entries now use their basename for the File name (the in-archive path is kept on
+        // webkitRelativePath), so a compliant/flat name reaches the Psych-DS builder.
+        expect(lastCall.files[0].name).toBe("sub01.csv");
+        expect(lastCall.files[0].webkitRelativePath).toBe("data/sub01.csv");
       });
     });
 
@@ -466,6 +470,165 @@ describe("DataUpload", () => {
         const lastCall = onSessionChange.mock.calls.at(-1)?.[0] as DataSession;
         expect(lastCall?.fileStatuses).toHaveLength(1);
         expect(lastCall.fileStatuses[0]).toMatchObject({ name: "sub01.csv", status: "success" });
+      });
+    });
+  });
+
+  // ── session round-trip (fix 4) ─────────────────────────────────────────────
+
+  describe("session round-trip", () => {
+    test("restores 'ready' with the file list when files were picked but not processed", () => {
+      const session: DataSession = {
+        ...emptyDataSession,
+        files: [makeFile("sub01.csv"), makeFile("sub02.csv")],
+      };
+      render(<DataUpload {...props({ dataProcessed: false, session })} />);
+
+      // Not dataProcessed and not existing-metadata, but session.files exist → 'ready', list shown.
+      expect(screen.getByRole("button", { name: "Process files" })).toBeInTheDocument();
+      expect(screen.getByText("sub01.csv")).toBeInTheDocument();
+      expect(screen.getByText("sub02.csv")).toBeInTheDocument();
+    });
+  });
+
+  // ── navigation lock while processing (fix 3) ───────────────────────────────
+
+  describe("processing busy state", () => {
+    test("reports busy=true while a run is in flight and busy=false when it finishes", async () => {
+      const onBusyChange = jest.fn();
+      let releaseGenerate: () => void = () => {};
+      meta.generate.mockImplementation(
+        () => new Promise<void>((resolve) => { releaseGenerate = () => resolve(); }),
+      );
+
+      const { container } = render(<DataUpload {...props({ onBusyChange })} />);
+      const input = container.querySelector("input[multiple]") as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [makeFile("sub01.csv", "rt\n1")] } });
+      await userEvent.click(screen.getByRole("button", { name: "Process files" }));
+
+      // generate() is pending, so the run is still in flight — the shell must lock navigation.
+      await waitFor(() => expect(onBusyChange).toHaveBeenLastCalledWith(true));
+
+      releaseGenerate();
+      await waitFor(() => expect(onBusyChange).toHaveBeenLastCalledWith(false));
+    });
+  });
+
+  // ── batch consistency: additive vs replace (fix 2) ─────────────────────────
+
+  describe("batch consistency", () => {
+    async function storeWith(paths: string[]) {
+      const store = createStagedFileStore({ forceMemory: true });
+      for (const p of paths) await store.write(p, "x");
+      return store;
+    }
+
+    test("'Upload additional files' stages the new batch alongside the first (no clear)", async () => {
+      // Make the builder emit one datafile per input and record its name, mirroring real behaviour.
+      // Once-scoped so it doesn't leak into other tests (which expect the default empty result).
+      (buildPsychDSDataFiles as jest.Mock).mockImplementationOnce(
+        ({ base, usedArrayFilenames }: { base: string; usedArrayFilenames: Set<string> }) => {
+          const filename = `${base}_data.csv`;
+          usedArrayFilenames.add(filename);
+          return [{ filename, content: "x" }];
+        },
+      );
+
+      const store = await storeWith(["data/subject-a_data.csv"]);
+      const session: DataSession = {
+        ...emptyDataSession,
+        files: [makeFile("a.json", "[]")],
+        convertedStore: store,
+        usedArrayFilenames: ["subject-a_data.csv"],
+        usedRawFilenames: ["a.json"],
+        fileStatuses: [{ name: "a.json", status: "success" }],
+      };
+
+      render(<DataUpload {...props({ dataProcessed: true, session })} />);
+
+      // "Upload additional files" (additive) — does NOT confirm/reset.
+      await userEvent.click(screen.getByRole("button", { name: "Choose folder" }));
+      const input = document.querySelector("input[multiple]") as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [makeFile("b.json", "[]")] } });
+      await userEvent.click(screen.getByRole("button", { name: "Process files" }));
+      await screen.findByRole("button", { name: "Continue →" });
+
+      // The store keeps batch A's output and gains batch B's — both are present.
+      expect(store.paths()).toEqual(expect.arrayContaining([
+        "data/subject-a_data.csv",
+        "data/subject-b_data.csv",
+      ]));
+      // Used-name sets persisted across batches (seeded from the session, extended by the new batch).
+      const last = onSessionChange.mock.calls.at(-1)?.[0] as DataSession;
+      expect(last.usedArrayFilenames).toEqual(expect.arrayContaining([
+        "subject-a_data.csv",
+        "subject-b_data.csv",
+      ]));
+      expect(last.usedRawFilenames).toEqual(expect.arrayContaining(["a.json", "b.json"]));
+    });
+
+    test("'Replace all data' confirms, clears the store, and fires the metadata reset", async () => {
+      const store = await storeWith(["data/subject-a_data.csv"]);
+      const clearSpy = jest.spyOn(store, "clear");
+      const onResetMetadata = jest.fn().mockResolvedValue(undefined);
+      const session: DataSession = {
+        ...emptyDataSession,
+        files: [makeFile("a.json", "[]")],
+        convertedStore: store,
+        usedArrayFilenames: ["subject-a_data.csv"],
+      };
+
+      render(<DataUpload {...props({ dataProcessed: true, session, onResetMetadata })} />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Replace all data instead" }));
+      // A destructive replace over staged data asks first.
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Yes, replace" }));
+
+      await waitFor(() => expect(onResetMetadata).toHaveBeenCalledTimes(1));
+      expect(clearSpy).toHaveBeenCalled();
+    });
+
+    test("Cancel on the replace confirm leaves the staged data intact", async () => {
+      const store = await storeWith(["data/subject-a_data.csv"]);
+      const clearSpy = jest.spyOn(store, "clear");
+      const onResetMetadata = jest.fn();
+      const session: DataSession = {
+        ...emptyDataSession,
+        files: [makeFile("a.json", "[]")],
+        convertedStore: store,
+      };
+      render(<DataUpload {...props({ dataProcessed: true, session, onResetMetadata })} />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Replace all data instead" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(onResetMetadata).not.toHaveBeenCalled();
+      expect(clearSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── zip basename handling (fix 8) ──────────────────────────────────────────
+
+  describe("zip basename handling", () => {
+    test("uses the entry basename for nested paths and reads entries as blobs", async () => {
+      const asyncMock = jest.fn().mockResolvedValue("rt\n1");
+      mockLoadAsync.mockResolvedValue({
+        files: { "nested/dir/sub01.csv": { dir: false, name: "nested/dir/sub01.csv", async: asyncMock } },
+      });
+
+      const { container } = render(<DataUpload {...props()} />);
+      fireEvent.change(container.querySelector("input[accept='.zip']")!, {
+        target: { files: [makeFile("exp.zip")] },
+      });
+
+      await screen.findByRole("button", { name: "Process files" });
+      // Extracted as a blob (not text).
+      expect(asyncMock).toHaveBeenCalledWith("blob");
+      await waitFor(() => {
+        const last = onSessionChange.mock.calls.at(-1)?.[0] as DataSession;
+        expect(last.files[0].name).toBe("sub01.csv");
+        expect(last.files[0].webkitRelativePath).toBe("nested/dir/sub01.csv");
       });
     });
   });

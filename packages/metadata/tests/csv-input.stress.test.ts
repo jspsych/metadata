@@ -77,13 +77,22 @@ describe("CSV ingestion type-inference (stress)", () => {
 
   afterAll(() => jest.restoreAllMocks());
 
-  test("coerces integers, floats, scientific notation and negatives to numeric ranges", () => {
+  test("coerces integers, floats and negatives to numeric ranges", () => {
     expect(vars.get("int_col")).toMatchObject({ value: "number", minValue: 7, maxValue: 100 });
     expect(vars.get("float_col")).toMatchObject({ value: "number", minValue: 0.5, maxValue: 2.25 });
-    expect(vars.get("sci_num")).toMatchObject({ value: "number", minValue: 1000, maxValue: 2000 });
     expect(vars.get("neg_num")).toMatchObject({ value: "number", minValue: -10, maxValue: -1 });
     // No numeric column should carry levels.
-    for (const n of ["int_col", "float_col", "sci_num", "neg_num"]) expect(vars.get(n).levels).toBeUndefined();
+    for (const n of ["int_col", "float_col", "neg_num"]) expect(vars.get(n).levels).toBeUndefined();
+  });
+
+  test("keeps scientific-notation strings as string levels (round-trip rule), not numeric", () => {
+    // "1e3" etc. do not round-trip (String(Number("1e3")) === "1000" !== "1e3"), so they are NOT
+    // coerced — this prevents mangling identifier-like strings. They accumulate as string levels.
+    const sci = vars.get("sci_num");
+    expect(sci.value).toBe("string");
+    expect(sci.minValue).toBeUndefined();
+    expect(sci.maxValue).toBeUndefined();
+    expect(new Set(sci.levels)).toEqual(new Set(["1e3", "2e3", "1.5e3"]));
   });
 
   test("trims surrounding whitespace before the numeric test (Number(' 10 ') === 10)", () => {

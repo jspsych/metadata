@@ -5,6 +5,7 @@ import {
   expandHomeDir,
   fileStem,
   disambiguateFilename,
+  validateProjectName,
 } from "../src/utils";
 import { generatePath } from "../src/data";
 
@@ -23,7 +24,37 @@ describe("expandHomeDir", () => {
   });
 
   test("handles bare ~ as the home directory", () => {
-    expect(expandHomeDir("~")).toBe(path.join(os.homedir(), ""));
+    expect(expandHomeDir("~")).toBe(os.homedir());
+  });
+
+  test("does NOT expand a ~username path (another user's home, which os.homedir cannot resolve)", () => {
+    // "~bob/data" must be left untouched, not mangled into "<myhome>/bob/data".
+    expect(expandHomeDir("~bob/data")).toBe("~bob/data");
+    expect(expandHomeDir("~bob")).toBe("~bob");
+  });
+});
+
+describe("validateProjectName", () => {
+  test("accepts a plain non-empty name", () => {
+    expect(validateProjectName("my-experiment")).toBe(true);
+    expect(validateProjectName("Study 2024")).toBe(true);
+  });
+
+  test("rejects an empty or whitespace-only name", () => {
+    expect(typeof validateProjectName("")).toBe("string");
+    expect(typeof validateProjectName("   ")).toBe("string");
+  });
+
+  test('rejects "." and ".." (would escape the chosen base directory)', () => {
+    expect(typeof validateProjectName(".")).toBe("string");
+    expect(typeof validateProjectName("..")).toBe("string");
+    expect(typeof validateProjectName(" .. ")).toBe("string");
+  });
+
+  test("rejects a name containing a path separator", () => {
+    expect(typeof validateProjectName("a/b")).toBe("string");
+    expect(typeof validateProjectName("a\\b")).toBe("string");
+    expect(typeof validateProjectName("../escape")).toBe("string");
   });
 });
 

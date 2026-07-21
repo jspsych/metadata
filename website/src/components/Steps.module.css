@@ -1,0 +1,65 @@
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.step {
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.num {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ifm-color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Align the body under the title (past the number badge) on wider screens. */
+.body {
+  padding-left: calc(32px + 0.75rem);
+}
+
+.body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Tighten the last-child spacing so cards aren't bottom-heavy. */
+.step :global(.theme-admonition),
+.step :global(details) {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .body {
+    padding-left: 0;
+  }
+  .step {
+    padding: 1rem 1.1rem;
+  }
+}

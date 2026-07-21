@@ -1,0 +1,66 @@
+.footer {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  padding: 1.15rem 1.5rem;
+  background: transparent;
+}
+
+.inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--ifm-color-emphasis-800);
+  font-size: 0.95rem;
+}
+
+.brand:hover {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+
+.brainMark {
+  height: 1.5rem;
+  width: auto;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.link {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+}
+
+.link:hover {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+
+.donate {
+  border: 1px solid var(--ifm-color-emphasis-400);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ifm-heading-color);
+  white-space: nowrap;
+}
+
+.donate:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}

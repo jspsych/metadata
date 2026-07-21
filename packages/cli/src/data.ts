@@ -76,7 +76,7 @@ async function collectDataFiles(
         const subItems = await fs.promises.readdir(subPath, { withFileTypes: true });
         for (const subItem of subItems) {
           if (subItem.isDirectory()) {
-            if (warn) console.warn("Can only read subdirectories one level deep:", directoryPath);
+            if (warn) console.warn("Can only read subdirectories one level deep:", path.join(subPath, subItem.name));
           } else {
             files.push({ filePath: path.join(subPath, subItem.name), dirPath: subPath, name: subItem.name });
           }
@@ -313,26 +313,6 @@ export const generatePath = (inputPath: string): string => {
   }
 };
 
-const copyFileWithStructure = async (sourceFilePath: string, verbose: boolean, targetDirectoryPath: string) => {
-  try {
-    sourceFilePath = expandHomeDir(sourceFilePath);
-    targetDirectoryPath = expandHomeDir(targetDirectoryPath);
-
-    const relativePath = path.relative(path.dirname(sourceFilePath), sourceFilePath);
-    const targetFilePath = path.join(targetDirectoryPath, relativePath);
-
-    // Ensure the target directory exists
-    const targetDir = path.dirname(targetFilePath);
-    await fs.promises.mkdir(targetDir, { recursive: true });
-
-    // Copy the file
-    await fs.promises.copyFile(sourceFilePath, targetFilePath);
-    if (verbose) console.log(`File copied from ${sourceFilePath} to ${targetFilePath}`);
-  } catch (error) {
-    console.error(`Failed to copy file from ${sourceFilePath} to ${targetDirectoryPath}:`, error);
-  }
-};
-
 // processing single file, need to refactor this into a seperate call
 const processFile = async (metadata: JsPsychMetadata, directoryPath: string, file: string, verbose: boolean, targetDirectoryPath?: string, options: GenerateOptions = {}, usedArrayFilenames: Set<string> = new Set(), usedRawFilenames: Set<string> = new Set()) => {
   const filePath = path.join(directoryPath, file);
@@ -384,11 +364,12 @@ const processFile = async (metadata: JsPsychMetadata, directoryPath: string, fil
     }
 
     if (targetDirectoryPath) {
-      // dataset_description.json was loaded as existing metadata above. Copy it through
-      // unchanged and skip conversion + array extraction (the latter would re-write the
-      // previous data file's array rows under a filename derived from this one).
+      // dataset_description.json was loaded as existing metadata above. It belongs at the
+      // dataset ROOT, not under data/ — copying it into data/ leaves a stray file the
+      // validator flags (and it would also short-circuit conversion + array extraction).
+      // Skip it here; the regenerated dataset_description.json is written to the root by
+      // saveTextToPath in index.ts.
       if (file === "dataset_description.json") {
-        await copyFileWithStructure(filePath, verbose, targetDirectoryPath);
         return true;
       }
 
@@ -567,6 +548,15 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
     }
 
     for (const { dirPath, name } of files) {
+      // Pre-filter obviously-non-data files (e.g. notes.txt, .DS_Store) so they are silently
+      // skipped rather than counted as ingestion failures — the rename pre-pass already filters
+      // by the same isDataExt rule. dataset_description.json is kept: it is loaded as existing
+      // metadata by processFile.
+      const ext = path.extname(name).toLowerCase();
+      if (name !== 'dataset_description.json' && !isDataExt(ext)) {
+        if (verbose) console.log(`  Skipping non-data file: ${name}`);
+        continue;
+      }
       total += 1;
       if (!await processFile(metadata, dirPath, name, verbose, targetDirectoryPath, options, usedArrayFilenames, usedRawFilenames)) failed += 1;
     }
@@ -582,9 +572,15 @@ export const processDirectory = async (metadata: JsPsychMetadata, directoryPath:
     failed += 1;
   }
 
-  if (failed === 0) console.log(`✔ Reading data files was successful with ${total} files read.`);
-  else if (failed !== total) console.log(`? Data files was partially successful with ${(total - failed)}/${total} files read.`);
-  else if (failed === total) console.log(`x Data files was unsuccessful with 0 files read. Please try again with valid JsPsych generated data.`);
+  if (total === 0) {
+    console.log(`\nNo data files found in ${directoryPath}.`);
+  } else if (failed === 0) {
+    console.log(`\n✔ Read ${total} data file${total === 1 ? '' : 's'} successfully.`);
+  } else if (failed < total) {
+    console.log(`\n✘ Read ${total - failed} of ${total} data files; ${failed} failed.`);
+  } else {
+    console.log(`\n✘ Reading data files was unsuccessful (0 of ${total} read). Please try again with valid jsPsych-generated data.`);
+  }
 
   return { total, failed };
 };
@@ -614,7 +610,10 @@ export async function saveTextToPath(textstr: string, filePath: string = './file
     await fs.promises.writeFile(filePath, textstr, 'utf8');
     console.log(`\n✔ File ${filePath} has been saved.`);
   } catch (err) {
+    // Writing dataset_description.json is the whole point of the tool — a failure here must
+    // not be swallowed into a false "success". Re-throw so the run aborts with a non-zero exit.
     console.error(`\nError writing to file ${filePath}:`, err);
+    throw err;
   }
 }
 

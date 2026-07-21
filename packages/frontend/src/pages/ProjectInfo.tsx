@@ -14,11 +14,26 @@ export const OPTIONAL_FIELDS: { key: string; label: string; hint: string; help?:
     help: 'Choose the option that matches your IRB approval or data-sharing agreement:\n• open — data can be shared publicly without restriction\n• open_deidentified — data can be shared after removing directly identifying information (names, dates of birth, etc.)\n• open_redacted — data can be shared after removing specific sensitive fields\n• private — data is not to be shared outside your team' },
 ];
 
+export type MetadataLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
 export type ProjectInfoSession = {
   name: string;
   description: string;
   optional: Record<string, string>;
   optionalOpen: boolean;
+  /**
+   * Outcome of loading an existing `dataset_description.json` into this session. Lives at the
+   * AppShell level (via the session) so it survives page remounts and gates whether the Data
+   * step is pre-completed and shown as "variables loaded from existing metadata" — a failed
+   * parse must not look like a successful load.
+   */
+  loadStatus: MetadataLoadStatus;
+  /**
+   * Identity of the existing-metadata file this session was loaded from (name:size:lastModified),
+   * or null if none. The load effect runs exactly once per file identity: on remount, a matching
+   * token means the load already happened, so it is not re-run (which would clobber session edits).
+   */
+  loadToken: string | null;
 };
 
 export const emptyProjectInfoSession = (): ProjectInfoSession => ({
@@ -26,7 +41,30 @@ export const emptyProjectInfoSession = (): ProjectInfoSession => ({
   description: '',
   optional: Object.fromEntries(OPTIONAL_FIELDS.map(f => [f.key, ''])),
   optionalOpen: false,
+  loadStatus: 'idle',
+  loadToken: null,
 });
+
+/** Stable identity for an uploaded file, used to load its metadata exactly once. */
+const fileIdentity = (file: File): string => `${file.name}:${file.size}:${file.lastModified}`;
+
+/**
+ * Writes the project-info fields (name, description, optional) into the metadata instance —
+ * shared by Continue and by the data-replace reset, which reloads existing metadata and then
+ * re-applies the user's edited fields on top.
+ */
+export function applyProjectInfoFields(meta: JsPsychMetadata, session: ProjectInfoSession): void {
+  meta.setMetadataField('name', session.name.trim());
+  meta.setMetadataField('description', session.description.trim() || 'No description provided.');
+  for (const { key } of OPTIONAL_FIELDS) {
+    const val = (session.optional[key] ?? '').trim();
+    if (val) {
+      meta.setMetadataField(key, val);
+    } else {
+      meta.deleteMetadataField(key);
+    }
+  }
+}
 
 interface ProjectInfoProps {
   jsPsychMetadata: JsPsychMetadata;
@@ -43,7 +81,14 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
   onSessionChange,
   onComplete,
 }) => {
-  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const fileToken = existingMetadataFile ? fileIdentity(existingMetadataFile) : null;
+  // Has this exact file already been loaded (or attempted) into the session? If so, don't reload
+  // on remount — that would clobber edits the user made on other steps.
+  const alreadyAttempted = fileToken !== null && session.loadToken === fileToken;
+
+  const [loadStatus, setLoadStatus] = useState<MetadataLoadStatus>(
+    alreadyAttempted ? session.loadStatus : existingMetadataFile ? 'loading' : 'idle',
+  );
   const [error, setError] = useState('');
   const [helpOpen, setHelpOpen] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<Record<string, string> | null>(null);
@@ -55,7 +100,11 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
   const toggleHelp = (key: string) => setHelpOpen(prev => prev === key ? null : key);
 
   useEffect(() => {
-    if (!existingMetadataFile) return;
+    if (!existingMetadataFile || fileToken === null) return;
+    // Load the existing metadata exactly once per uploaded file. A matching token means this file
+    // was already loaded into the session on an earlier mount; re-running loadMetadata would
+    // resurrect deleted authors / revert edited variables and clobber the form session.
+    if (session.loadToken === fileToken) return;
     setLoadStatus('loading');
     const reader = new FileReader();
     reader.onload = () => {
@@ -69,16 +118,22 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
           description: jsPsychMetadata.getMetadataField('description') as string || '',
           optional: optionalVals,
           optionalOpen: OPTIONAL_FIELDS.some(f => !!jsPsychMetadata.getMetadataField(f.key)),
+          loadStatus: 'loaded',
+          loadToken: fileToken,
         });
         setLoadStatus('loaded');
       } catch {
         setLoadStatus('error');
         setError('Failed to parse the metadata file — check that it is valid JSON.');
+        // Record the attempt (so it isn't retried) and propagate the failure so the Data step
+        // isn't pre-completed or shown as "variables loaded from existing metadata".
+        onSessionChange({ ...session, loadStatus: 'error', loadToken: fileToken });
       }
     };
     reader.onerror = () => {
       setLoadStatus('error');
       setError('Failed to read the file.');
+      onSessionChange({ ...session, loadStatus: 'error', loadToken: fileToken });
     };
     reader.readAsText(existingMetadataFile);
   }, [existingMetadataFile]);
@@ -144,19 +199,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
   const handleContinue = () => {
     if (!session.name.trim()) { setError('Project name is required.'); return; }
     setError('');
-
-    jsPsychMetadata.setMetadataField('name', session.name.trim());
-    jsPsychMetadata.setMetadataField('description', session.description.trim() || 'No description provided.');
-
-    for (const { key } of OPTIONAL_FIELDS) {
-      const val = (session.optional[key] ?? '').trim();
-      if (val) {
-        jsPsychMetadata.setMetadataField(key, val);
-      } else {
-        jsPsychMetadata.deleteMetadataField(key);
-      }
-    }
-
+    applyProjectInfoFields(jsPsychMetadata, session);
     onComplete();
   };
 
@@ -382,7 +425,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
           )}
         </div>
 
-        {error && <p className={styles.error}>{error}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
 
         <button className={styles.continueBtn} onClick={handleContinue}>
           Continue →

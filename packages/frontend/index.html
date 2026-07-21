@@ -7,7 +7,10 @@
     <title>jsPsych Metadata Generator</title>
     <script>
       (function () {
-        var t = localStorage.getItem('theme');
+        // ?theme= is passed by the docs site when embedding the wizard in an
+        // iframe — honor it first so the first paint matches the host page.
+        var t = new URLSearchParams(location.search).get('theme');
+        if (t !== 'dark' && t !== 'light') t = localStorage.getItem('theme');
         document.documentElement.dataset.theme =
           (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'light';
       })();
