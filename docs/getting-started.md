@@ -43,4 +43,4 @@ your-project/
 └── CHANGES.md                  placeholder for a changelog
 ```
 
-Both tools accept jsPsych data as CSV, JSON, or JSON-Lines (`.jsonl`), and convert JSON/JSONL to CSV so the Psych-DS validator can read it. Your originals are always preserved under `data/raw/`.
+Both tools accept jsPsych data as CSV, JSON, or JSON-Lines (`.jsonl`), and convert JSON/JSONL to CSV so the Psych-DS validator can read it. Your originals are preserved under `data/raw/` whenever the output isn't a byte-for-byte, same-named copy of the input.

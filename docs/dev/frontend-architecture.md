@@ -125,7 +125,7 @@ A recursive collapsible renderer for arbitrary JSON. Keys, strings, numbers, boo
 
 The validator and the downloadable zip both expect Psych-DS-compliant CSV data files, so `DataUpload.tsx` converts uploaded data **before** anything reaches Review. For each file it calls `jsPsychMetadata.generate()` to accumulate variable metadata, then builds the converted payload using library exports re-used from `@jspsych/metadata` (`buildPsychDSDataFiles`, `parseCSV`, `parseJsonData`, `analyzeJoinKeys`, `deriveFallbackBase`, `isValidPsychDSDataFilename`, `PSYCHDS_IGNORE_FILENAME`, `PSYCHDS_IGNORE_CONTENT`):
 
-- **JSON arrays** are serialized to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`); the original JSON is preserved under `data/raw/<name>`.
+- **JSON arrays** are serialized to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`). The original upload is preserved under `data/raw/<name>` whenever the staged output is not a byte-for-byte, same-named copy of the input (converted JSON, re-serialised CSVs, renamed CSVs).
 - **CSV** input is written verbatim (an already-compliant filename is kept; otherwise a `subject-<stem>` base is derived). Rows are still parsed so R-style **unnamed row-index columns** can be dropped.
 - **Non-array JSON** is skipped.
 - When raw originals are kept, a top-level **`.psychds-ignore`** file (`PSYCHDS_IGNORE_FILENAME` / `PSYCHDS_IGNORE_CONTENT`) is added so the validator skips `data/raw/`.

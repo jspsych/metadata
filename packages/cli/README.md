@@ -21,7 +21,7 @@ my-experiment/
 └── CHANGES.md                    placeholder for version tracking
 ```
 
-CSV inputs are already tabular, so they're written straight to `data/`; only JSON and JSON-Lines inputs are converted to CSV and additionally preserved under `data/raw/`. A CSV-only dataset has no `data/raw/` folder.
+CSV inputs are already tabular, so they're written straight to `data/`; JSON and JSON-Lines inputs are converted to CSV. The untouched original is preserved under `data/raw/` whenever the output is not a byte-for-byte, same-named copy of the input (converted JSON, re-serialised CSVs, renamed CSVs).
 
 ## Documentation
 

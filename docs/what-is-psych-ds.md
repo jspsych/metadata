@@ -33,7 +33,7 @@ my-experiment/
 └── data/raw/                   ← optional: original files in their earliest form
 ```
 
-The `data/` folder holds your data files in CSV format. Each filename follows a `keyword-value_data.csv` pattern (e.g. `subject-01_data.csv`, `task-flanker_data.csv`) so that the role of each file is unambiguous. The `data/raw/` folder is for preserving originals — JSON exports, Excel workbooks, anything that isn't a clean CSV — and is ignored by the validator.
+The `data/` folder holds your data files in CSV format. Each filename follows a `keyword-value_data.csv` pattern (e.g. `subject-01_data.csv`, `task-flanker_data.csv`) so that the role of each file is unambiguous. The `data/raw/` folder is for preserving originals — and is ignored by the validator. The jsPsych metadata tools keep an original there whenever the output is not a byte-for-byte, same-named copy of the input: JSON exports (always converted to CSV), CSVs that had to be re-serialised to be well-formed, and CSVs whose filename was changed to a compliant name. Only a clean CSV written verbatim under its own already-compliant name has no raw copy.
 
 ### 2. A metadata file
 

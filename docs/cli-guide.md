@@ -215,9 +215,9 @@ my-experiment/
 └── CHANGES.md                        placeholder for a changelog
 ```
 
-The `data/` folder holds the Psych-DS-compliant copies of your data. The example above starts from CSV files, which are already tabular and so are written straight to `data/`.
+The `data/` folder holds the Psych-DS-compliant copies of your data. CSV inputs are already tabular and are written straight to `data/`.
 
-If your inputs are **JSON or JSON-Lines**, the tool converts them to CSV in `data/` and additionally preserves your originals untouched under a `data/raw/` folder, alongside a top-level `.psychds-ignore` file that tells the validator to skip the raw copies. (CSV inputs aren't duplicated under `raw/`, so a CSV-only dataset has no `data/raw/` folder.) Data files that contain **nested arrays** produce one extra CSV per nested column.
+Whenever the output is **not a byte-for-byte, same-named copy** of your input, the tool additionally preserves the untouched original under a `data/raw/` folder, alongside a top-level `.psychds-ignore` file that tells the validator to skip the raw copies. That covers **JSON and JSON-Lines** inputs (always converted to CSV), CSVs that had to be **re-serialised** to be well-formed, and CSVs that were **renamed** to a compliant filename. A clean CSV written verbatim under its own already-compliant name is the only case with no raw copy. Data files that contain **nested arrays** produce one extra CSV per nested column.
 
 Open `dataset_description.json` to see what was generated. It will look something like:
 
