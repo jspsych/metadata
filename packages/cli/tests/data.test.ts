@@ -443,6 +443,36 @@ describe("processDirectory CSV raw-original preservation", () => {
     expect(fs.existsSync(path.join(tmpDir, ".psychds-ignore"))).toBe(true);
   });
 
+  test("preserves the renamed CSV's original via the interactive rename-plan (planned) path", async () => {
+    // The real interactive CLI reaches processFile through a renamePlan whenever any file in
+    // the directory needs renaming — the near-universal case for real OSF data. That `planned`
+    // branch captures mainOutputName from planned.mainName, so the transformed check must see
+    // the rename through this path too, not just the normalizedBases fallback the other tests use.
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "data");
+    fs.mkdirSync(srcDir);
+    fs.mkdirSync(dataDir);
+    const original = "trial_type,rt\njsPsych-html-keyboard-response,450";
+    fs.writeFileSync(path.join(srcDir, "trial.csv"), original);
+
+    const key = path.resolve(srcDir, "trial.csv");
+    const columns = await analyzeOutputColumns(srcDir);
+    const normalizedBases = new Map([[key, "subject-7"]]);
+    const renamePlan = planRenames(columns.map((c) => ({ key: c.key, base: "subject-7", arrayColumns: c.arrayColumns, objectColumns: c.objectColumns })));
+
+    const { failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir, { normalizedBases, renamePlan });
+    expect(failed).toBe(0);
+
+    // Renamed output written per the plan; the clean content is verbatim, so only the NAME
+    // changed — and that alone must trigger preservation of the original under data/raw/.
+    expect(fs.existsSync(path.join(dataDir, "subject-7_data.csv"))).toBe(true);
+    expect(fs.readFileSync(path.join(dataDir, "subject-7_data.csv"), "utf8")).toBe(original);
+    const rawPath = path.join(dataDir, "raw", "trial.csv");
+    expect(fs.existsSync(rawPath)).toBe(true);
+    expect(fs.readFileSync(rawPath, "utf8")).toBe(original);
+    expect(fs.existsSync(path.join(tmpDir, ".psychds-ignore"))).toBe(true);
+  });
+
   test("does NOT create a raw original for an already-compliant, verbatim-copied CSV", async () => {
     const srcDir = path.join(tmpDir, "src");
     const dataDir = path.join(tmpDir, "data");

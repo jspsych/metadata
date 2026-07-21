@@ -53,7 +53,7 @@ your-project/
 └── dataset_description.json    the generated metadata
 ```
 
-JSON and JSON-Lines exports are converted to CSV, and their originals are preserved under `data/raw/`. CSV inputs are already tabular, so they are used as-is and are not duplicated there. The project also includes placeholder `README.md` and `CHANGES.md` files — see [Using the CLI](./guides/using-the-cli.mdx) for the full layout.
+JSON and JSON-Lines exports are converted to CSV. Originals are preserved under `data/raw/` whenever the output is not a byte-for-byte, same-named copy of the input — converted JSON, re-serialised CSVs, and renamed CSVs alike; only a clean CSV kept verbatim under its own compliant name is not duplicated there. The project also includes placeholder `README.md` and `CHANGES.md` files — see [Using the CLI](./guides/using-the-cli.mdx) for the full layout.
 
 ## Get started
 

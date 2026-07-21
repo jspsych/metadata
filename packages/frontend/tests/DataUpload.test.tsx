@@ -334,6 +334,14 @@ describe("DataUpload", () => {
     // ── raw-original preservation ──────────────────────────────────────────
     // The original is kept under data/raw/ whenever the Psych-DS output is not a verbatim,
     // same-named copy of the input. The store flows back through onSessionChange.
+
+    // Two tests below override mockIsValid's implementation; jest.clearAllMocks() clears call
+    // history but NOT implementations, so restore the factory default (false) explicitly to
+    // keep the override from leaking into later tests.
+    afterEach(() => {
+      mockIsValid.mockImplementation(() => false);
+    });
+
     async function processedStore() {
       let store: any;
       await waitFor(() => {
@@ -358,7 +366,7 @@ describe("DataUpload", () => {
 
     test("does NOT preserve raw for an already-compliant, verbatim-copied CSV", async () => {
       // compliantBase keeps the name; the builder writes it unchanged and verbatim → no raw form.
-      mockIsValid.mockReturnValue(true);
+      mockIsValid.mockImplementation(() => true);
       mockBuild.mockReturnValueOnce([{ filename: "subject-sub01_data.csv", content: "rt\n100", kind: "main" }]);
       const { container } = render(<DataUpload {...props()} />);
       await pickAndProcess(makeFile("subject-sub01_data.csv", "rt\n100"), container);
@@ -372,7 +380,7 @@ describe("DataUpload", () => {
     test("preserves raw when a CSV must be re-serialised even though its name is unchanged", async () => {
       // verbatimSafe:false → the malformed original is re-serialised, so it's preserved under data/raw/.
       mockParseCSVForWrite.mockResolvedValueOnce({ rows: [], verbatimSafe: false });
-      mockIsValid.mockReturnValue(true);
+      mockIsValid.mockImplementation(() => true);
       mockBuild.mockReturnValueOnce([{ filename: "subject-sub01_data.csv", content: "rt\n100", kind: "main" }]);
       const { container } = render(<DataUpload {...props()} />);
       await pickAndProcess(makeFile("subject-sub01_data.csv", 'stimulus\n<div class="x">'), container);

@@ -56,7 +56,7 @@ Upload your jsPsych data files (`.csv` or `.json`):
 - Each file is shown with a status indicator once processed.
 - If your data files contain nested arrays, the wizard detects whether `trial_index` uniquely identifies each row. If not, a join-key chooser lets you select additional columns before proceeding — these are used to name the separate CSV files the validator expects.
 
-> **What the wizard does with your files:** JSON data is converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip both see compliant tables; your original JSON is preserved under `data/raw/`. CSV uploads are kept as-is. This conversion is what ends up in the downloaded zip.
+> **What the wizard does with your files:** JSON data is converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip both see compliant tables. CSV content is kept as-is where possible; originals are preserved under `data/raw/` whenever the staged copy is not a byte-for-byte, same-named copy of the upload (converted JSON, re-serialised CSVs, renamed CSVs). This conversion is what ends up in the downloaded zip.
 
 > **For existing projects:** the Data step is pre-marked complete since your variables are already loaded from the uploaded `dataset_description.json`. You can still upload new data files to regenerate the variable list.
 

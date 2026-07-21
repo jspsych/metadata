@@ -43,7 +43,7 @@ Click **Choose folder** to pick a directory of data files, or **Upload zip** to 
 - **`{ "trials": [...] }` wrapper** — e.g. OSF exports; unwrapped automatically.
 - **JSON-Lines (`.jsonl`)** — one JSON value per line.
 
-JSON and JSON-Lines are converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip see compliant tables. Your originals are preserved untouched under `data/raw/`.
+JSON and JSON-Lines are converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip see compliant tables. Your originals are preserved untouched under `data/raw/` whenever the staged output is not a byte-for-byte, same-named copy of the upload — converted JSON, re-serialised CSVs, and renamed CSVs alike.
 
 </details>
 

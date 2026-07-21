@@ -38,7 +38,7 @@ Give the path to the folder holding your jsPsych data files. They're read from t
 <details>
 <summary>Which file formats are accepted?</summary>
 
-**CSV**, a **JSON array** (`[ {…}, {…} ]`), the **`{ "trials": [...] }` wrapper** (e.g. OSF exports), or **JSON-Lines (`.jsonl`)**. JSON and JSON-Lines are converted to CSV in `data/`, with originals preserved under `data/raw/`. CSV is kept as-is. Other file types are ignored.
+**CSV**, a **JSON array** (`[ {…}, {…} ]`), the **`{ "trials": [...] }` wrapper** (e.g. OSF exports), or **JSON-Lines (`.jsonl`)**. JSON and JSON-Lines are converted to CSV in `data/`. CSV content is kept as-is where possible. Originals are preserved under `data/raw/` whenever the output is not a byte-for-byte, same-named copy of the input (converted JSON, re-serialised CSVs, renamed CSVs). Other file types are ignored.
 
 </details>
 

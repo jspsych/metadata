@@ -89,7 +89,7 @@ The tool accepts the following jsPsych data shapes:
 | **`{ "trials": [...] }` wrapper** | An object whose single key is `trials` holding the trial array (e.g. OSF exports). Automatically unwrapped, then treated as a JSON array. |
 | **JSON-Lines (`.jsonl`)** | One JSON value per line (JATOS and several labs export this way — often one participant's trial array per line). All lines are flattened into a single observation stream. |
 
-JSON and JSON-Lines files are automatically converted to CSV in the output (`data/` folder); the originals are preserved byte-for-byte under `data/raw/`, and a top-level `.psychds-ignore` is written so the validator skips that raw copy. CSV files are written to `data/` under their normalized name; because they are already tabular, CSV inputs are **not** duplicated under `data/raw/` (so a CSV-only dataset has no `data/raw/` folder).
+JSON and JSON-Lines files are automatically converted to CSV in the output (`data/` folder). CSV files are written to `data/` under their normalized name. Whenever the written output is **not** a byte-for-byte, same-named copy of the input — a converted JSON file, a CSV that was re-serialised to be well-formed, or a CSV that was renamed to a compliant filename — the original is preserved untouched under `data/raw/`, and a top-level `.psychds-ignore` is written so the validator skips the raw copies. Only a clean CSV written verbatim under its own already-compliant name has no `data/raw/` copy.
 
 Files of any other type are ignored during metadata generation.
 
