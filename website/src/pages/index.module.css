@@ -1,0 +1,197 @@
+/* --- Hero (two columns: copy on the left, paths on the right) ----------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 2rem;
+}
+
+.heroRow {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .heroRow {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+}
+
+/* Shift only the sentences down (not the logo), so the text sits a bit lower —
+   `position: relative` keeps its layout box in place, so the logo above stays
+   put and the column doesn't re-center. */
+.heroText {
+  position: relative;
+  top: -0.5rem;
+}
+
+@media (max-width: 900px) {
+  .heroText {
+    top: 0;
+  }
+}
+
+/* Shift the two cards down a bit (see .heroText for the technique). */
+.heroPaths {
+  position: relative;
+  top: 2rem;
+}
+
+@media (max-width: 900px) {
+  .heroPaths {
+    top: 0;
+  }
+}
+
+.heroLogo {
+  display: inline-flex;
+  height: 76px;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.heroBrain {
+  height: 100%;
+  width: auto;
+}
+
+.heroTitle {
+  font-size: 3rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .heroTitle {
+    font-size: 2.4rem;
+  }
+}
+
+.heroTitleAccent {
+  color: var(--ifm-color-primary);
+}
+
+.heroLede {
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--ifm-color-emphasis-800);
+  margin-bottom: 1rem;
+}
+
+.heroStandard {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0;
+}
+
+/* --- Two ways to generate it (right column) ----------------------------- */
+
+.pathList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pathCard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.pathCardHead {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.pathCardIcon {
+  color: #e8973a;
+  flex-shrink: 0;
+}
+
+.pathCardTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.pathCardDesc {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ifm-color-emphasis-700);
+  margin: 0 0 1.25rem;
+}
+
+.pathCardActions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.pathLink {
+  font-weight: 600;
+}
+
+/* --- Features ----------------------------------------------------------- */
+
+.features {
+  max-width: 1080px;
+  margin: 2rem auto 3.5rem;
+  padding: 0 1.5rem;
+}
+
+.featuresEyebrow {
+  color: var(--ifm-color-primary);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  margin-bottom: 1.75rem;
+}
+
+.featureIcon {
+  color: #e8973a;
+  display: block;
+  margin-bottom: 0.65rem;
+}
+
+.featureTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.featureBody {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.55;
+  font-size: 0.95rem;
+  margin-bottom: 0;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+@media (max-width: 800px) {
+  .featureGrid {
+    grid-template-columns: 1fr;
+    gap: 2.25rem;
+  }
+}

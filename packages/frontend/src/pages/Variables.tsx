@@ -123,6 +123,13 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
       ? (showAllLevels ? levels : levels.slice(0, LEVELS_PREVIEW))
       : [];
     const hasMoreLevels = levels && levels.length > LEVELS_PREVIEW;
+    // Per-variable ids tying each control to its label. Encode the name so unusual column names
+    // (spaces, punctuation) can't break the id/htmlFor pairing.
+    const uid = encodeURIComponent(v.name).replace(/%/g, '_');
+    const descId = `var-desc-${uid}`;
+    const typeId = `var-type-${uid}`;
+    const levelsLabelId = `var-levels-${uid}`;
+    const rangeLabelId = `var-range-${uid}`;
 
     return (
       <li
@@ -151,7 +158,9 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
           <div className={styles.rowBody}>
             <div className={styles.bodyMain}>
               <div className={styles.descCol}>
+                <label className={styles.label} htmlFor={descId}>Description</label>
                 <textarea
+                  id={descId}
                   className={styles.textarea}
                   value={descValue}
                   placeholder="Describe what this variable measures…"
@@ -165,8 +174,9 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
                 )}
               </div>
               <div className={styles.typeCol}>
-                <label className={styles.label}>Type</label>
+                <label className={styles.label} htmlFor={typeId}>Type</label>
                 <select
+                  id={typeId}
                   className={styles.select}
                   value={v.value || 'unknown'}
                   onChange={e => handleTypeChange(v.name, e.target.value)}
@@ -179,8 +189,8 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
             </div>
 
             {levels && levels.length > 0 && (
-              <div className={styles.levelsField}>
-                <label className={styles.label}>Detected levels</label>
+              <div className={styles.levelsField} role="group" aria-labelledby={levelsLabelId}>
+                <span id={levelsLabelId} className={styles.label}>Detected levels</span>
                 <div className={styles.levels}>
                   {visibleLevels.map((l, i) => (
                     <span key={i} className={styles.level}>{l}</span>
@@ -199,8 +209,8 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
             )}
 
             {(v.minValue !== undefined || v.maxValue !== undefined) && (
-              <div className={styles.field}>
-                <label className={styles.label}>Range</label>
+              <div className={styles.field} role="group" aria-labelledby={rangeLabelId}>
+                <span id={rangeLabelId} className={styles.label}>Range</span>
                 <span className={styles.rangeText}>
                   {v.minValue ?? '—'} – {v.maxValue ?? '—'}
                 </span>

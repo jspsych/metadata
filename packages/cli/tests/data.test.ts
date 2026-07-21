@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import JsPsychMetadata, { analyzeJoinKeys } from "@jspsych/metadata";
+import JsPsychMetadata, { analyzeJoinKeys, parseCSV } from "@jspsych/metadata";
 import { processOptions, loadMetadata, saveTextToPath, processDirectory, preAnalyzeDirectory, resolveJoinKeysNonInteractive, enumerateDataFiles, analyzeOutputColumns, RenamePlanError } from "../src/data";
 import { planRenames } from "../src/rename";
 
@@ -29,6 +29,11 @@ describe("saveTextToPath", () => {
     fs.writeFileSync(filePath, "old content");
     await saveTextToPath("new content", filePath);
     expect(fs.readFileSync(filePath, "utf8")).toBe("new content");
+  });
+
+  test("rethrows write failures instead of swallowing them", async () => {
+    const filePath = path.join(tmpDir, "no-such-dir", "output.json");
+    await expect(saveTextToPath("content", filePath)).rejects.toThrow();
   });
 });
 
@@ -130,8 +135,21 @@ describe("processDirectory", () => {
     expect(rt.maxValue).toBe(512);
   });
 
-  test("counts unsupported file types as failed", async () => {
+  test("silently skips unsupported (non-data) file types instead of counting them as failures", async () => {
+    // A stray notes.txt / .DS_Store is not jsPsych data and should not turn a clean run into a
+    // "partial failure" — it is pre-filtered out (matching the rename pre-pass's isDataExt filter).
     fs.writeFileSync(path.join(tmpDir, "notes.txt"), "just a text file");
+
+    const metadata = new JsPsychMetadata();
+    const { total, failed } = await processDirectory(metadata, tmpDir);
+
+    expect(total).toBe(0);
+    expect(failed).toBe(0);
+  });
+
+  test("counts a genuinely corrupt data file (right extension) as failed", async () => {
+    // Unlike a non-data file, a .json/.csv that can't be parsed IS a real ingestion failure.
+    fs.writeFileSync(path.join(tmpDir, "broken.json"), "{ not valid json ]");
 
     const metadata = new JsPsychMetadata();
     const { total, failed } = await processDirectory(metadata, tmpDir);
@@ -169,7 +187,8 @@ describe("processDirectory", () => {
         (args) => args[0] === "Can only read subdirectories one level deep:",
       );
       expect(deepDirCalls).toHaveLength(1);
-      expect(deepDirCalls[0][1]).toBe(tmpDir);
+      // The warning names the offending too-deep directory, not the root that was passed in.
+      expect(deepDirCalls[0][1]).toBe(path.join(subDir, "deeper"));
     } finally {
       warn.mockRestore();
     }
@@ -366,9 +385,38 @@ describe("processDirectory output-directory creation (#118)", () => {
     expect(written.startsWith("Participant_ID,")).toBe(true);
 
     // The metadata variable name matches it exactly.
-    const names = (metadata.getMetadata().variableMeasured as any[]).map((v) => v.name);
+    const names = ((metadata.getMetadata() as any).variableMeasured as any[]).map((v) => v.name);
     expect(names).toContain("Participant_ID");
     expect(names).not.toContain("﻿Participant_ID");
+  });
+
+  test("re-serialises a CSV whose stimulus has embedded quotes AND commas into strictly valid output", async () => {
+    // The quote+comma shape (e.g. '<p>Press "F", "J"</p>') fails even relax_quotes and used to
+    // drop the file ("0 files read"). The repair fallback reassembles the row; the written
+    // data file must be well-formed RFC-4180 (quoted field, doubled quotes) so the Psych-DS
+    // validator's strict parse accepts it.
+    const srcDir = path.join(tmpDir, "src");
+    const dataDir = path.join(tmpDir, "project", "data");
+    fs.mkdirSync(srcDir);
+    const stimulus = '<p>Press "F", "J" to respond</p>';
+    fs.writeFileSync(
+      path.join(srcDir, "subject-1.csv"),
+      `rt,stimulus,trial_type,trial_index\n300,${stimulus},html-keyboard-response,0\n`,
+    );
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { total, failed } = await processDirectory(new JsPsychMetadata(), srcDir, false, dataDir);
+    warn.mockRestore();
+
+    expect(total).toBe(1);
+    expect(failed).toBe(0);
+
+    const written = fs.readFileSync(path.join(dataDir, "subject-1_data.csv"), "utf8");
+    // Strict parse must succeed and reproduce the stimulus exactly — one field, commas intact.
+    const rows = (await parseCSV(written, { relaxQuotes: false })) as Array<Record<string, any>>;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].stimulus).toBe(stimulus);
+    expect(rows[0].rt).toBe("300");
   });
 });
 
@@ -484,8 +532,14 @@ describe("processDirectory JSON → CSV conversion", () => {
     const metadata = new JsPsychMetadata();
     await processDirectory(metadata, srcDir, false, dataDir);
 
+    // It must not be converted to a CSV, copied verbatim into data/, or preserved under data/raw/.
+    // The source dataset_description.json belongs only at the dataset root (written there by the
+    // caller); a copy inside data/ is a stray file the validator flags.
     expect(fs.existsSync(path.join(dataDir, "dataset_description.csv"))).toBe(false);
+    expect(fs.existsSync(path.join(dataDir, "dataset_description.json"))).toBe(false);
     expect(fs.existsSync(path.join(dataDir, "raw", "dataset_description.json"))).toBe(false);
+    // In fact nothing at all should be written into data/ for a directory containing only it.
+    expect(fs.existsSync(dataDir) ? fs.readdirSync(dataDir) : []).toEqual([]);
   });
 
   test("disambiguates a second same-named JSON file instead of overwriting or dropping it", async () => {

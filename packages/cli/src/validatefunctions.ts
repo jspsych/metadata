@@ -28,10 +28,16 @@ export function parseMissingFields(issues: Map<string, any>, key: string): strin
 export const validatePsychDS = async (datasetPath: string, verbose: boolean): Promise<PsychDSValidationResult> => {
   let result;
   try {
-    result = await validate(path.relative(process.cwd(), datasetPath).replace(/\\/g, '/'));
+    // path.relative() returns "" when datasetPath IS the cwd; validate("") throws, so pass "."
+    // (the current directory) in that case.
+    const rel = path.relative(process.cwd(), datasetPath).replace(/\\/g, '/');
+    result = await validate(rel === '' ? '.' : rel);
   } catch (err) {
-    console.warn(`\nWarning: Psych-DS validation could not run: ${err instanceof Error ? err.message : err}`);
-    return { hasErrors: false, missingRequiredFields: [], missingRecommendedFields: [] };
+    // A validator crash means the dataset was never actually validated — treat it as a
+    // failure (not a silent pass), so the caller exits non-zero instead of reporting success
+    // for a never-checked dataset.
+    console.error(`\n✘ Psych-DS validation could not run: ${err instanceof Error ? err.message : err}`);
+    return { hasErrors: true, missingRequiredFields: [], missingRecommendedFields: [] };
   }
 
   const errors: string[] = [];
@@ -107,6 +113,15 @@ export const validateJson = (filePath: string, fileName?: string): boolean => {
     // Check if the file has a .json extension
     if (path.extname(resolvedPath).toLowerCase() !== '.json') {
       console.error(`Error: ${resolvedPath} is not a JSON file`);
+      return false;
+    }
+
+    // Actually parse the file so malformed JSON is rejected here rather than silently accepted
+    // and later overwritten with regenerated defaults (data loss on a hand-edited file).
+    try {
+      JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+    } catch (err) {
+      console.error(`Error: ${resolvedPath} is not valid JSON: ${err instanceof Error ? err.message : err}`);
       return false;
     }
 

@@ -411,7 +411,8 @@ describe("JsPsychMetadata", () => {
       value: "string",
     });
     jsPsychMetadata.updateVariable("trial_type", "levels", 100);
-    trialType["levels"] = [100];
+    // levels is a string[]; a numeric level is stringified rather than stored raw.
+    trialType["levels"] = ["100"];
     expect(jsPsychMetadata.getVariable("trial_type")).toStrictEqual(trialType);
   });
 
