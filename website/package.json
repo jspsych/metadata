@@ -32,10 +32,16 @@
   },
   "overrides": {
     "@docusaurus/plugin-content-docs": "3.9.2",
-    "webpack": "5.105.3"
+    "webpack": "5.105.3",
+    "serialize-javascript": "^7.0.5",
+    "uuid": "^11.1.1"
   },
   "browserslist": {
-    "production": [">0.5%", "not dead", "not op_mini all"],
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
     "development": [
       "last 3 chrome version",
       "last 3 firefox version",
