@@ -525,22 +525,152 @@ export function buildPsychDSDataFiles(args: BuildPsychDSDataFilesArgs): PsychDSD
   return out;
 }
 
-export async function parseCSV(input) {
+function parseCSVRaw(input: string, relaxQuotes: boolean): Promise<Array<Record<string, any>>> {
   if (!parse) {
     throw new Error('Parser module not loaded');
   }
-  // console.log("input:", input);
   return new Promise((resolve, reject) => {
     parse(input, {
       columns: true, // Treat the first row as headers
       delimiter: ',', // Specify the delimiter (e.g., comma)
-      bom: true // Strip a leading UTF-8 BOM so the first header name isn't corrupted (e.g. "﻿Participant_ID")
+      bom: true, // Strip a leading UTF-8 BOM so the first header name isn't corrupted (e.g. "﻿Participant_ID")
+      // relax_quotes tolerates quotes inside unquoted fields. jsPsych writes unquoted `stimulus`
+      // HTML that contains literal `"` (e.g. `<div class = "EncodingBox">`); without relaxation
+      // csv-parse throws "Invalid Opening Quote" and the whole file is dropped.
+      relax_quotes: relaxQuotes
     }, (err, records) => {
       if (err) {
         reject(err);
       } else {
-        resolve(records);
+        resolve(records as Array<Record<string, any>>);
       }
     });
   });
+}
+
+/**
+ * Splits one CSV line into fields with malformation-tolerant quoting rules:
+ * - A field is quoted only when it STARTS with `"`; inside a quoted field, `""` is an escaped
+ *   quote and a lone `"` closes the field only when followed by a delimiter or end-of-line —
+ *   any other `"` is literal text. This reads `"<p>He said "hi" there</p>"` as one field.
+ * - With `commaSpaceLiteral`, a comma followed by a space is treated as literal text, not a
+ *   delimiter. Machine-written jsPsych CSVs never put a space after a real delimiter, while
+ *   prose/HTML commas (`Press "F", "J"`) almost always have one — this is what lets an
+ *   over-split row (unquoted field containing `", "`) be re-read to the expected width.
+ */
+function splitCSVLine(line: string, commaSpaceLiteral: boolean): string[] {
+  const fields: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  let fieldStart = true;
+  let i = 0;
+  const isDelimiterAt = (pos: number): boolean =>
+    line[pos] === ',' && !(commaSpaceLiteral && line[pos + 1] === ' ');
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i += 2; continue; } // RFC-4180 escaped quote
+        if (i + 1 === line.length || isDelimiterAt(i + 1)) { inQuotes = false; i += 1; continue; }
+        cur += '"'; i += 1; continue; // stray inner quote: keep it literal
+      }
+      cur += ch; i += 1; continue;
+    }
+    if (fieldStart && ch === '"') { inQuotes = true; fieldStart = false; i += 1; continue; }
+    if (isDelimiterAt(i)) { fields.push(cur); cur = ''; fieldStart = true; i += 1; continue; }
+    cur += ch; fieldStart = false; i += 1;
+  }
+  fields.push(cur);
+  return fields;
+}
+
+/**
+ * Last-resort row-repair parser for CSVs that fail even relax_quotes — typically jsPsych
+ * `stimulus` HTML containing BOTH a literal `"` and a `,` in an unquoted (or improperly
+ * quoted) field, which over-splits the row and makes csv-parse throw "Invalid Record Length"
+ * (CSV_RECORD_INCONSISTENT_COLUMNS) for the whole file. Rows are re-read line by line with
+ * {@link splitCSVLine}; a row that doesn't match the header width is retried with the
+ * comma-space-literal rule, and dropped with a warning if it still doesn't fit — one
+ * irreparable row costs that row, not the file. Throws `originalError` only when NO data
+ * row could be recovered (the file is genuinely unparseable, and the loud failure should
+ * name csv-parse's reason, not this fallback).
+ */
+function repairParseCSV(input: string, originalError: unknown): Array<Record<string, any>> {
+  const content = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input; // mirror bom: true
+  const lines = content.split(/\r\n|\r|\n/).filter((l) => l.trim() !== ''); // mirror skip on empty lines
+  if (lines.length === 0) return [];
+  const headers = splitCSVLine(lines[0], false);
+  const rows: Array<Record<string, any>> = [];
+  let repaired = 0;
+  const skipped: number[] = [];
+  for (let li = 1; li < lines.length; li++) {
+    let fields = splitCSVLine(lines[li], false);
+    if (fields.length !== headers.length) {
+      fields = splitCSVLine(lines[li], true);
+      if (fields.length !== headers.length) {
+        skipped.push(li + 1); // 1-based line number for the warning
+        continue;
+      }
+      repaired += 1;
+    }
+    rows.push(Object.fromEntries(headers.map((h, ci) => [h, fields[ci]])));
+  }
+  if (rows.length === 0 && lines.length > 1) throw originalError;
+  if (repaired > 0) {
+    console.warn(
+      `CSV repair: ${repaired} row(s) contained unquoted text with embedded quotes/commas and were ` +
+      `reassembled to the header's ${headers.length} columns. Verify the output; the original file is malformed CSV.`
+    );
+  }
+  if (skipped.length > 0) {
+    console.warn(
+      `CSV repair: ${skipped.length} row(s) could not be matched to the header's ${headers.length} ` +
+      `columns and were skipped (line${skipped.length === 1 ? '' : 's'} ${skipped.slice(0, 10).join(', ')}${skipped.length > 10 ? ', …' : ''}).`
+    );
+  }
+  return rows;
+}
+
+/**
+ * Parses CSV content, escalating leniency only as far as the file requires:
+ * 1. strict RFC-4180 (well-formed files never risk lenient reinterpretation),
+ * 2. csv-parse `relax_quotes` (unescaped `"` inside fields, no embedded commas),
+ * 3. row-repair fallback (fields with BOTH embedded quotes and commas — see repairParseCSV).
+ * With `relaxQuotes: false` only stage 1 runs and malformed input throws; parseCSVForWrite
+ * uses that as its verbatim-bytes probe.
+ */
+export async function parseCSV(input, { relaxQuotes = true }: { relaxQuotes?: boolean } = {}) {
+  if (!relaxQuotes) return parseCSVRaw(input, false);
+  try {
+    return await parseCSVRaw(input, false);
+  } catch {
+    try {
+      return await parseCSVRaw(input, true);
+    } catch (err) {
+      return repairParseCSV(input, err);
+    }
+  }
+}
+
+/**
+ * Parse a CSV for the write path, also reporting whether it was already strictly RFC-4180 valid.
+ *
+ * `verbatimSafe` is true only when the content parses under strict quoting. When it's false the
+ * file parsed solely because of quote relaxation (e.g. jsPsych `stimulus` HTML with unescaped
+ * `"`), so its exact bytes are NOT safe to copy into the Psych-DS `data/` payload: the validator
+ * strict-parses CSV too and would reject the malformed file (`CSV_FORMATTING_ERROR`). Callers
+ * pass `mainContent` (verbatim) only when `verbatimSafe`, otherwise they re-serialise the parsed
+ * rows so the written CSV is well-formed. A clean file is parsed once; only a malformed one is
+ * parsed twice (strict probe, then lenient).
+ */
+export async function parseCSVForWrite(
+  input: string,
+): Promise<{ rows: Array<Record<string, any>>; verbatimSafe: boolean }> {
+  try {
+    const rows = (await parseCSV(input, { relaxQuotes: false })) as Array<Record<string, any>>;
+    return { rows, verbatimSafe: true };
+  } catch {
+    const rows = (await parseCSV(input)) as Array<Record<string, any>>;
+    return { rows, verbatimSafe: false };
+  }
 }
