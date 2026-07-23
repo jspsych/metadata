@@ -107,13 +107,13 @@ describe("Variables", () => {
   // ── expand / collapse ────────────────────────────────────────────────────
 
   describe("expand / collapse", () => {
-    test("unknown vars start expanded, known vars start collapsed", () => {
+    test("all vars start collapsed (matches the 'Expand all' toggle, which reads off initially)", () => {
       const meta = makeMeta([unknownVar("rt"), knownVar("stimulus")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
 
       expect(within(varRow("rt")).getByRole("button")).toHaveAttribute(
         "aria-expanded",
-        "true",
+        "false",
       );
       expect(within(varRow("stimulus")).getByRole("button")).toHaveAttribute(
         "aria-expanded",
@@ -139,8 +139,8 @@ describe("Variables", () => {
       const meta = makeMeta([unknownVar("rt")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
 
-      // rt starts expanded
       const row = varRow("rt");
+      await userEvent.click(within(row).getByRole("button")); // rows start collapsed; expand it
       expect(within(row).getByRole("textbox")).toBeInTheDocument();
       expect(within(row).getByRole("combobox")).toBeInTheDocument();
       expect(within(row).getByText("▲")).toBeInTheDocument();
@@ -236,6 +236,7 @@ describe("Variables", () => {
       const meta = makeMeta([unknownVar("rt")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
 
+      await userEvent.click(within(varRow("rt")).getByRole("button")); // rows start collapsed; expand it
       const textarea = within(varRow("rt")).getByRole("textbox");
       await userEvent.clear(textarea);
       await userEvent.type(textarea, "Reaction time");
@@ -253,6 +254,7 @@ describe("Variables", () => {
       const meta = makeMeta([makeVar("rt", { value: "numeric" })]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
 
+      await userEvent.click(within(varRow("rt")).getByRole("button")); // rows start collapsed; expand it
       const textarea = within(varRow("rt")).getByRole("textbox");
       await userEvent.type(textarea, "Reaction time");
 
@@ -268,6 +270,7 @@ describe("Variables", () => {
 
       expect(screen.getByText(/0 \/ 2 filled in/)).toBeInTheDocument();
 
+      await userEvent.click(within(varRow("rt")).getByRole("button")); // rows start collapsed; expand it
       const textarea = within(varRow("rt")).getByRole("textbox");
       await userEvent.type(textarea, "Reaction time");
 
@@ -300,16 +303,18 @@ describe("Variables", () => {
       const meta = makeMeta([unknownVar("rt")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
 
+      await userEvent.click(within(varRow("rt")).getByRole("button")); // rows start collapsed; expand it
       const select = within(varRow("rt")).getByRole("combobox");
       await userEvent.selectOptions(select, "numeric");
 
       expect(meta.updateVariable).toHaveBeenCalledWith("rt", "value", "numeric");
     });
 
-    test("all five type options are present", () => {
+    test("all five type options are present", async () => {
       const meta = makeMeta([unknownVar("rt")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
 
+      await userEvent.click(within(varRow("rt")).getByRole("button")); // rows start collapsed; expand it
       const select = within(varRow("rt")).getByRole("combobox");
       const options = within(select).getAllByRole("option").map((o) => o.textContent);
       expect(options).toEqual(

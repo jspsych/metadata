@@ -159,12 +159,38 @@ function Features(): React.ReactElement {
   );
 }
 
+function SeeItInAction(): React.ReactElement {
+  return (
+    <section className={styles.showcase}>
+      <div className={styles.showcaseCard}>
+        <div className={styles.showcaseText}>
+          <p className={styles.featuresEyebrow}>See it in action</p>
+          <h3 className={styles.showcaseTitle}>
+            A Serial Reaction Time experiment, before and after
+          </h3>
+          <p className={styles.showcaseBody}>
+            See how cryptic jsPsych columns like <code>grid</code> and{' '}
+            <code>target</code> turn into readable descriptions — then run the
+            tool on the same sample yourself, no upload needed.
+          </p>
+        </div>
+        <Link
+          className="button button--primary"
+          to="/docs/guides/serial-reaction-time">
+          See the example →
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 export default function Home(): React.ReactElement {
   return (
     <Layout description="Generate Psych-DS compliant metadata for your jsPsych experiment data, in the browser or from the command line.">
       <main>
         <Hero />
         <Features />
+        <SeeItInAction />
       </main>
     </Layout>
   );

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
-    "build:wizard": "VITE_BASE=/wizard-app/ npm --prefix ../packages/frontend run build && rm -rf static/wizard-app && cp -r ../packages/frontend/dist static/wizard-app",
+    "build:wizard": "node scripts/build-wizard.mjs",
     "prestart": "npm run build:wizard",
     "start": "docusaurus start",
     "prebuild": "npm run build:wizard",

@@ -1,0 +1,165 @@
+---
+title: 'Example: Serial Reaction Time'
+sidebar_label: 'Example'
+description: See raw jsPsych Serial Reaction Time data turned into readable Psych-DS metadata, and try it yourself.
+hide_table_of_contents: true
+---
+
+import Link from '@docusaurus/Link';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import CodeCompare from '@site/src/components/CodeCompare';
+
+# See it in action: Serial Reaction Time
+
+In a [Serial Reaction Time](https://en.wikipedia.org/wiki/Serial_reaction_time) task, a
+target appears in one of several locations and the participant presses the matching key. It's a
+classic implicit learning paradigm, and its raw data is a good example of columns that are hard
+to understand at a glance.
+
+Look at a raw trial below: what is `grid`? What does `target` point at? Is `rt` measured from the
+start of the trial or the moment the target appears? On their own, the columns don't say.
+
+The metadata tool answers those questions automatically. It reads each row's `trial_type`, fetches
+the matching jsPsych plugin
+([`@jspsych/plugin-serial-reaction-time`](https://www.jspsych.org/latest/plugins/serial-reaction-time/)),
+and pulls the plugin's own documentation for every column into a Psych-DS
+`dataset_description.json`.
+
+<div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', margin: '1.5rem auto'}}>
+  <Link className="button button--primary" to="/wizard?sample=serial-reaction-time">
+    ▶ Try this sample in the wizard
+  </Link>
+  <a
+    className="button button--secondary"
+    href={useBaseUrl('/examples/serial-reaction-time/sample-data.json')}
+    download="task-srt_subject-01.json">
+    ⬇ Download the sample data
+  </a>
+  <a
+    className="button button--secondary"
+    href={useBaseUrl('/examples/serial-reaction-time/')}
+    target="_blank"
+    rel="noopener noreferrer">
+    ▶ Play the experiment
+  </a>
+</div>
+
+"Try this sample in the wizard" opens the real tool with this dataset already loaded, so no download
+or upload is required. It runs entirely in your browser.
+
+:::tip Prefer the command line?
+**Download the sample data** above (it saves as `task-srt_subject-01.json`), then run it through the
+[CLI](/docs/guides/using-the-cli). Point it at the folder containing that file and you'll get the
+same `dataset_description.json` shown below.
+:::
+
+## Before and after
+
+On the left is one trial from the raw jsPsych export. On the right is what the tool generated for
+each of its columns. Almost every column gets a `description` pulled straight from the plugin, not
+written by hand. The one exception is `plugin_version`, which the plugin doesn't document, so it
+comes out `unknown` for you to fill in. (`grid` is shown on one line for readability, and the extra
+array columns the tool creates for `grid` and `target` are left out here; the full file has them.)
+
+<CodeCompare>
+
+```json title="sample-data.json (raw export)"
+[
+  {
+    "rt": 1383,
+    "response": "d",
+    "correct": true,
+    "grid": [[1, 1, 1, 1]],
+    "target": [0, 1],
+    "trial_type": "serial-reaction-time",
+    "trial_index": 0,
+    "plugin_version": "2.1.0",
+    "time_elapsed": 1940
+  }
+]
+```
+
+```json title="dataset_description.json (generated)"
+[
+  {
+    "@type": "PropertyValue",
+    "name": "rt",
+    "description": "The response time in milliseconds for the participant to make a response. The time is measured from when the second stimulus first appears on the screen until the participant's response.",
+    "value": "number",
+    "minValue": 270,
+    "maxValue": 1383
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "response",
+    "description": "Indicates which key the participant pressed.",
+    "value": "string",
+    "levels": ["d", "k", "s", "j"]
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "correct",
+    "description": "`true` if the participant's response matched the target.",
+    "value": "boolean"
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "grid",
+    "description": "The representation of the grid. This will be encoded as a JSON string when data is saved using the `.json()` or `.csv()` functions.",
+    "value": "array"
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "target",
+    "description": "The representation of the target location on the grid. This will be encoded as a JSON string when data is saved using the `.json()` or `.csv()` functions",
+    "value": "array"
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "trial_type",
+    "description": "The name of the plugin used to run the trial.",
+    "value": "string",
+    "levels": ["serial-reaction-time"]
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "trial_index",
+    "description": "Join key referencing the position of an enclosing array element (0-based index).",
+    "value": "number",
+    "minValue": 0,
+    "maxValue": 15
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "plugin_version",
+    "description": "unknown",
+    "value": "string",
+    "levels": ["2.1.0"]
+  },
+  {
+    "@type": "PropertyValue",
+    "name": "time_elapsed",
+    "description": "The number of milliseconds between the start of the experiment and when the trial ended.",
+    "value": "number",
+    "minValue": 1940,
+    "maxValue": 15064
+  }
+]
+```
+
+</CodeCompare>
+
+`grid` and `target` are the ones you'd never guess cold, and they're exactly the ones the tool
+describes for you. You can also <a href={useBaseUrl('/examples/serial-reaction-time/dataset_description.json')} target="_blank" rel="noopener noreferrer">open the full generated file</a>.
+
+:::note Nested columns become their own files
+`grid` and `target` are arrays, so the tool also extracts them into companion
+`_measure-*_data.csv` files alongside the main table, keeping the dataset flat and Psych-DS valid.
+Those companion files link back to each trial by `trial_index`, which is why `trial_index` is
+described as a join key above.
+:::
+
+## Try it on your own data
+
+Ready to do this with your own experiment? Open the [wizard](/wizard) and point it at your data
+folder. Everything runs locally in your browser.

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Serial Reaction Time — jsPsych Metadata example</title>
+  <!-- Pinned so this example stays reproducible. Descriptions in the generated
+       metadata are fetched from these same plugin sources on unpkg. -->
+  <script src="https://unpkg.com/jspsych@8.2.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-serial-reaction-time@2.1.0"></script>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@8.2.3/css/jspsych.css" />
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fafafa;
+      color: #1a1a1a;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a1b; color: #ececec; }
+    }
+    .panel {
+      max-width: 640px;
+      margin: 2rem auto;
+      padding: 1.5rem 2rem;
+      text-align: center;
+    }
+    .panel h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+    .panel p { line-height: 1.55; }
+    .keys { font-weight: 600; letter-spacing: 0.02em; }
+    kbd {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid currentColor;
+      border-radius: 5px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.95em;
+      margin: 0 1px;
+    }
+    button.big {
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.6rem 1.4rem;
+      margin-top: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+    }
+    button.big:hover { background: #1d4ed8; }
+    .summary {
+      display: inline-flex;
+      gap: 2rem;
+      margin: 1rem 0 0.5rem;
+    }
+    .summary .stat { font-size: 1.6rem; font-weight: 700; }
+    .summary .label { font-size: 0.8rem; opacity: 0.7; }
+    .hint { font-size: 0.85rem; opacity: 0.7; margin-top: 0.75rem; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Instructions live OUTSIDE the jsPsych timeline so the exported data
+       contains only serial-reaction-time trials (no instructions plugin rows). -->
+  <div id="intro" class="panel">
+    <h1>Serial Reaction Time</h1>
+    <p>
+      Four boxes are shown in a row. On each trial one box lights up — press the
+      key underneath it as quickly and accurately as you can.
+    </p>
+    <p class="keys">
+      <kbd>S</kbd> <kbd>D</kbd> <kbd>J</kbd> <kbd>K</kbd><br />
+      (leftmost box → rightmost box)
+    </p>
+    <p>There are 16 short trials. It takes under a minute.</p>
+    <button id="start-btn" class="big">Start</button>
+  </div>
+
+  <!-- jsPsych renders trials here. -->
+  <div id="jspsych-target"></div>
+
+  <!-- Results screen with a single explicit download button (no auto-download). -->
+  <div id="results" class="panel" hidden>
+    <h1>Done — thanks!</h1>
+    <div class="summary">
+      <div><div id="stat-acc" class="stat">–</div><div class="label">accuracy</div></div>
+      <div><div id="stat-rt" class="stat">–</div><div class="label">mean RT (ms)</div></div>
+    </div>
+    <p>Download your data, then drop it into the metadata wizard to see it described.</p>
+    <button id="download-btn" class="big">Download data</button>
+    <p class="hint">Saves <code>task-srt_subject-01.json</code> to your downloads folder.</p>
+  </div>
+
+  <script>
+    const jsPsych = initJsPsych({
+      display_element: 'jspsych-target',
+      on_finish: showResults,
+    });
+
+    // A short, fixed sequence of target columns (0 = leftmost … 3 = rightmost).
+    // Repeating it is the classic implicit-learning manipulation of the SRT task.
+    const sequence = [1, 3, 0, 2, 3, 1, 2, 0, 1, 3, 0, 2, 3, 1, 2, 0];
+
+    const timeline = sequence.map((col) => ({
+      type: jsPsychSerialReactionTime,
+      grid: [[1, 1, 1, 1]],
+      choices: [['s', 'd', 'j', 'k']],
+      target: [0, col],
+      show_response_feedback: true,
+      feedback_duration: 250,
+      pre_target_duration: 300,
+    }));
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+      document.getElementById('intro').hidden = true;
+      jsPsych.run(timeline);
+    });
+
+    document.getElementById('download-btn').addEventListener('click', () => {
+      jsPsych.data.get().localSave('json', 'task-srt_subject-01.json');
+    });
+
+    function showResults() {
+      const trials = jsPsych.data.get().filter({ trial_type: 'serial-reaction-time' });
+      const n = trials.count();
+      const nCorrect = trials.filter({ correct: true }).count();
+      const meanRt = Math.round(trials.select('rt').mean());
+      document.getElementById('stat-acc').textContent =
+        n ? Math.round((nCorrect / n) * 100) + '%' : '–';
+      document.getElementById('stat-rt').textContent = isNaN(meanRt) ? '–' : meanRt;
+      document.getElementById('results').hidden = false;
+    }
+  </script>
+</body>
+</html>

@@ -162,3 +162,23 @@ html[class*='docs-doc-id-guides/using-the-cli'] .pagination-nav {
   margin-left: auto;
   margin-right: auto;
 }
+
+/**
+ * The Serial Reaction Time example also hides its TOC, but it has a wide side-by-side code
+ * comparison. Keep the prose at the same comfortable 860px measure as the other guides, but let the
+ * article (and so the comparison) run wider — everything centered, so the prose and the comparison
+ * share a center line. The `.code-compare` block is the one child allowed to use the full width.
+ */
+html[class*='docs-doc-id-guides/serial-reaction-time'] .theme-doc-markdown,
+html[class*='docs-doc-id-guides/serial-reaction-time'] .theme-doc-footer,
+html[class*='docs-doc-id-guides/serial-reaction-time'] .pagination-nav {
+  max-width: 1160px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[class*='docs-doc-id-guides/serial-reaction-time'] .theme-doc-markdown > :not(.code-compare) {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}

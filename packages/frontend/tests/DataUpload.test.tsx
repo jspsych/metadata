@@ -260,6 +260,64 @@ describe("DataUpload", () => {
     });
   });
 
+  // ── sample preload (docs "try this sample" deep link) ─────────────────────
+
+  describe("sample preload", () => {
+    let originalFetch: typeof global.fetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+    });
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    test("an unknown/prototype-chain slug is ignored — no fetch, stays on the idle picker", async () => {
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof global.fetch;
+
+      // `__proto__` resolves to an inherited property on a bare index; the hasOwnProperty guard must
+      // reject it so a hostile query param can't drive the preload.
+      render(<DataUpload {...props({ sampleSlug: "__proto__" })} />);
+
+      // No network, and the normal idle picker is shown rather than a preflight/processing view.
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Choose folder" })).toBeInTheDocument();
+      expect(meta.generate).not.toHaveBeenCalled();
+    });
+
+    test("an allowlisted slug fetches the bundled sample and processes it automatically", async () => {
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => JSON.stringify([{ trial_index: 0, rt: 100 }]),
+      });
+      global.fetch = fetchMock as unknown as typeof global.fetch;
+
+      render(<DataUpload {...props({ sampleSlug: "serial-reaction-time" })} />);
+
+      // The bundled sample is fetched (path resolved against the running document) and run straight
+      // through generate() with no user upload — landing on the Done view.
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(String(fetchMock.mock.calls[0][0])).toContain(
+        "examples/serial-reaction-time/sample-data.json",
+      );
+      await waitFor(() => expect(meta.generate).toHaveBeenCalledTimes(1));
+      expect(await screen.findByRole("button", { name: "Continue →" })).toBeInTheDocument();
+    });
+
+    test("a failed sample fetch surfaces an error and returns to the idle picker", async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue({ ok: false, status: 404 }) as unknown as typeof global.fetch;
+
+      render(<DataUpload {...props({ sampleSlug: "serial-reaction-time" })} />);
+
+      expect(await screen.findByText(/Could not load the .* dataset/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Choose folder" })).toBeInTheDocument();
+      expect(meta.generate).not.toHaveBeenCalled();
+    });
+  });
+
   // ── processing ───────────────────────────────────────────────────────────
 
   describe("processing", () => {

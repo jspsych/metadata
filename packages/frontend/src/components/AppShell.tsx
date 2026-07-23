@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import PreviewDrawer from './PreviewDrawer';
 import ProjectInfo, { ProjectInfoSession, emptyProjectInfoSession, applyProjectInfoFields } from '../pages/ProjectInfo';
 import DataUpload, { DataSession, emptyDataSession } from '../pages/DataUpload';
+import { SAMPLE_DATASETS, sampleProjectFields } from '../samples';
 import Variables from '../pages/Variables';
 import Authors from '../pages/Authors';
 import Review from '../pages/Review';
@@ -22,19 +23,46 @@ export const STEPS: { id: StepId; label: string }[] = [
 interface AppShellProps {
   jsPsychMetadata: JsPsychMetadata;
   existingMetadataFile?: File;
+  /** Allowlisted sample slug to preload (docs-site "try this sample" deep link); undefined normally. */
+  sampleSlug?: string;
   onStartOver: () => void;
 }
 
-const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFile, onStartOver }) => {
-  const [currentStep, setCurrentStep] = useState<StepId>('projectInfo');
-  const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(() => new Set<StepId>());
+const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFile, sampleSlug, onStartOver }) => {
+  // The allowlisted sample being preloaded, if any (docs "try this sample" deep link). hasOwnProperty
+  // so a prototype-chain slug can't resolve to an inherited property; App.tsx already validated it.
+  const sample = sampleSlug && Object.prototype.hasOwnProperty.call(SAMPLE_DATASETS, sampleSlug)
+    ? SAMPLE_DATASETS[sampleSlug] : undefined;
+
+  // A preloaded sample jumps straight to the Data step (it auto-processes there); Project Info is
+  // pre-completed so later steps stay navigable — its name/description are seeded below.
+  const [currentStep, setCurrentStep] = useState<StepId>(sample ? 'data' : 'projectInfo');
+  const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(
+    () => sample ? new Set<StepId>(['projectInfo']) : new Set<StepId>()
+  );
   const [dataProcessed, setDataProcessed] = useState(false);
   const [dataBusy, setDataBusy] = useState(false);
   const [dataSession, setDataSession] = useState<DataSession>(emptyDataSession);
   const [projectInfoSession, setProjectInfoSession] = useState<ProjectInfoSession>(
-    () => emptyProjectInfoSession()
+    () => sample
+      ? { ...emptyProjectInfoSession(), ...sampleProjectFields(sample) }
+      : emptyProjectInfoSession()
   );
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Seed the sample's project name + description onto jsPsychMetadata up front, so a visitor who
+  // goes straight to Review (Project Info is pre-completed) still has the Psych-DS-required `name`
+  // and `description` fields. The Project Info session above is seeded from the same mapping
+  // (sampleProjectFields), so the form matches and neither can drift. Both stay editable there.
+  useEffect(() => {
+    if (sample) {
+      const fields = sampleProjectFields(sample);
+      jsPsychMetadata.setMetadataField('name', fields.name);
+      jsPsychMetadata.setMetadataField('description', fields.description);
+    }
+    // Run once for the sample; jsPsychMetadata identity is stable for the session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // An existing project's Data step is only "done for free" once its metadata actually loaded —
   // a failed parse must not pre-complete Data or claim variables were loaded from it.
@@ -135,6 +163,7 @@ const AppShell: React.FC<AppShellProps> = ({ jsPsychMetadata, existingMetadataFi
             jsPsychMetadata={jsPsychMetadata}
             dataProcessed={dataProcessed}
             existingMetadataLoaded={existingLoaded}
+            sampleSlug={sampleSlug}
             onComplete={() => { setDataProcessed(true); completeStep('data'); }}
             onResetMetadata={resetMetadata}
             onBusyChange={setDataBusy}
