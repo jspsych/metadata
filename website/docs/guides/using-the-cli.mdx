@@ -1,7 +1,7 @@
 ---
 title: Using the CLI
 sidebar_label: Using the CLI
-description: Turn raw jsPsych experiment data into a Psych-DS compliant dataset from the command line, step by step.
+description: A prompt-by-prompt walkthrough of the metadata CLI — what each question means and how to answer it.
 hide_table_of_contents: true
 ---
 
@@ -9,7 +9,9 @@ import {Steps, Step} from '@site/src/components/Steps';
 
 # Using the CLI
 
-The metadata CLI turns a folder of raw jsPsych data into a [Psych-DS](https://psychds-docs.readthedocs.io/en/latest/) compliant project. Prefer point-and-click? Use the **[web wizard](/wizard)** instead — it does the same thing in your browser (see [Using the wizard](./using-the-wizard.mdx)).
+The metadata CLI turns a folder of raw jsPsych data into a [Psych-DS](https://psychds-docs.readthedocs.io/en/latest/) compliant project. It works by asking you a short series of questions. This page walks through **every prompt you'll see, in order**, and explains what each one means and how to answer it. Prefer point-and-click? Use the **[web wizard](/wizard)** instead — it does the same thing in your browser (see [Using the wizard](./using-the-wizard.mdx)).
+
+Each prompt below is shown exactly as it appears in your terminal, followed by what it's asking. Some prompts only appear in certain situations — those are marked **(only if…)**.
 
 <Steps>
 
@@ -21,19 +23,70 @@ You'll need **Node.js 18+** (check with `node --version`; install from [nodejs.o
 npx @jspsych/metadata-cli
 ```
 
-The first run downloads the tool automatically; after that it launches immediately and prompts you through the steps below.
+The first run downloads the tool automatically; after that it launches immediately and starts asking the questions below. Every step is identical on **macOS, Windows, and Linux** — only the way you type a folder path differs (see step 5). Any modern terminal works: Terminal on macOS, PowerShell or Windows Terminal on Windows.
 
 </Step>
 
-<Step n={2} title="Create or update a project">
+<Step n={2} title="“What would you like to do?”">
 
-Choose **Create a new project** (or **Update an existing project** if you've generated metadata for this dataset before). Then pick an **output folder** — an existing folder to create the project inside — and give the project a **name** (used as the new subfolder name and in the metadata; hyphens are fine, no spaces).
+```
+? What would you like to do?
+❯ Create a new project
+  Update an existing project
+```
+
+Your first choice, selected with the arrow keys and **Enter**:
+
+- **Create a new project** — start fresh: read your raw data and build a brand-new Psych-DS project from it. Pick this the first time.
+- **Update an existing project** — you've already generated metadata for this dataset before and want to refresh it (for example, after collecting more data). This loads the existing `dataset_description.json` before processing.
 
 </Step>
 
-<Step n={3} title="Point to your data">
+<Step n={3} title="“Path to the folder…”">
 
-Give the path to the folder holding your jsPsych data files. They're read from that folder and one level of subfolders. Your originals are copied, never modified.
+```
+? Path to the folder where the new project will be created:
+```
+
+Type (or paste) the path to an **existing** folder to build the project *inside*. The tool creates a new subfolder here named after your project — it doesn't overwrite the folder you point at.
+
+If you chose **Update an existing project** in step 2, you'll instead see:
+
+```
+? Path to existing project folder (must contain dataset_description.json):
+```
+
+Here you point directly at the project folder you generated before. If the folder doesn't contain a `dataset_description.json`, the tool rejects it and asks again.
+
+</Step>
+
+<Step n={4} title="“Enter the project name…”">
+
+```
+? Enter the project name (used as the folder name and in the metadata):
+```
+
+**(only if creating a new project.)** The name is used two ways: it becomes the new subfolder's name, and it's recorded in the metadata as the dataset name. **Hyphens are fine; avoid spaces** (e.g. `flanker-study`, not `flanker study`).
+
+</Step>
+
+<Step n={5} title="“Path to your raw data folder…”">
+
+```
+? Path to your raw data folder (files will be copied, not moved):
+```
+
+Point at the folder holding your jsPsych data files. The tool reads that folder **and one level of subfolders**. Your originals are **copied, never modified**.
+
+<details>
+<summary>Typing the folder path on Windows vs macOS</summary>
+
+The prompt is the same on every platform; only the path format differs.
+
+- **macOS / Linux:** use forward slashes, e.g. `/Users/you/Desktop/my-data`. `~` is shorthand for your home folder, so `~/Desktop/my-data` works too. Tip: drag the folder onto the terminal window to paste its full path.
+- **Windows:** use your full path, e.g. `C:\Users\you\Desktop\my-data` (backslashes are fine, and `~` works as well). Tip: hold **Shift**, right-click the folder, and choose **Copy as path** — then delete the surrounding `"` quotes before pressing Enter, since the tool reads them literally.
+
+</details>
 
 <details>
 <summary>Which file formats are accepted?</summary>
@@ -44,33 +97,96 @@ Give the path to the folder holding your jsPsych data files. They're read from t
 
 </Step>
 
-<Step n={4} title="Fix file names (if needed)">
+<Step n={6} title="“How should these files be renamed?”">
 
-Psych-DS names data files `keyword-value_data.csv` (e.g. `subject-01_data.csv`). If yours don't match, the CLI lists them and offers renaming **strategies**, each with a live preview on your real filenames.
+**(only if your filenames don't match the Psych-DS pattern.)** Psych-DS names data files `keyword-value_data.csv` (e.g. `subject-01_data.csv`). If yours don't match, the tool lists them and asks:
 
-<details>
-<summary>The renaming strategies, and nested-array data</summary>
+```
+? How should these files be renamed?
+❯ Use the value found inside each file
+  Keep only the part that differs
+  Give the files fresh numbered names
+  Keep the whole old filename as the value
+```
 
-The recommended strategy, when available, is **using the value found inside each file** — it reads an ID column from the data itself, so it works even when the old filenames are meaningless. Other options: keep only the differing part, assign fresh numbered names, or keep the whole old name as the value. For the full list see [Data file naming](../reference/cli-reference.md#data-file-naming).
+Each **strategy** comes with a live preview on your real filenames, so you can see the result before committing:
 
-If a file contains **nested arrays** and `trial_index` isn't unique, the CLI asks you to pick additional **join-key** columns so each extracted row can be identified — see [Nested arrays and join keys](../reference/cli-reference.md#nested-arrays-and-join-keys). Flat, single-participant datasets skip this.
+- **Use the value found inside each file** *(recommended when offered)* — reads an ID column from the data itself, so it works even when the old names are meaningless.
+- **Keep only the part that differs** — strips the shared prefix/suffix; the varying middle becomes the value.
+- **Give the files fresh numbered names** — a clean sequence like `subject-001`, `subject-002`. You'll be asked `Name for the first file…`.
+- **Keep the whole old filename as the value** — the safe fallback: nothing is lost, but names get verbose.
 
-</details>
+After you pick a strategy the tool shows the full set of proposed renames and asks:
+
+```
+? Apply these names?
+❯ Apply
+  Edit one filename
+  Choose a different strategy
+```
+
+Choose **Edit one filename** to fix a single name by hand (it asks `Which file?` then `New name…`), or **Choose a different strategy** to start over. You may also be asked `Choose a Psych-DS keyword to label these files:` (the `keyword` part, like `subject` or `task`) and, for names that are technically valid but use an unofficial keyword, `Rename these files too?`.
+
+For the full strategy table and keyword list, see [Data file naming](../reference/cli-reference.md#data-file-naming).
 
 </Step>
 
-<Step n={5} title="Customize & fill in descriptions (optional)">
+<Step n={7} title="“Select additional join-key columns…”">
 
-The CLI generates metadata automatically and looks up variable descriptions from the jsPsych plugin that produced each column. Two optional prompts let you go further:
+```
+? Select additional join-key columns for extracted array CSVs:
+```
 
-- **Use a custom metadata file** to add authors, a study description, or override variable descriptions — the command-line equivalent of the wizard's forms. See [Customizing the output](./customizing-output.md).
-- **Fill in unknown descriptions** for any variables the lookup couldn't identify (or skip them).
+**(only if a file contains nested arrays and `trial_index` isn't unique.)** When the tool extracts a nested array into its own CSV, each row needs a column that uniquely identifies it. Candidates are grouped into **"Sufficient alone"** and **"Reduces duplicates,"** with a **"Proceed anyway"** escape. Flat, single-participant datasets skip this entirely. See [Nested arrays and join keys](../reference/cli-reference.md#nested-arrays-and-join-keys).
 
 </Step>
 
-<Step n={6} title="Validate & get your project">
+<Step n={8} title="“Would you like to customize the metadata?”">
 
-The CLI validates the result against Psych-DS and reports pass/fail. You end up with a self-contained project in your chosen folder:
+```
+? Would you like to customize the metadata?
+❯ Use defaults
+  Use a custom metadata file
+```
+
+Pick **Use defaults** to accept the automatically generated metadata (you can always edit `dataset_description.json` later, or re-run the CLI). Pick **Use a custom metadata file** to supply a metadata options file, at which point it asks:
+
+```
+? Path to metadata options .json file:
+```
+
+A metadata options file lets you add **authors**, a **study description**, or **override variable descriptions** — the command-line equivalent of the wizard's forms. See [Customizing the output](./customizing-output.md) for the file format.
+
+</Step>
+
+<Step n={9} title="“…fill in unknown descriptions?”">
+
+```
+? 3 variable(s) have unknown descriptions. Would you like to fill them in?
+❯ Fill in descriptions
+  Skip
+```
+
+**(only if some variables couldn't be described automatically.)** The tool looks up each column's description from the jsPsych plugin that produced it. For anything it can't identify, you can add a description by hand. Pick **Fill in descriptions** and it walks each one:
+
+```
+? Description for "response" (press Enter to skip):
+```
+
+Type a short description, or press **Enter** to leave it as `unknown`.
+
+</Step>
+
+<Step n={10} title="Validate & get your project">
+
+Finally the tool validates the result against Psych-DS and reports pass or fail:
+
+```
+✔ Psych-DS validation passed (2 warnings).
+  (Rerun with --verbose to see warnings.)
+```
+
+If a **required field** is missing, it prompts you to supply it before finishing, e.g. `Value for required field "description":`. You end up with a self-contained project in your chosen folder:
 
 ```
 my-experiment/
