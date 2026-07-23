@@ -1,0 +1,70 @@
+.row {
+  display: grid;
+  /* left pane | drag handle | right pane. The left width is driven by the component's --left-col
+     custom property; the right pane takes the remaining space. */
+  grid-template-columns: var(--left-col, 40%) 16px minmax(0, 1fr);
+  align-items: stretch;
+  margin: 1.5rem 0;
+}
+
+.pane {
+  min-width: 0;
+}
+
+/* Both panes' code blocks fill the row height so the divider spans the whole comparison even when
+   the two sides have different line counts. */
+.pane :global(.theme-code-block) {
+  height: 100%;
+}
+
+/* Wrap long lines by default so full descriptions are visible without horizontal scrolling. */
+.pane :global(.prism-code) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The draggable divider. A thin line sits in the middle of a wider, easier-to-grab hit area. */
+.gutter {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  align-self: stretch;
+}
+
+.gutter::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--ifm-toc-border-color);
+  border-radius: 2px;
+}
+
+.gutter:hover::before,
+.gutter:focus-visible::before {
+  background: var(--ifm-color-primary);
+  width: 4px;
+}
+
+.gutter:focus-visible {
+  outline: none;
+}
+
+/* While dragging, don't let text selection fight the drag. */
+.dragging {
+  user-select: none;
+}
+
+/* Stack into one column on narrow screens; the divider makes no sense there. */
+@media (max-width: 996px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .gutter {
+    display: none;
+  }
+}

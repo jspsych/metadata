@@ -55,10 +55,9 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
     () => new Set(vars.filter(v => v.needsAttention).map(v => v.name))
   );
 
-  // unknowns start expanded, known start collapsed
-  const [expandedSet, setExpandedSet] = useState<Set<string>>(
-    () => new Set(vars.filter(v => initialUnknowns.has(v.name)).map(v => v.name))
-  );
+  // Everything starts collapsed so the initial view matches the "Expand all" toggle (which reads
+  // off until every row is open). Rows are expanded on demand via the per-row toggle or "Expand all".
+  const [expandedSet, setExpandedSet] = useState<Set<string>>(() => new Set());
 
   const [levelsExpanded, setLevelsExpanded] = useState<Set<string>>(new Set());
 

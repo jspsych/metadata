@@ -8,6 +8,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   guides: [
     'guides/using-the-wizard',
+    'guides/serial-reaction-time',
     'guides/using-the-cli',
     'guides/customizing-output',
     'guides/troubleshooting',

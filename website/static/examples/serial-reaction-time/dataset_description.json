@@ -1,0 +1,116 @@
+{
+  "name": "serial-reaction-time",
+  "schemaVersion": "Psych-DS 0.4.0",
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "description": "Dataset generated using JsPsych",
+  "author": [],
+  "variableMeasured": [
+    {
+      "@type": "PropertyValue",
+      "name": "rt",
+      "description": "The response time in milliseconds for the participant to make a response. The time is measured from when the second stimulus first appears on the screen until the participant's response.",
+      "value": "number",
+      "minValue": 270,
+      "maxValue": 1383
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "response",
+      "description": "Indicates which key the participant pressed.",
+      "value": "string",
+      "levels": [
+        "d",
+        "k",
+        "s",
+        "j"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "correct",
+      "description": "`true` if the participant's response matched the target.",
+      "value": "boolean"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "grid",
+      "description": "The representation of the grid. This will be encoded as a JSON string when data is saved using the `.json()` or `.csv()` functions.",
+      "value": "array"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "element_index",
+      "description": "Position of this element within its source array column (0-based).",
+      "value": "number"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "trial_index",
+      "description": "Join key referencing the position of an enclosing array element (0-based index).",
+      "value": "number",
+      "minValue": 0,
+      "maxValue": 15
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "grid.value",
+      "description": "unknown",
+      "value": "array"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "grid.element_index",
+      "description": "Join key referencing the position of an enclosing array element (0-based index).",
+      "value": "number"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "grid.value.value",
+      "description": "unknown",
+      "value": "number",
+      "minValue": 1,
+      "maxValue": 1
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "target",
+      "description": "The representation of the target location on the grid. This will be encoded as a JSON string when data is saved using the `.json()` or `.csv()` functions",
+      "value": "array"
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "target.value",
+      "description": "unknown",
+      "value": "number",
+      "minValue": 0,
+      "maxValue": 3
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "trial_type",
+      "description": "The name of the plugin used to run the trial.",
+      "value": "string",
+      "levels": [
+        "serial-reaction-time"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "plugin_version",
+      "description": "unknown",
+      "value": "string",
+      "levels": [
+        "2.1.0"
+      ]
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "time_elapsed",
+      "description": "The number of milliseconds between the start of the experiment and when the trial ended.",
+      "value": "number",
+      "minValue": 1940,
+      "maxValue": 15064
+    }
+  ]
+}

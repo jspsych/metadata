@@ -195,3 +195,40 @@
     gap: 2.25rem;
   }
 }
+
+/* --- See it in action (example CTA) ------------------------------------- */
+
+.showcase {
+  max-width: 1080px;
+  margin: 0 auto 4rem;
+  padding: 0 1.5rem;
+}
+
+.showcaseCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem 2rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 12px;
+  padding: 1.75rem 2rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.showcaseText {
+  max-width: 40rem;
+}
+
+.showcaseTitle {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+}
+
+.showcaseBody {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.55;
+  font-size: 0.95rem;
+  margin: 0;
+}

@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, hasUnnamedColumns, isValidPsychDSDataFilename, parseCSVForWrite, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
 import PageHeader from '../components/PageHeader';
 import { createStagedFileStore, type StagedFileStore } from '../staging/stagedFileStore';
+import { SAMPLE_DATASETS } from '../samples';
 import styles from './DataUpload.module.css';
 
 type JoinKeyCandidate = { column: string; makesUnique: boolean };
@@ -55,6 +56,8 @@ interface DataUploadProps {
   jsPsychMetadata: JsPsychMetadata;
   dataProcessed: boolean;
   existingMetadataLoaded?: boolean;
+  /** Allowlisted sample slug to auto-fetch and process on mount (docs deep link); undefined normally. */
+  sampleSlug?: string;
   onComplete: () => void;
   /**
    * Full data reset for the "replace all data" flow: clears generated variables so metadata stops
@@ -135,6 +138,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
   jsPsychMetadata,
   dataProcessed,
   existingMetadataLoaded,
+  sampleSlug,
   onComplete,
   onResetMetadata,
   onBusyChange,
@@ -347,7 +351,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
   const runGenerate = async (
     joinKeys: string[],
-    suppressWarning: boolean
+    suppressWarning: boolean,
+    // Defaults to the picked `batch` state; the sample preload passes its freshly-fetched files
+    // directly, since setBatch() hasn't flushed to state yet when it kicks off processing.
+    targetBatch: File[] = batch
   ) => {
     setPhase('processing');
     // Additive runs append this batch's outcomes below the previous batches'; replace runs start
@@ -355,7 +362,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
     const additive = pendingMode === 'additive';
     const priorStatuses = additive ? fileStatuses : [];
     const offset = priorStatuses.length;
-    const initial: FileStatus[] = batch.map(f => ({ name: f.name, status: 'pending' }));
+    const initial: FileStatus[] = targetBatch.map(f => ({ name: f.name, status: 'pending' }));
     setFileStatuses([...priorStatuses, ...initial]);
 
     const update = (i: number, patch: Partial<FileStatus>) =>
@@ -372,8 +379,8 @@ const DataUpload: React.FC<DataUploadProps> = ({
     const arrayNames = new Set<string>(additive ? usedArrayFilenames : []);
     const rawNames = new Set<string>(additive ? usedRawFilenames : []);
 
-    for (let i = 0; i < batch.length; i++) {
-      const file = batch[i];
+    for (let i = 0; i < targetBatch.length; i++) {
+      const file = targetBatch[i];
 
       update(i, { status: 'loading' });
 
@@ -487,9 +494,52 @@ const DataUpload: React.FC<DataUploadProps> = ({
     setUsedArrayFilenames([...arrayNames]);
     setUsedRawFilenames([...rawNames]);
     setConvertedStore(store);
-    setFiles(prev => (additive ? [...prev, ...batch] : batch));
+    setFiles(prev => (additive ? [...prev, ...targetBatch] : targetBatch));
     setPhase('done');
   };
+
+  // One-shot sample preload: when the wizard is opened via a docs "try this sample" deep link,
+  // fetch the bundled sample file(s), stage them as if the user had picked them, and run the normal
+  // processing pipeline so the visitor lands on the generated data with no upload.
+  useEffect(() => {
+    // hasOwnProperty, not a bare index, so a prototype-chain slug (`__proto__`, `toString`) can't
+    // masquerade as an allowlisted sample. App.tsx already validates, but this stays self-contained.
+    if (!sampleSlug || !Object.prototype.hasOwnProperty.call(SAMPLE_DATASETS, sampleSlug)) return;
+    const sample = SAMPLE_DATASETS[sampleSlug];
+
+    // `cancelled` (rather than a persistent ref) gives one-shot behavior that survives StrictMode:
+    // in dev React mounts, cleans up, then remounts, so the first run is cancelled by its cleanup
+    // and the second runs to completion. `sampleSlug` is stable for the session, so the effect
+    // never re-fires otherwise — no risk of processing twice.
+    let cancelled = false;
+    (async () => {
+      setPhase('preflight');
+      try {
+        const fetched = await Promise.all(
+          sample.files.map(async ({ url, name }) => {
+            // Resolve against the running document: the wizard is served under
+            // `<baseUrl>/wizard-app/`, so `../examples/…` reaches the docs `static/examples/`.
+            const res = await fetch(new URL(url, document.baseURI));
+            if (!res.ok) throw new Error(`${name} — HTTP ${res.status}`);
+            return new File([await res.text()], name);
+          })
+        );
+        if (cancelled) return;
+        setBatch(fetched);
+        setFiles(fetched);
+        setSourceName(sample.label);
+        // Bundled samples are single-participant, so trial_index is already unique — skip the
+        // join-key pre-flight and process straight through the freshly-fetched batch.
+        await runGenerate(['trial_index'], true, fetched);
+      } catch (e) {
+        if (cancelled) return;
+        setPickError(`Could not load the ${sample.label} dataset. ${String(e)}`);
+        setPhase('idle');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sampleSlug]);
 
   const statusIcon = (s: FileStatus['status']) => {
     if (s === 'success')  return <span className={styles.iconSuccess}>✓</span>;

@@ -15,10 +15,13 @@ export default function WizardEmbed({
   className,
   lazy = false,
   title = 'jsPsych Metadata Wizard',
+  sample,
 }: {
   className?: string;
   lazy?: boolean;
   title?: string;
+  /** Allowlisted sample slug to preload; forwarded into the iframe as `?sample=`. */
+  sample?: string;
 }): React.ReactElement {
   const {colorMode} = useColorMode(); // resolved 'light' | 'dark'
   const base = useBaseUrl('/wizard-app/');
@@ -47,11 +50,13 @@ export default function WizardEmbed({
     return () => window.removeEventListener('message', onMessage);
   });
 
+  const sampleParam = sample ? `&sample=${encodeURIComponent(sample)}` : '';
+
   return (
     <iframe
       ref={iframeRef}
       className={className}
-      src={`${base}?theme=${initialTheme}`}
+      src={`${base}?theme=${initialTheme}${sampleParam}`}
       title={title}
       loading={lazy ? 'lazy' : undefined}
       onLoad={pushTheme}
