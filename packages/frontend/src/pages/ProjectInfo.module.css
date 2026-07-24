@@ -401,3 +401,37 @@
 .continueBtn:hover {
   background-color: var(--c-cta-hover);
 }
+
+/* ─── Phone ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .form {
+    gap: 1.25rem;
+  }
+
+  /* "Upload JSON" + its hint stop sharing one line. */
+  .uploadRow {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+
+  /* The 4.5rem label gutter leaves too little for the value, so the conflict
+     rows read as label-above-value instead. */
+  .conflictDetailRow {
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .conflictDetailLabel {
+    width: auto;
+  }
+
+  .conflictBtns {
+    flex-wrap: wrap;
+  }
+
+  .continueBtn {
+    align-self: stretch;
+    width: 100%;
+  }
+}

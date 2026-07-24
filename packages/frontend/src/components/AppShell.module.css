@@ -11,6 +11,28 @@
   background-color: var(--c-bg);
 }
 
+/* Phone: the sidebar becomes a top bar (see Sidebar.module.css), so the shell
+   stacks and the content takes the full width. `min-height: 0` lets the content
+   scroll inside the shell rather than pushing it taller than the viewport —
+   without it a flex column child refuses to shrink below its content height. */
+@media (max-width: 700px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .content {
+    min-height: 0;
+    /* Bottom padding clears the fixed Preview pill so it can't cover the last
+       control on the page (usually Continue). */
+    padding: 1.5rem 1rem 4.5rem;
+  }
+
+  .previewPill {
+    bottom: 1rem;
+    right: 1rem;
+  }
+}
+
 .previewPill {
   position: fixed;
   bottom: 1.5rem;

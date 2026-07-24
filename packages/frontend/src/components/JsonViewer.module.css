@@ -19,6 +19,19 @@
   padding-left: 1.5rem;
 }
 
+/* Phone: 1.5rem per nesting level eats a 375px screen within a few levels, so
+   tighten the indent (and the gutters) rather than force sideways scrolling. */
+@media (max-width: 700px) {
+  .viewer {
+    padding: 0.85rem 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .children {
+    padding-left: 0.9rem;
+  }
+}
+
 /* Syntax token colors — light mode (jsPsych logo palette, darkened for contrast on white) */
 .key   { color: #006838; }  /* logo dark green — 7:1 on white */
 .str   { color: #b06210; }  /* orange-amber (hue ~31°) — 4.5:1 on white */

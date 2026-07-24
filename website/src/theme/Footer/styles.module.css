@@ -64,3 +64,23 @@
   color: var(--ifm-color-primary);
   text-decoration: none;
 }
+
+/* Phone: the row already wraps, but a 1.75rem link gap plus space-between
+   scatters the wrapped items across the width. Centre everything into a tidy
+   stack and close the gaps up. */
+@media (max-width: 700px) {
+  .footer {
+    padding: 1.15rem 1.15rem;
+  }
+
+  .inner {
+    justify-content: center;
+    text-align: center;
+    gap: 0.9rem 1.25rem;
+  }
+
+  .links {
+    justify-content: center;
+    gap: 0.75rem 1.25rem;
+  }
+}

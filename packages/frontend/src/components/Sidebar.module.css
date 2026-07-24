@@ -216,6 +216,79 @@
 :global([data-theme="dark"]) .psychdsLink { color: var(--c-ink-2); }
 :global([data-theme="dark"]) .psychdsLink:hover { color: var(--c-forest-bright); }
 
+/* ─── Phone: the step nav becomes a top bar ──────────────────────────────────
+   A 210px side rail leaves ~165px of content on a 375px screen, so below
+   --w-narrow the nav turns horizontal and sits above the content: the same
+   nodes and connector, rotated a quarter turn, with each label under its node.
+   Progress stays visible at all times — no hamburger, nothing hidden. */
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 100%;
+    min-width: 0;
+    padding: 0.75rem 0 0.5rem;
+    border-right: none;
+    border-bottom: 1px solid var(--c-border-sub);
+  }
+
+  .header {
+    padding: 0 1rem 0.75rem;
+  }
+
+  /* Steps run left-to-right, each an equal-width column (node above label). */
+  .stepList {
+    flex-direction: row;
+    flex: 0 0 auto;
+    gap: 0;
+    padding: 0 0.5rem;
+  }
+
+  .stepList li {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .step {
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.4rem 0.15rem;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  /* The connector rotates with the flow: it now runs from this node's center
+     across to the next node's. Equal-width columns make width:100% land exactly
+     on the next node, the same trick the vertical rule uses with its height. */
+  .step::before {
+    left: 50%;
+    top: calc(0.4rem + 11px); /* step padding-top + node radius = node center */
+    width: 100%;
+    height: 2px;
+    transform: none;
+  }
+
+  /* Footer flattens into a single row under the steps so it costs one line of
+     height instead of two stacked blocks. */
+  .footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem 0;
+    margin-top: 0.4rem;
+  }
+
+  .psychdsLink {
+    padding: 0;
+  }
+
+  .startOver {
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
 /* Start over confirmation modal — native <dialog> for free focus trap + Escape */
 
 .dialog {
@@ -223,7 +296,9 @@
   border: 1px solid var(--c-border);
   border-radius: 12px;
   padding: 1.75rem;
-  width: 320px;
+  /* Never wider than the viewport it's centred in (320px overflows a 375px
+     phone once the UA's dialog margins are counted). */
+  width: min(320px, calc(100vw - 2rem));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

@@ -410,3 +410,26 @@
 .continueBtn:hover {
   background-color: var(--c-cta-hover);
 }
+
+/* ─── Phone ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  /* Paired fields (name/email, etc.) stack — two columns on a phone leaves each
+     input too narrow to read what's typed in it. */
+  .fieldRow {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+
+  .card {
+    padding: 0.85rem 0.85rem 0.75rem;
+  }
+
+  .bulkActions {
+    flex-wrap: wrap;
+  }
+
+  .continueBtn {
+    width: 100%;
+  }
+}
