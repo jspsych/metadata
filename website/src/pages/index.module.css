@@ -119,7 +119,7 @@
 }
 
 .pathCardIcon {
-  color: #e8973a;
+  color: var(--jspsych-orange);
   flex-shrink: 0;
 }
 
@@ -165,7 +165,7 @@
 }
 
 .featureIcon {
-  color: #e8973a;
+  color: var(--jspsych-orange);
   display: block;
   margin-bottom: 0.65rem;
 }

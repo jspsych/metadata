@@ -48,7 +48,7 @@ function App() {
         </button>
       )}
       {page === 'landing'
-        ? <Landing onStart={handleStart} />
+        ? <Landing onStart={handleStart} embedded={embedded} />
         : <AppShell
             jsPsychMetadata={jsPsychMetadata}
             existingMetadataFile={existingMetadataFile}

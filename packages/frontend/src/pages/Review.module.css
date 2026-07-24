@@ -50,8 +50,8 @@
 /* The One Amber Button — output download, appears once per session */
 .downloadBtn {
   align-self: flex-start;
-  background-color: var(--c-amber);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 7px;
   padding: 0.7em 2em;
@@ -63,7 +63,7 @@
 }
 
 .downloadBtn:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-cta-hover);
 }
 
 .saveJsonBtn {
@@ -96,7 +96,7 @@
 .saveError {
   margin: 0.5rem 0 0;
   font-size: 0.82rem;
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 /* Validator note */
@@ -154,8 +154,8 @@
 }
 
 .validateBtn:hover:not(:disabled) {
-  background-color: var(--c-accent);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
 }
 
 .validateBtn:disabled {
@@ -180,7 +180,7 @@
 }
 
 .resultInvalid {
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   background: var(--c-danger-bg);
   border-color: var(--c-danger-border);
 }

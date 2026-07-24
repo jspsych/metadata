@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import JsPsychMetadata, { AuthorFields } from '@jspsych/metadata';
-import PageHeader from '../components/PageHeader';
 import styles from './Authors.module.css';
 
 interface AuthorsProps {
@@ -187,11 +186,9 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
     }
   };
 
-  const savedCount = rows.filter(r => r.committedName).length;
-
   return (
     <>
-      <PageHeader title={<>Authors <span className={styles.count}>{savedCount}</span></>} />
+      <h2 className="srOnly">Authors</h2>
       <div className={styles.page}>
       <p className={styles.subtext}>
         Authors are optional. You can skip this step or add them later by re-opening existing metadata.

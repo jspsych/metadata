@@ -51,4 +51,27 @@ describe("Landing", () => {
     await userEvent.click(toggle);
     expect(screen.queryByText(/open standard/)).not.toBeInTheDocument();
   });
+
+  test("embedded lean screen shows the compact heading and cards but drops the hero", () => {
+    render(<Landing onStart={jest.fn()} embedded />);
+    // Lean heading + the functional two-card choice remain.
+    expect(screen.getByText("Start a metadata file")).toBeInTheDocument();
+    expect(screen.getByText("Create new project")).toBeInTheDocument();
+    expect(screen.getByText("Open existing project")).toBeInTheDocument();
+    // Redundant standalone hero framing is gone (host page already supplies it).
+    expect(screen.queryByText("jsPsych Metadata Generator")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Generate Psych-DS compliant metadata for your jsPsych experiments."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /What is Psych-DS\?/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("embedded lean screen still opens a fresh project", async () => {
+    const onStart = jest.fn();
+    render(<Landing onStart={onStart} embedded />);
+    await userEvent.click(screen.getByText("Create new project"));
+    expect(onStart).toHaveBeenCalledWith(true);
+  });
 });

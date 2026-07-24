@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import { sweepStaleStagingDirs } from './staging/stagedFileStore'
+import '@fontsource-variable/lexend'
 import './index.css'
 
 // Reclaim OPFS staging subdirs from previous sessions that closed or crashed before clearing.

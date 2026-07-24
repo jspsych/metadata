@@ -90,10 +90,10 @@ describe("Variables", () => {
       expect(names.indexOf("a_var")).toBeLessThan(names.indexOf("z_var"));
     });
 
-    test("renders the total variable count in the header", () => {
+    test("renders the total variable count in the intro text", () => {
       const meta = makeMeta([unknownVar("rt"), knownVar("stimulus")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
-      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("2");
+      expect(screen.getByText(/2 variables detected/)).toBeInTheDocument();
     });
 
     test("renders cleanly with zero variables", () => {

@@ -52,7 +52,7 @@
 }
 
 .toggle:hover {
-  color: #13b24b;
+  color: var(--c-accent);
 }
 
 .hidden {
@@ -61,8 +61,8 @@
 
 /* Dark mode token overrides — media query covers OS dark mode, data-theme covers manual toggle */
 @media (prefers-color-scheme: dark) {
-  .key   { color: #13b24b; }  /* logo bright green — readable on dark bg */
-  .str   { color: #f78f1e; }  /* logo amber (hue ~34°) — full brightness on dark */
+  .key   { color: #32bb64; }  /* theme dark primary green — readable on dark bg */
+  .str   { color: #ff9c3b; }  /* theme dark orange — full brightness on dark */
   .num   { color: #f03d2a; }  /* clear red (hue ~5°) — 3.3:1 on dark bg */
   .bool  { color: #4bd172; }  /* lighter green, distinct from key — 6.6:1 on dark bg */
   .null  { color: #6b7280; }
@@ -73,8 +73,8 @@
   .toggle { color: #6b7280; }
 }
 
-:global([data-theme="dark"]) .key   { color: #13b24b; }
-:global([data-theme="dark"]) .str   { color: #f78f1e; }
+:global([data-theme="dark"]) .key   { color: #32bb64; }
+:global([data-theme="dark"]) .str   { color: #ff9c3b; }
 :global([data-theme="dark"]) .num   { color: #f03d2a; }
 :global([data-theme="dark"]) .bool  { color: #4bd172; }
 :global([data-theme="dark"]) .null  { color: #6b7280; }

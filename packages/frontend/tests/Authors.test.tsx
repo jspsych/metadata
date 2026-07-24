@@ -84,12 +84,11 @@ describe("Authors", () => {
   // ── name commit on blur ───────────────────────────────────────────────────
 
   describe("name commit on blur", () => {
-    test("blurring a non-empty name calls setAuthor and increments saved count", async () => {
+    test("blurring a non-empty name calls setAuthor", async () => {
       render(<Authors jsPsychMetadata={meta} onComplete={onComplete} />);
       await commitName(authorCard(1), "Jane Smith");
 
       expect(meta.setAuthor).toHaveBeenCalledWith(expect.objectContaining({ name: "Jane Smith" }));
-      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("1");
     });
 
     test("blurring with an empty name on an uncommitted card does not call setAuthor", async () => {

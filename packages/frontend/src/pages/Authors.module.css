@@ -5,15 +5,6 @@
   padding-top: 1rem;
 }
 
-.count {
-  font-size: 0.9rem;
-  font-weight: 400;
-  color: var(--c-ink-2);
-  background: var(--c-border-sub);
-  border-radius: 10px;
-  padding: 0.1em 0.55em;
-}
-
 .subtext {
   margin: 0 0 1.5rem;
   font-size: 0.86rem;
@@ -116,7 +107,7 @@
 .input:focus {
   outline: none;
   border-bottom-color: var(--c-forest-bright);
-  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
+  box-shadow: var(--c-focus-glow);
 }
 
 
@@ -139,7 +130,7 @@
 
 .orcidGroup:focus-within {
   border-bottom-color: var(--c-forest-bright);
-  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
+  box-shadow: var(--c-focus-glow);
 }
 
 .orcidPrefix {
@@ -355,7 +346,7 @@
 .bulkTextarea:focus {
   outline: none;
   border-bottom-color: var(--c-forest-bright);
-  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
+  box-shadow: var(--c-focus-glow);
 }
 
 .bulkTextarea::placeholder {
@@ -368,8 +359,8 @@
 }
 
 .importBtn {
-  background-color: var(--c-amber);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 6px;
   padding: 0.45em 1.2em;
@@ -381,7 +372,7 @@
 }
 
 .importBtn:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-cta-hover);
 }
 
 .cancelBtn {
@@ -404,8 +395,8 @@
 /* Continue */
 
 .continueBtn {
-  background-color: var(--c-amber);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 7px;
   padding: 0.6em 1.6em;
@@ -417,5 +408,5 @@
 }
 
 .continueBtn:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-cta-hover);
 }

@@ -8,24 +8,32 @@ html, body, #root {
   height: 100%;
 }
 
+/* -------------------------------------------------------------------------
+   COLOR IS INHERITED FROM THE jsPsych DOCUSAURUS THEME.
+   Every value below is hardcoded from @jspsych/docusaurus-theme (css/jspsych.css)
+   because the wizard iframe does not load the theme CSS. The theme is the single
+   source of truth — when it changes, update these values to match. Token NAMES
+   are kept stable so component CSS does not churn; only VALUES and ROLES change.
+   Role: green is the primary CTA color; orange is a <=10% accent (landing "open existing" icon).
+   ------------------------------------------------------------------------- */
 :root {
-  /* Brand */
-  --c-forest-deep: #006738;
-  --c-forest-bright: #13b24b;
-  --c-amber: #f78f1e;
-  --c-amber-hover: #e07d12;
-  --c-danger: #d93025;
+  /* Brand (theme green ramp + orange accent) */
+  --c-forest-deep: #00683e;   /* theme --ifm-color-primary */
+  --c-forest-bright: #007447; /* theme --ifm-color-primary-light — "live" green, AA as text */
+  --c-amber: #f18426;         /* theme --jspsych-orange (accent only, not primary CTA) */
+  --c-amber-hover: #e3770e;   /* theme --jspsych-orange-dark */
+  --c-danger: #db3424;        /* theme --ifm-color-danger */
 
-  /* Surfaces — light */
-  --c-bg: #f4f7f5;
-  --c-bg-sidebar: oklch(94% 0.03 155);
-  --c-bg-raised: #ffffff;
-  --c-bg-input: #ffffff;
+  /* Surfaces — light (elevation: page tinted < raised near-white) */
+  --c-bg: #f4f8f5;            /* theme --ifm-background-surface-color (tinted page) */
+  --c-bg-sidebar: oklch(94% 0.03 155); /* a touch deeper/greener than the page */
+  --c-bg-raised: #fbfefc;     /* theme --ifm-background-color (near-white raised) */
+  --c-bg-input: #fbfefc;
   --c-bg-card-hover: oklch(97% 0.03 155);
 
-  /* Ink — light (forest DNA via trace chroma, not saturated green) */
-  --c-ink: #1a2e24;
-  --c-ink-2: oklch(37% 0.012 155);
+  /* Ink — light (theme content ramp; forest DNA via trace chroma) */
+  --c-ink: #1f2622;           /* theme --ifm-color-content */
+  --c-ink-2: #5e6561;         /* theme --ifm-color-content-secondary */
   --c-ink-3: oklch(52% 0.010 155);
   --c-ink-4: #9ab5a8;
 
@@ -34,29 +42,41 @@ html, body, #root {
   --c-border-sub: #eaf0ed;
 
   /* Interactive accent — forest-deep in light, forest-bright in dark */
-  --c-accent: #006738;
+  --c-accent: #00683e;
+  --c-accent-wash: rgba(0, 104, 62, 0.10); /* accent @ 10% — active-nav highlight */
 
-  /* Amber for text/icons — darker in light mode to hit contrast on light surfaces */
-  --c-amber-text: oklch(46% 0.17 55);
+  /* Primary CTA (green) — fill / hover / label */
+  --c-cta: #00683e;           /* theme --ifm-color-primary */
+  --c-cta-hover: #006037;     /* theme --ifm-color-primary-dark */
+  --c-cta-text: #ffffff;      /* white on fill = 6.89:1 (AA) */
+
+  /* Input focus glow — forest-bright green, directional (below the field) */
+  --c-focus-glow: 0 2px 8px rgba(0, 116, 71, 0.16);
+
+  /* Orange accent (landing "open existing" icon only) */
+  --c-amber-text: #b55800;    /* theme --jspsych-orange-ink — contrast-safe orange text */
+  --c-amber-wash: rgba(241, 132, 38, 0.12); /* theme orange @ 12% */
 
   /* Type / status badge */
   --c-badge-bg: oklch(94% 0.04 155);
-  --c-badge-text: #006738;
+  --c-badge-text: #00683e;
   --c-badge-border: oklch(87% 0.07 155);
 
-  /* Semantic — success */
-  --c-success-text: #13b24b;
-  --c-success-bg: oklch(95% 0.04 145);
+  /* Semantic — success (theme success contrast pair) */
+  --c-success-text: #00622d;  /* theme --ifm-color-success-contrast-foreground */
+  --c-success-bg: #e6fae9;    /* theme --ifm-color-success-contrast-background */
   --c-success-border: oklch(85% 0.08 145);
 
-  /* Semantic — warning callout */
-  --c-warn-text: oklch(48% 0.14 60);
-  --c-warn-bg: oklch(97% 0.025 70);
+  /* Semantic — warning callout (theme warning contrast pair) */
+  --c-warn-text: #8a4d00;     /* theme --ifm-color-warning-contrast-foreground */
+  --c-warn-bg: #fff1e3;       /* theme --ifm-color-warning-contrast-background */
   --c-warn-border: oklch(86% 0.07 70);
-  --c-warn-icon: oklch(62% 0.17 60);
+  --c-warn-icon: #f18426;     /* theme --jspsych-orange */
 
-  /* Semantic — danger */
-  --c-danger-bg: oklch(97% 0.02 27);
+  /* Semantic — danger. Two-tier: base for fills/borders/asterisks/destructive buttons,
+     -text (contrast-foreground) for error MESSAGE copy so it clears AA. */
+  --c-danger-text: #b3160a;   /* theme --ifm-color-danger-contrast-foreground */
+  --c-danger-bg: #ffede8;     /* theme --ifm-color-danger-contrast-background */
   --c-danger-border: oklch(88% 0.06 27);
 
   /* Layout */
@@ -66,42 +86,58 @@ html, body, #root {
 /* Dark tokens — applied when data-theme="dark" (set synchronously by the
    inline script in index.html before first paint, so no flash). */
 :root[data-theme="dark"] {
-  --c-bg: #232b27;
-  --c-bg-sidebar: #1c2520;
-  --c-bg-raised: #2b3430;
-  --c-bg-input: #212a25;
-  --c-bg-card-hover: #2e3a35;
+  /* Surfaces — dark (elevation: sidebar deepest < page < raised). Theme names read
+     "normally" in dark: --ifm-background-color is the deepest tone, surface is lighter. */
+  --c-bg: #151b17;            /* theme --ifm-background-surface-color (dark, tinted page) */
+  --c-bg-sidebar: #0d1310;    /* theme --ifm-background-color (dark, deepest zone) */
+  --c-bg-raised: #1b2620;     /* raised card — a touch lighter than the page */
+  --c-bg-input: #131a16;      /* recessed input field */
+  --c-bg-card-hover: #202c25;
 
-  --c-ink: oklch(92% 0.008 155);
-  --c-ink-2: oklch(83% 0.012 155);
+  --c-ink: #e5e9e6;           /* theme --ifm-color-content (dark) */
+  --c-ink-2: #a0a7a2;         /* theme --ifm-color-content-secondary (dark) */
   --c-ink-3: oklch(68% 0.010 155);
   --c-ink-4: oklch(48% 0.01 155);
 
   --c-border: #3a4641;
   --c-border-sub: #2e3a34;
 
-  --c-accent: #13b24b;
-  --c-amber-text: #f78f1e;
-  --c-danger: oklch(68% 0.19 27);
+  --c-forest-bright: #32bb64; /* theme --ifm-color-primary (dark) — "live" green */
+  --c-accent: #32bb64;        /* theme --ifm-color-primary (dark) */
+  --c-accent-wash: rgba(50, 187, 100, 0.14); /* accent @ 14% — active-nav highlight */
+  --c-amber: #ff9c3b;         /* theme --jspsych-orange (dark) */
+  --c-amber-hover: #f18426;   /* theme --jspsych-orange-dark (dark) */
+  --c-amber-text: #ffb866;    /* theme --jspsych-orange-ink (dark) */
+  --c-amber-wash: rgba(255, 156, 59, 0.15); /* theme orange (dark) @ 15% */
+  --c-danger: #f0563f;        /* theme --ifm-color-danger (dark) */
 
-  --c-badge-bg: rgba(0, 103, 56, 0.18);
-  --c-badge-text: #13b24b;
-  --c-badge-border: rgba(0, 103, 56, 0.35);
+  /* Primary CTA (green). Bright green + white fails WCAG, so use dark ink on the fill. */
+  --c-cta: #32bb64;           /* theme --ifm-color-primary (dark) */
+  --c-cta-hover: #20aa57;     /* theme --ifm-color-primary-dark (dark) */
+  --c-cta-text: #0d1310;      /* dark ink on fill = 7.54:1 (AA) */
 
-  --c-success-bg: rgba(19, 178, 75, 0.10);
-  --c-success-border: rgba(19, 178, 75, 0.28);
+  --c-focus-glow: 0 2px 8px rgba(50, 187, 100, 0.22);
 
-  --c-warn-text: oklch(72% 0.14 60);
-  --c-warn-bg: oklch(22% 0.04 70);
+  --c-badge-bg: rgba(0, 104, 62, 0.18);
+  --c-badge-text: #32bb64;
+  --c-badge-border: rgba(0, 104, 62, 0.35);
+
+  --c-success-text: #74e29a;  /* theme --ifm-color-success-contrast-foreground (dark) */
+  --c-success-bg: #0e2a1a;    /* theme --ifm-color-success-contrast-background (dark) */
+  --c-success-border: rgba(43, 191, 106, 0.28);
+
+  --c-warn-text: #ffc285;     /* theme --ifm-color-warning-contrast-foreground (dark) */
+  --c-warn-bg: #2c1d0c;       /* theme --ifm-color-warning-contrast-background (dark) */
   --c-warn-border: oklch(38% 0.08 70);
-  --c-warn-icon: #f78f1e;
+  --c-warn-icon: #ff9c3b;
 
-  --c-danger-bg: rgba(217, 48, 37, 0.12);
-  --c-danger-border: rgba(217, 48, 37, 0.38);
+  --c-danger-text: #ff9d8c;   /* theme --ifm-color-danger-contrast-foreground (dark) */
+  --c-danger-bg: #2e1512;     /* theme --ifm-color-danger-contrast-background (dark) */
+  --c-danger-border: rgba(240, 86, 63, 0.38);
 }
 
 body {
-  font-family: 'IBM Plex Sans', system-ui, Helvetica, Arial, sans-serif;
+  font-family: 'Lexend Variable', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   background-color: var(--c-bg);
@@ -127,7 +163,7 @@ a:hover {
   border-radius: 20px;
   padding: 0.35rem 0.85rem;
   font-size: 0.82rem;
-  font-family: 'IBM Plex Sans', system-ui, Helvetica, Arial, sans-serif;
+  font-family: 'Lexend Variable', system-ui, -apple-system, sans-serif;
   color: var(--c-ink-2);
   cursor: pointer;
   display: inline-flex;
@@ -151,6 +187,21 @@ a:hover {
   border-color: #607870;
 }
 
+/* Visually-hidden utility — removes an element from the visual layout while
+   keeping it available to screen readers and the accessibility/heading tree.
+   Used for each step's page heading now that the visible title bar is gone. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--c-ink-4) transparent;
@@ -172,4 +223,28 @@ a:hover {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--c-ink-3);
+}
+
+/* Keyboard focus ring — one branded indicator for every interactive control
+   that doesn't define its own. Inputs/textareas/selects keep their underline +
+   focus-glow treatment: their `.field:focus` rule (higher specificity) already
+   sets `outline: none`, so this ring never doubles up on them. `:focus-visible`
+   keeps the ring off mouse clicks. Forest-bright is the system's focus/liveness
+   green (the two-green rule); the outline follows each element's own radius. */
+:focus-visible {
+  outline: 2px solid var(--c-forest-bright);
+  outline-offset: 2px;
+}
+
+/* Respect users who ask for less motion: collapse transitions and the preview
+   drawer's slide-in to a near-instant, non-animated state change. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

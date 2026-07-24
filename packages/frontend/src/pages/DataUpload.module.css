@@ -102,7 +102,7 @@
 .pickError {
   margin: -0.75rem 0 1rem;
   font-size: 0.85rem;
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 /* File list (before processing) */
@@ -143,8 +143,8 @@
 /* Process button */
 
 .processBtn {
-  background-color: var(--c-amber);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 7px;
   padding: 0.55em 1.4em;
@@ -156,7 +156,7 @@
 }
 
 .processBtn:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-cta-hover);
 }
 
 /* Join key section */
@@ -401,8 +401,8 @@
 /* Continue */
 
 .continueBtn {
-  background-color: var(--c-amber);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 7px;
   padding: 0.6em 1.6em;
@@ -414,7 +414,7 @@
 }
 
 .continueBtn:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-cta-hover);
 }
 
 /* Additive-upload hint + replace link */

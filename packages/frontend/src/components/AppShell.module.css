@@ -7,7 +7,7 @@
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 4.5rem 2rem 3rem;
+  padding: 3rem 2rem;
   background-color: var(--c-bg);
 }
 
@@ -21,7 +21,7 @@
   border-radius: 20px;
   padding: 0.35rem 0.85rem;
   font-size: 0.82rem;
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: 'Lexend Variable', system-ui, -apple-system, sans-serif;
   color: var(--c-ink-2);
   cursor: pointer;
   display: inline-flex;
