@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
 import JsonViewer from '../components/JsonViewer';
-import PageHeader from '../components/PageHeader';
 import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
 import { downloadDatasetZip } from '../staging/datasetZip';
 import { blobDownload } from '../download';
@@ -129,7 +128,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
 
   return (
     <>
-      <PageHeader title="Review & Download" />
+      <h2 className="srOnly">Review</h2>
       <div className={styles.page}>
 
       <p className={styles.subtext}>

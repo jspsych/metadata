@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import JsPsychMetadata, { VariableFields } from '@jspsych/metadata';
-import PageHeader from '../components/PageHeader';
 import styles from './Variables.module.css';
 
 interface VariablesProps {
@@ -223,9 +222,13 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
 
   return (
     <>
-      <PageHeader
-        title={<>Variables <span className={styles.count}>{vars.length}</span></>}
-        right={
+      <h2 className="srOnly">Variables</h2>
+
+      <div className={styles.page}>
+        <div className={styles.introRow}>
+          <p className={styles.subtext}>
+            Review and edit {vars.length} variable{vars.length === 1 ? '' : 's'} detected from your data.
+          </p>
           <label className={styles.toggleSwitch}>
             <span className={styles.toggleLabel}>Expand all</span>
             <input
@@ -238,11 +241,7 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
               <span className={styles.toggleThumb} />
             </span>
           </label>
-        }
-      />
-
-      <div className={styles.page}>
-        <p className={styles.subtext}>Review and edit the variables detected from your data.</p>
+        </div>
         {needDescSection.length > 0 && (
           <section className={styles.section}>
             <div className={styles.sectionHeader}>

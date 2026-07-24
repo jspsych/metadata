@@ -8,6 +8,28 @@
   background-color: var(--c-bg-sidebar);
 }
 
+/* Embedded on the docs site: the host already frames the tool, so we drop the
+   hero and sit on the app content background (--c-bg) for a seamless tonal
+   continuation into the wizard — no jump from the deepest tint on card click. */
+.embedded {
+  background-color: var(--c-bg);
+}
+
+/* Compact, calm entry heading shown only in the embedded lean screen. */
+.leanHeading {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  margin: 0 0 1.75rem;
+  text-align: center;
+}
+
+/* With the hero gone, drop the trailing card margin so the two cards + heading
+   stay optically centered rather than pushed upward. */
+.embedded .cards {
+  margin-bottom: 0;
+}
+
 .header {
   text-align: center;
   margin-bottom: 1.25rem;

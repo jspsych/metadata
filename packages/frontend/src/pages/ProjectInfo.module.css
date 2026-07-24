@@ -131,7 +131,7 @@
 .textarea:focus {
   outline: none;
   border-bottom-color: var(--c-forest-bright);
-  box-shadow: 0 2px 8px rgba(19, 178, 75, 0.12);
+  box-shadow: var(--c-focus-glow);
 }
 
 .input::placeholder,
@@ -344,8 +344,8 @@
 }
 
 .conflictYes {
-  background: var(--c-amber);
-  color: #fff;
+  background: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 5px;
   padding: 0.35rem 0.9rem;
@@ -356,7 +356,7 @@
 }
 
 .conflictYes:hover {
-  background: var(--c-amber-hover);
+  background: var(--c-cta-hover);
 }
 
 .conflictNo {
@@ -381,13 +381,13 @@
 .error {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 .continueBtn {
   align-self: flex-start;
-  background-color: var(--c-amber);
-  color: #ffffff;
+  background-color: var(--c-cta);
+  color: var(--c-cta-text);
   border: none;
   border-radius: 7px;
   padding: 0.7em 2em;
@@ -399,5 +399,5 @@
 }
 
 .continueBtn:hover {
-  background-color: var(--c-amber-hover);
+  background-color: var(--c-cta-hover);
 }

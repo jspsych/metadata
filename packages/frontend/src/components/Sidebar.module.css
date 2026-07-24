@@ -1,11 +1,11 @@
 .sidebar {
   width: 210px;
   min-width: 210px;
-  background-color: var(--c-bg-sidebar);
+  background-color: var(--c-bg);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0 1rem;
-  border-right: 1px solid var(--c-border);
+  border-right: 1px solid var(--c-border-sub);
 }
 
 .header {
@@ -30,46 +30,78 @@
 .stepList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  /* Node column aligns with the header/footer text (1.25rem from the sidebar
+     edge): 0.5rem list padding + 0.75rem step padding lands the node there.
+     --step-gap feeds both the row gap and the connector height below. */
+  padding: 0 0.5rem;
+  --step-gap: 0.3rem;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--step-gap);
   flex: 1;
 }
 
+/* Each step is a row: a node on a vertical connector, then a label. The
+   connector threads every node so the list reads as a flow of steps, not a
+   bullet list — filled green through completed steps, muted for the road ahead. */
 .step {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.7rem;
   width: 100%;
-  padding: 0.55rem 1.25rem 0.55rem calc(1.25rem - 3px);
+  padding: 0.55rem 0.75rem;
   background: none;
   border: none;
-  border-left: 3px solid transparent;
-  border-radius: 0;
+  border-radius: 7px;
   color: var(--c-ink-2);
-  font-size: 0.88rem;
+  font-size: 1rem;
   font-weight: 400;
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+  transition: color 0.15s, background-color 0.15s;
 }
 
-.step:hover:not(:disabled) {
+/* Connector: from this node's center down to the next node's. Equal-height rows
+   make calc(100% + gap) land exactly on the next node. Paints over the active
+   pill (positioned z-index:0 beats the button background) but under the node
+   (z-index:1). Every .step is the ONLY child of its <li>, so the last step is
+   suppressed via the last <li> — NOT :last-child on the button (always true).
+   Green through completed steps (progress), muted for the road ahead. */
+.step::before {
+  content: '';
+  position: absolute;
+  left: calc(0.75rem + 11px); /* step padding-left + node radius = node center */
+  top: 50%;
+  width: 2px;
+  height: calc(100% + var(--step-gap));
+  transform: translateX(-50%);
+  background: var(--c-border);
+  z-index: 0;
+}
+
+.stepList li:last-child .step::before {
+  display: none;
+}
+
+.completed::before {
+  background: var(--c-forest-bright);
+}
+
+.step:hover:not(:disabled):not(.active) {
   color: var(--c-ink);
-  background-color: var(--c-bg-card-hover);
+  background-color: var(--c-bg-raised);
 }
 
 .active {
-  border-left-color: var(--c-amber-text);
-  background-color: rgba(247, 143, 30, 0.12);
-  color: var(--c-amber-text);
+  background-color: var(--c-accent-wash);
+  color: var(--c-accent);
   font-weight: 600;
 }
 
 .completed {
-  color: var(--c-ink-2);
+  color: var(--c-ink);
 }
 
 .locked {
@@ -77,35 +109,53 @@
   cursor: not-allowed;
 }
 
+/* Node: a 22px circle on the connector. Default = hollow muted ring (upcoming);
+   active = accent ring with a filled center dot; completed = solid green disc
+   with a check. */
 .indicator {
-  width: 16px;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--c-border);
+  background: var(--c-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 0.75rem;
-  color: var(--c-forest-bright);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--c-cta-text); /* the ✓ glyph — legible on the green disc, both modes */
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
+.active .indicator {
+  border-color: var(--c-accent);
+}
+
+.completed .indicator {
+  border-color: var(--c-forest-bright);
+  background: var(--c-forest-bright);
+}
+
+/* Inner dot — only on the active node (ring + dot); hidden on the others. */
 .dot {
-  display: block;
-  width: 5px;
-  height: 5px;
+  display: none;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background-color: var(--c-ink-4);
+  background-color: var(--c-accent);
 }
 
 .active .dot {
-  background-color: var(--c-amber-text);
-}
-
-.locked .dot {
-  background-color: var(--c-ink-3);
+  display: block;
 }
 
 .footer {
   padding: 1rem 1.25rem 0;
-  border-top: 1px solid var(--c-border);
+  border-top: 1px solid var(--c-border-sub);
   margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -144,15 +194,14 @@
   border-color: var(--c-danger);
 }
 
-/* Light mode: locked steps need to look clearly faded vs the dark base step color.
-   --c-ink-3 (oklch 52%) is too close to --c-ink-2 (oklch 37%) on the pale sidebar. */
+/* Light mode: locked steps read clearly faded — --c-ink-3 (oklch 52%) sits too
+   close to --c-ink-2 (37%) on the pale sidebar, so lift the locked label lighter. */
 :global([data-theme="light"]) .locked { color: oklch(66% 0.008 155); }
-:global([data-theme="light"]) .locked .dot { background-color: oklch(66% 0.008 155); }
 
 /* Light mode: Start Over border (--c-danger-border at oklch 88%) is near-invisible on the
    pale sidebar (oklch 94%). Give it a tinted background and a readable border. */
 :global(:root:not([data-theme="dark"])) .startOver {
-  background-color: rgba(217, 48, 37, 0.07);
+  background-color: rgba(219, 52, 36, 0.07);
   border-color: oklch(82% 0.09 27);
 }
 
@@ -161,10 +210,9 @@
   background-color: var(--c-danger-bg);
 }
 
-/* Dark mode: increase contrast of sidebar text and border */
-:global([data-theme="dark"]) .sidebar { border-right-color: #4e5f57; }
+/* Dark mode: lift sidebar text contrast (the divider stays a hairline so the
+   nav reads as part of the content surface, not a walled-off zone). */
 :global([data-theme="dark"]) .appTitle { color: var(--c-ink); }
-:global([data-theme="dark"]) .step:not(.active):not(.locked) { color: oklch(82% 0.012 155); }
 :global([data-theme="dark"]) .psychdsLink { color: var(--c-ink-2); }
 :global([data-theme="dark"]) .psychdsLink:hover { color: var(--c-forest-bright); }
 

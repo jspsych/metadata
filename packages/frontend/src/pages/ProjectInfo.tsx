@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import JsPsychMetadata from '@jspsych/metadata';
-import PageHeader from '../components/PageHeader';
 import styles from './ProjectInfo.module.css';
 
 export const OPTIONAL_FIELDS: { key: string; label: string; hint: string; help?: string; options?: readonly string[] }[] = [
@@ -209,7 +208,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
 
   return (
     <>
-      <PageHeader title="Project Info" />
+      <h2 className="srOnly">Project Info</h2>
       <div className={styles.page}>
       <p className={styles.subtext}>Name your dataset and describe what it contains.</p>
 

@@ -12,6 +12,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@fontsource-variable/lexend": "^5.2.11",
     "@jspsych/metadata": "^0.0.3",
     "fflate": "^0.8.3",
     "jsonld": "^8.3.2",

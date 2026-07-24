@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
 import JsPsychMetadata, { analyzeJoinKeys, deriveFallbackBase, buildPsychDSDataFiles, hasUnnamedColumns, isValidPsychDSDataFilename, parseCSVForWrite, parseJsonData, PSYCHDS_IGNORE_FILENAME, PSYCHDS_IGNORE_CONTENT } from '@jspsych/metadata';
-import PageHeader from '../components/PageHeader';
 import { createStagedFileStore, type StagedFileStore } from '../staging/stagedFileStore';
 import { SAMPLE_DATASETS } from '../samples';
 import styles from './DataUpload.module.css';
@@ -565,7 +564,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
   if (phase === 'fromExisting') {
     return (
       <>
-        <PageHeader title="Data" />
+        <h2 className="srOnly">Data</h2>
         <div className={styles.page}>
         <div className={styles.hasDataBanner}>
           <span className={styles.iconSuccess}>✓</span>
@@ -607,7 +606,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
     const varCount = jsPsychMetadata.getVariableNames().length;
     return (
       <>
-        <PageHeader title="Data" />
+        <h2 className="srOnly">Data</h2>
         <div className={styles.page}>
         <div className={styles.hasDataBanner}>
           <span className={styles.iconSuccess}>✓</span>
@@ -671,7 +670,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
   return (
     <>
-      <PageHeader title="Data" />
+      <h2 className="srOnly">Data</h2>
       <div className={styles.page}>
       <p className={styles.description}>
         Select your data folder or upload a .zip archive. CSV and JSON files will be processed; other file types are skipped.

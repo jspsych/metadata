@@ -35,7 +35,7 @@ describe("AppShell + real ProjectInfo (existing project)", () => {
 
     // Continue — existing metadata is loaded, so Data is pre-completed and we skip to Variables.
     await userEvent.click(screen.getByRole("button", { name: "Continue →" }));
-    await screen.findByText(/Review and edit the variables/);
+    await screen.findByText(/Review and edit .* variables? detected/);
 
     // Simulate an edit made on another step: delete a variable directly on the instance.
     meta.deleteVariable("rt");
