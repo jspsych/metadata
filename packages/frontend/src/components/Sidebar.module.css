@@ -217,9 +217,9 @@
 :global([data-theme="dark"]) .psychdsLink:hover { color: var(--c-forest-bright); }
 
 /* ─── Phone: the step nav becomes a top bar ──────────────────────────────────
-   A 210px side rail leaves ~165px of content on a 375px screen, so below
-   --w-narrow the nav turns horizontal and sits above the content: the same
-   nodes and connector, rotated a quarter turn, with each label under its node.
+   A 210px side rail leaves ~165px of content on a 375px screen, so below 700px
+   the nav turns horizontal and sits above the content: the same nodes and
+   connector, rotated a quarter turn, with each label under its node.
    Progress stays visible at all times — no hamburger, nothing hidden. */
 
 @media (max-width: 700px) {

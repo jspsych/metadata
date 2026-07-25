@@ -508,10 +508,15 @@
     gap: 0.75rem 1rem;
   }
 
-  /* Status/file lists get more of the short viewport before they scroll. */
+  /* Size the lists to the viewport rather than to a fixed 220/260px. In portrait
+     that lands near the desktop cap; in landscape, where 40% of the height is
+     well under it, the list gives the rest of the page room instead of filling
+     the screen. dvh so the retractable URL bar doesn't inflate it; the vh line
+     is the fallback for browsers without dvh. */
   .fileList,
   .statusList {
     max-height: 40vh;
+    max-height: 40dvh;
   }
 
   .continueBtn,

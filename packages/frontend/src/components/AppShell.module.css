@@ -26,11 +26,6 @@
        control on the page (usually Continue). */
     padding: 1.5rem 1rem 4.5rem;
   }
-
-  .previewPill {
-    bottom: 1rem;
-    right: 1rem;
-  }
 }
 
 .previewPill {
@@ -50,6 +45,15 @@
   align-items: center;
   gap: 0.4rem;
   transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+/* Phone: tuck the pill closer into the corner. This has to sit *after* the base
+   rule above — same specificity, so source order is what decides. */
+@media (max-width: 700px) {
+  .previewPill {
+    bottom: 1rem;
+    right: 1rem;
+  }
 }
 
 .previewPill:hover {
