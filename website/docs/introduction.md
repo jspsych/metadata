@@ -10,7 +10,7 @@ description: What the Psych-DS data standard is, what a compliant dataset looks 
 
 The [jsPsych metadata tools](https://github.com/jspsych/metadata) turn raw experiment exports into a Psych-DS–compliant dataset and automatically document the variables produced by your plugins.
 
-Describing your data this way — a machine-readable file listing its variables, authors, and license that travels alongside the data — is what makes a dataset easy to share, archive, and reuse, and it is increasingly expected by journals and funders as part of open, [FAIR](https://www.go-fair.org/fair-principles/) data.
+Describing your data this way means shipping a machine-readable file alongside it, listing its variables, authors, and license. That is what makes a dataset easy to share, archive, and reuse — and journals and funders increasingly expect it as part of open, [FAIR](https://www.go-fair.org/fair-principles/) data.
 
 Psych-DS is a general standard, not limited to jsPsych: it has its own [specification](https://psychds-docs.readthedocs.io/en/latest/) and an official [web validator](https://psych-ds.github.io/validator/). These tools generate a compliant dataset for you and run that same validation, so you never have to apply the spec by hand.
 
@@ -19,8 +19,6 @@ If you collect data with [DataPipe](https://pipe.jspsych.org/), you may not need
 :::
 
 ## The two pieces of a compliant dataset
-
-A Psych-DS compliant dataset needs two things:
 
 1. **A standard folder layout** — data files live in a `data/` folder, named to a `keyword-value_data.csv` pattern (e.g. `subject-01_data.csv`) so each file's role is unambiguous.
 2. **A `dataset_description.json`** — a [Schema.org](https://schema.org/) description that travels with the data, listing every variable (`variableMeasured`) and what each one means.
@@ -45,7 +43,7 @@ You can always add to or override what's generated — authors, a study descript
 
 ## What the tools produce
 
-Either the wizard or the CLI produces a self-contained Psych-DS project. At its core is your data plus the generated metadata:
+Either the wizard or the CLI produces a self-contained Psych-DS project:
 
 ```
 your-project/
@@ -53,9 +51,13 @@ your-project/
 └── dataset_description.json    the generated metadata
 ```
 
-JSON and JSON-Lines exports are converted to CSV. Originals are preserved under `data/raw/` whenever the output is not a byte-for-byte, same-named copy of the input — converted JSON, re-serialised CSVs, and renamed CSVs alike; only a clean CSV kept verbatim under its own compliant name is not duplicated there. The project also includes placeholder `README.md` and `CHANGES.md` files — see [Using the CLI](./guides/using-the-cli.mdx) for the full layout.
+JSON and JSON-Lines exports are converted to CSV.
+
+Your original files are never modified. Whenever a file has to change on the way in — a JSON file converted to CSV, or a CSV renamed or rewritten — the untouched original is also saved under `data/raw/`.
+
+The project also includes placeholder `README.md` and `CHANGES.md` files — see [Using the CLI](./guides/using-the-cli.mdx) for the full layout.
 
 ## Get started
 
-- **[Open the web wizard](/wizard)** — do it in your browser, no install. → [Using the wizard](./guides/using-the-wizard.mdx)
-- **Command line** — `npx @jspsych/metadata-cli`, easy to script. → [Using the CLI](./guides/using-the-cli.mdx)
+- **[Open the web wizard](/wizard)** — runs in your browser, nothing to install. → [Using the wizard](./guides/using-the-wizard.mdx)
+- **Command line** — `npx @jspsych/metadata-cli`, if you'd rather script it. → [Using the CLI](./guides/using-the-cli.mdx)

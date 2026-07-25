@@ -14,7 +14,7 @@ This page documents all flags, exit codes, filename rules, and output behaviour 
 npx @jspsych/metadata-cli [flags]
 ```
 
-With no flags, the tool runs interactively and prompts you for everything it needs. All flags are optional — any flag you omit will be filled in by a prompt at runtime.
+Every flag is optional. Whatever you don't pass on the command line, the tool asks you for as it runs — so with no flags at all, it simply prompts you for everything it needs.
 
 ## Flags
 
@@ -23,18 +23,18 @@ With no flags, the tool runs interactively and prompts you for everything it nee
 | `--psych-ds-dir` | `-em` | path | Path to an **existing** Psych-DS project folder. Must contain a `dataset_description.json`. Use this when updating a project you have already generated. |
 | `--data-dir` | `-d` | path | Path to the folder containing your raw jsPsych data files (`.csv`, `.json`, or `.jsonl`). |
 | `--metadata-options` | `-m` | path | Path to a metadata options `.json` file. See [Customizing the output](../guides/customizing-output.md). |
-| `--verbose` | `-v` | boolean | Print detailed output at each processing step. Shows plugin fetching, variable resolution, and full validation warnings. |
+| `--verbose` | `-v` | boolean | Print detail at every step: which plugins were fetched, how each variable was worked out, and the full validation warnings. |
 | `--version` | | boolean | Print the CLI version and exit. |
 
 ### Notes on flag behaviour
 
 - Paths can use `~` for your home directory (e.g. `--data-dir=~/experiments/raw`).
-- If a flag is provided but the path is invalid (or the `--metadata-options` file is not valid JSON), the tool exits immediately with a usage error (exit code `2`). It does **not** fall back to an interactive prompt — a flag you passed explicitly failing silently would hide mistakes in scripts.
-- `--psych-ds-dir` implies **update mode** — the tool loads the existing `dataset_description.json` before processing new data. Without this flag, the tool asks whether to create or update.
+- If you pass a flag but the path is wrong (or the `--metadata-options` file isn't valid JSON), the tool stops immediately with a usage error (exit code `2`). It deliberately does **not** fall back to asking you — a flag that quietly did nothing would hide typos in scripts.
+- `--psych-ds-dir` puts the tool in **update mode**: it loads the existing `dataset_description.json` before processing new data. Without the flag, it asks whether you're creating or updating.
 
 ## Non-interactive mode
 
-When all three path flags are provided and valid, every interactive prompt is skipped and the tool runs to completion without user input:
+When all three path flags are provided and valid, every prompt is skipped:
 
 ```
 npx @jspsych/metadata-cli \
@@ -45,25 +45,25 @@ npx @jspsych/metadata-cli \
 
 Non-interactive mode enforces stricter rules than interactive mode:
 
-- **Non-compliant filenames are a hard error.** In interactive mode, the tool offers a menu of renaming strategies to bring non-compliant filenames into the Psych-DS naming pattern. In non-interactive mode, a non-compliant filename causes the tool to exit immediately with an error message and exit code `2` (usage error). Rename your files before running (see [Data file naming](#data-file-naming) below).
+- **Non-compliant filenames are a hard error.** With no way to offer the renaming menu, the tool exits with code `2`. Rename your files first (see [Data file naming](#data-file-naming) below).
 - **Unknown variable descriptions are not prompted.** Variables the tool cannot automatically describe are left as `"unknown"` in the output.
 - **Join keys are resolved automatically.** When nested-array rows aren't uniquely identified by `trial_index`, the tool picks the keys deterministically instead of prompting, and reports the choice (see [Nested arrays and join keys](#nested-arrays-and-join-keys)).
 
-The tool also runs without prompting whenever it isn't attached to an interactive terminal (for example, piped output or a CI job), even if you omit some flags. In that case it keeps the generated metadata defaults unless `--metadata-options` is supplied. Non-interactive mode is useful for running the tool on a schedule, in a script, or on a remote machine.
+The tool also skips prompts whenever there's no one at a terminal to answer them — piped output, a CI job, a scheduled run — even if you omit some flags. In that case it keeps the metadata it generated on its own, unless you pass `--metadata-options`.
 
 ## Exit codes
 
 | Code | Meaning |
 |------|---------|
-| `0` | Completed successfully. Psych-DS validation passed (warnings are allowed). |
-| `1` | Unexpected internal error, or an interactive prompt was aborted (e.g. Ctrl+C). |
-| `2` | Usage error: bad flags, a flag pointing at a missing directory, an invalid or malformed JSON input (`--metadata-options`, `dataset_description.json`), or a non-compliant data filename in non-interactive mode. |
-| `3` | The generated dataset failed Psych-DS validation with one or more errors. |
-| `4` | Partial success: some data files could not be ingested. The metadata written covers only the files that succeeded. |
+| `0` | Finished successfully. Psych-DS validation passed (warnings are fine). |
+| `1` | Something went wrong internally, or you cancelled a prompt (e.g. Ctrl+C). |
+| `2` | Usage error: bad flags, a flag pointing at a folder that isn't there, malformed JSON (`--metadata-options`, `dataset_description.json`), or a non-compliant data filename in a run with no prompts. |
+| `3` | The dataset was generated but failed Psych-DS validation with one or more errors. |
+| `4` | Partial success: some data files couldn't be read. The metadata covers only the files that worked. |
 
-If a run both fails validation and has ingestion failures, validation takes precedence: the tool exits `3`. Any non-zero code means the output should not be trusted as a complete, valid Psych-DS dataset.
+If a run both fails validation and couldn't read some files, validation wins and the tool exits `3`. Treat any non-zero code as "don't trust this output as a complete, valid Psych-DS dataset yet."
 
-You can use the exit code in a shell script to distinguish failures:
+Branching on the exit code in a script:
 
 ```bash
 npx @jspsych/metadata-cli --psych-ds-dir=./project --data-dir=./data --metadata-options=./options.json
@@ -89,13 +89,25 @@ The tool accepts the following jsPsych data shapes:
 | **`{ "trials": [...] }` wrapper** | An object whose single key is `trials` holding the trial array (e.g. OSF exports). Automatically unwrapped, then treated as a JSON array. |
 | **JSON-Lines (`.jsonl`)** | One JSON value per line (JATOS and several labs export this way — often one participant's trial array per line). All lines are flattened into a single observation stream. |
 
-JSON and JSON-Lines files are automatically converted to CSV in the output (`data/` folder). CSV files are written to `data/` under their normalized name. Whenever the written output is **not** a byte-for-byte, same-named copy of the input — a converted JSON file, a CSV that was re-serialised to be well-formed, or a CSV that was renamed to a compliant filename — the original is preserved untouched under `data/raw/`, and a top-level `.psychds-ignore` is written so the validator skips the raw copies. Only a clean CSV written verbatim under its own already-compliant name has no `data/raw/` copy.
+Every file ends up in `data/` as a CSV under a Psych-DS compliant name: JSON and JSON-Lines are converted, and CSV files are renamed if their name doesn't already fit the pattern.
 
-Files of any other type are ignored during metadata generation.
+Your originals are never modified. Whenever a file has to change on the way in, the untouched original is also saved under `data/raw/`. That covers three cases:
+
+- a JSON or JSON-Lines file converted to CSV;
+- a CSV rewritten because it wasn't strictly well-formed (for example, jsPsych stimulus HTML containing unescaped quotes);
+- a CSV renamed to fit the Psych-DS pattern.
+
+The one file with no copy under `data/raw/` is a well-formed CSV that already had a compliant name, since it's copied across unchanged. When `data/raw/` is used, the tool also writes a top-level `.psychds-ignore` so the validator doesn't check the originals.
+
+Files of any other type are ignored.
 
 ### Nested arrays and join keys
 
-When a data file contains nested arrays inside a trial, the tool extracts each array into its own Psych-DS CSV. Those rows need a column that uniquely identifies them. If `trial_index` alone isn't unique, the tool prompts (interactively) for additional **join-key** columns, grouping candidates into "Sufficient alone" and "Reduces duplicates", with a "Proceed anyway" escape. In a non-interactive run there is nothing to prompt, so the keys are resolved automatically and the choice is reported in the output. For JSON-Lines input with no per-trial identifier, a `source_record_id` (the source line) is synthesized so the join key can be formed; it marks the source record, not a real participant.
+When a trial holds a nested array, the tool extracts that array into its own Psych-DS CSV. Each extracted row needs a way to point back to the trial it came from — a **join key**: a column, or combination of columns, whose values differ for every row.
+
+`trial_index` is tried first. When it isn't enough on its own (most often in files where several participants were merged and `trial_index` restarts at 0 for each), the tool prompts for extra columns, sorted into "Sufficient alone" and "Reduces duplicates", with a "Proceed anyway" escape. In a run with no prompts, the keys are chosen automatically and the choice is reported in the output.
+
+JSON-Lines input sometimes has no per-trial identifier at all. In that case the tool adds a `source_record_id` column recording which line of the file each row came from, so a join key can be formed. It identifies the source record, not a participant.
 
 ### Folder depth
 
@@ -127,12 +139,12 @@ In **interactive mode**, the tool detects non-compliant names and offers a menu 
 
 | Strategy | What it does | When offered |
 |----------|--------------|--------------|
-| **Use the value found inside each file** | Reads an ID column from the data (one unique value per file) and uses it as the value. The most reliable option, and recommended when available. | Only when such a column exists in *every* file. |
-| **Keep only the part that differs** | Strips the shared prefix/suffix across filenames; the varying middle becomes the value (you pick the keyword). | Only when the filenames share a common pattern. |
-| **Give the files fresh numbered names** | Replaces names with a clean sequence (`subject-001`, `subject-002`, …); you type the first name. | Always. |
-| **Keep the whole old filename as the value** | The fallback: the entire old name becomes one value under a keyword you pick. Nothing is lost, but names get verbose. | Always. |
+| **Use the value found inside each file** | Reads an ID column out of the data itself (one value per file) and uses that. The most reliable option — pick it when it's offered. | Only when such a column exists in *every* file. |
+| **Keep only the part that differs** | Drops whatever every filename has in common; the part that varies becomes the value, under a keyword you pick. | Only when the filenames share a common pattern. |
+| **Give the files fresh numbered names** | Replaces the names with a clean sequence (`subject-001`, `subject-002`, …); you type the first one. | Always. |
+| **Keep the whole old filename as the value** | The fallback: the entire old name becomes the value, under a keyword you pick. Nothing is lost, but the names get long. | Always. |
 
-After you pick a strategy, the tool shows the full set of proposed renames (including any sidecar CSVs from nested arrays, and auto-adjusting name collisions) and lets you **Apply**, **Edit one filename**, or **Choose a different strategy**. Psych-DS values may not contain hyphens or underscores, so those are stripped when a value is derived from a filename. For example:
+Once you pick a strategy, the tool shows every rename it proposes — including the companion CSVs from any nested arrays, with clashing names adjusted for you — and offers **Apply**, **Edit one filename**, or **Choose a different strategy**. Psych-DS values can't contain hyphens or underscores, so those are removed when a value comes from a filename. For example:
 
 ```
 participant_01.csv → subject-participant01_data.csv
@@ -155,7 +167,7 @@ Official Psych-DS keywords offered by the tool:
 | `site` | The site where data was collected |
 | `description` | A free-form label |
 
-Custom keywords are allowed but will produce a validator warning. In **non-interactive mode**, non-compliant filenames are a hard error — rename files before running.
+You may use a keyword outside this list — the dataset is still valid, but the validator will mention it. In a run with no prompts, a non-compliant filename is a hard error; rename those files before you run.
 
 ## Validation output
 
@@ -174,8 +186,8 @@ After generating `dataset_description.json`, the tool automatically validates th
   Error 1: JSON_KEY_REQUIRED: dataset_description.json is missing required field(s): [description]
 ```
 
-Warnings are advisory — they indicate recommended fields or practices that aren't strictly required. A dataset with warnings is still valid. Errors must be resolved for the dataset to be Psych-DS compliant.
+Warnings are advice: they point at recommended fields or practices you haven't followed. A dataset with warnings is still valid. Errors are different — the dataset isn't Psych-DS compliant until you fix them.
 
-Run with `--verbose` to see the full list of warnings alongside errors.
+Run with `--verbose` to see the full list of warnings alongside the errors.
 
-If validation fails due to missing required fields and you are running interactively, the tool will prompt you to fill them in before finishing.
+If validation fails because required fields are missing, an interactive run prompts you to fill them in before it finishes.

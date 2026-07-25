@@ -148,7 +148,7 @@ The result is a `convertedFiles` map (dataset-relative path → contents) carrie
 
 **Network is required** — the validator fetches the Psych-DS schema and schema.org context at runtime. If it can't run, `validatePsychDS` throws `ValidationUnavailableError` with a connectivity-first message (underlying error appended), which Review surfaces as an `unavailable` banner rather than a false "invalid" result.
 
-**Zip-resolved warnings:** the in-browser validator only sees the metadata + data files, so it reports `MISSING_README_DOC` / `MISSING_CHANGES_DOC`. The downloaded zip ships `README.md` and `CHANGES.md`, so Review (`ZIP_RESOLVED_WARNINGS`) shows a reassurance note explaining these clear once the downloaded dataset is validated. A `<details>` block also documents the CLI equivalent (`npx @jspsych/cli validate`).
+**Validate what gets downloaded:** the zip ships placeholder `README.md` / `CHANGES.md`, so the validator is handed the same two files and `MISSING_README_DOC` / `MISSING_CHANGES_DOC` never fire against a project that will contain them. Both Psych-DS rules are presence-only (stem + extension at the dataset root), so this is an honest check rather than a suppression. Content lives in `datasetLayout.ts` (`datasetDocs()`), shared by `datasetZip.ts` and `validatePsychDS.ts` so the two cannot drift. Review passes the project name only when `hasDataFiles` — with no data there is no zip, so those warnings are real advice about the user's own folder and must still surface.
 
 > The core `@jspsych/metadata` library does **not** validate — validation is a consuming concern owned by the frontend (here) and the CLI (`packages/cli/src/validatefunctions.ts`). Unit tests for these helpers are tracked in issue #94.
 

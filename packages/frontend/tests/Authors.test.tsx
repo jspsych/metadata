@@ -226,7 +226,7 @@ describe("Authors", () => {
       await openOptional(card);
       meta.setAuthor.mockClear();
 
-      await userEvent.type(within(card).getByLabelText("@type"), "Person");
+      await userEvent.type(within(card).getByLabelText("Author type"), "Person");
       expect(meta.setAuthor).toHaveBeenCalledWith(
         expect.objectContaining({ "@type": "Person" }),
       );
@@ -333,7 +333,7 @@ describe("Authors", () => {
       );
       const call = meta.setAuthor.mock.calls[0][0] as AuthorFields;
       expect(call.identifier).toBeUndefined();
-      expect(screen.getByText(/ORCID not saved for: Jane Smith/)).toBeInTheDocument();
+      expect(screen.getByText(/their ORCID was not: Jane Smith/)).toBeInTheDocument();
     });
 
     test("warning can be dismissed", async () => {
@@ -341,7 +341,7 @@ describe("Authors", () => {
       await importLines("Jane Smith, bad-orcid");
 
       await userEvent.click(screen.getByRole("button", { name: "✕" }));
-      expect(screen.queryByText(/ORCID not saved for/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/their ORCID was not/)).not.toBeInTheDocument();
     });
   });
 

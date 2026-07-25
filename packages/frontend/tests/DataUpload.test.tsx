@@ -81,7 +81,7 @@ describe("DataUpload", () => {
   describe("idle phase", () => {
     test("renders description and picker buttons", () => {
       render(<DataUpload {...props()} />);
-      expect(screen.getByText(/Select your data folder/)).toBeInTheDocument();
+      expect(screen.getByText(/Choose the folder holding your data files/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Choose folder" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Upload .zip" })).toBeInTheDocument();
     });
@@ -98,7 +98,7 @@ describe("DataUpload", () => {
     test("shows variables-loaded banner, optional-upload note, and Continue", () => {
       render(<DataUpload {...props({ existingMetadataLoaded: true })} />);
       expect(screen.getByText(/Variables loaded from existing metadata/)).toBeInTheDocument();
-      expect(screen.getByText(/No data upload is needed/)).toBeInTheDocument();
+      expect(screen.getByText(/already describes every variable/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Continue →" })).toBeInTheDocument();
     });
 
@@ -124,13 +124,13 @@ describe("DataUpload", () => {
     test("shows variable count and Continue button", () => {
       render(<DataUpload {...props({ jsPsychMetadata: makeMeta(["rt", "stimulus"]), dataProcessed: true })} />);
       expect(screen.getByText(/Data already processed/)).toBeInTheDocument();
-      expect(screen.getByText(/2 variables generated/)).toBeInTheDocument();
+      expect(screen.getByText(/2 variables found in your data/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Continue →" })).toBeInTheDocument();
     });
 
     test("uses singular form for 1 variable", () => {
       render(<DataUpload {...props({ jsPsychMetadata: makeMeta(["rt"]), dataProcessed: true })} />);
-      expect(screen.getByText(/1 variable generated/)).toBeInTheDocument();
+      expect(screen.getByText(/1 variable found in your data/)).toBeInTheDocument();
     });
 
     test("shows file status list from session", () => {
@@ -146,14 +146,14 @@ describe("DataUpload", () => {
       expect(screen.getByText("parse failed")).toBeInTheDocument();
     });
 
-    test("shows Re-configure join keys when candidates and files exist", () => {
+    test("shows Change join keys when candidates and files exist", () => {
       const session: DataSession = {
         ...emptyDataSession,
         joinKeyCandidates: [{ column: "subject", makesUnique: true }],
         files: [makeFile("data.json", "[]")],
       };
       render(<DataUpload {...props({ dataProcessed: true, session })} />);
-      expect(screen.getByRole("button", { name: "Re-configure join keys" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Change join keys" })).toBeInTheDocument();
     });
   });
 
@@ -246,7 +246,7 @@ describe("DataUpload", () => {
         target: { files: [makeFile("empty.zip")] },
       });
 
-      expect(await screen.findByText(/No readable files found/)).toBeInTheDocument();
+      expect(await screen.findByText(/doesn.t contain any files we can read/)).toBeInTheDocument();
     });
 
     test("shows error when zip cannot be parsed", async () => {
@@ -256,7 +256,7 @@ describe("DataUpload", () => {
         target: { files: [makeFile("bad.zip")] },
       });
 
-      expect(await screen.findByText(/Could not read the zip file/)).toBeInTheDocument();
+      expect(await screen.findByText(/We couldn.t open that file/)).toBeInTheDocument();
     });
   });
 
@@ -312,7 +312,7 @@ describe("DataUpload", () => {
 
       render(<DataUpload {...props({ sampleSlug: "serial-reaction-time" })} />);
 
-      expect(await screen.findByText(/Could not load the .* dataset/)).toBeInTheDocument();
+      expect(await screen.findByText(/We couldn.t load the .* dataset/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Choose folder" })).toBeInTheDocument();
       expect(meta.generate).not.toHaveBeenCalled();
     });
@@ -342,22 +342,22 @@ describe("DataUpload", () => {
       );
     });
 
-    test("skips dataset_description.json with 'existing metadata file' detail", async () => {
+    test("skips dataset_description.json with a metadata-file detail", async () => {
       const { container } = render(<DataUpload {...props()} />);
       await pickAndProcess(makeFile("dataset_description.json", '{"name":"x"}'), container);
 
       await screen.findByRole("button", { name: "Continue →" });
       expect(meta.generate).not.toHaveBeenCalled();
-      expect(screen.getByText(/existing metadata file/)).toBeInTheDocument();
+      expect(screen.getByText(/this is a metadata file, not data/)).toBeInTheDocument();
     });
 
-    test("skips unsupported file types with 'unsupported file type' detail", async () => {
+    test("skips unsupported file types with an unsupported-type detail", async () => {
       const { container } = render(<DataUpload {...props()} />);
       await pickAndProcess(makeFile("notes.txt", "some text"), container);
 
       await screen.findByRole("button", { name: "Continue →" });
       expect(meta.generate).not.toHaveBeenCalled();
-      expect(screen.getByText(/unsupported file type/)).toBeInTheDocument();
+      expect(screen.getByText(/not a .csv, .json, or .jsonl file/)).toBeInTheDocument();
     });
 
     test("shows error status when generate throws", async () => {
@@ -377,7 +377,7 @@ describe("DataUpload", () => {
       await waitFor(() => expect(meta.generate).toHaveBeenCalledTimes(1));
       // generate() receives the parsed rows array, not the raw JSON string (parsed once up front).
       expect(meta.generate).toHaveBeenCalledWith(expect.any(Array), {}, "json", expect.any(Object));
-      expect(screen.queryByText(/Rows need a unique identifier/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/needs a column that tells its rows apart/)).not.toBeInTheDocument();
     });
 
     test("Continue button appears after done and calls onComplete", async () => {
@@ -461,13 +461,13 @@ describe("DataUpload", () => {
       const content = JSON.stringify([{ trial_index: 0, subject: "p1" }]);
       fireEvent.change(input, { target: { files: [makeFile("data.json", content)] } });
       await userEvent.click(screen.getByRole("button", { name: "Process files" }));
-      await screen.findByText(/Rows need a unique identifier/);
+      await screen.findByText(/needs a column that tells its rows apart/);
       return container;
     }
 
     test("shows warning and candidate columns when trial_index is non-unique", async () => {
       await renderToJoinKeys();
-      expect(screen.getByText(/Rows need a unique identifier/)).toBeInTheDocument();
+      expect(screen.getByText(/needs a column that tells its rows apart/)).toBeInTheDocument();
       expect(screen.getByText("subject")).toBeInTheDocument();
       expect(screen.getByText("sufficient alone")).toBeInTheDocument();
     });
@@ -475,13 +475,13 @@ describe("DataUpload", () => {
     test("help text expands and collapses", async () => {
       await renderToJoinKeys();
       const toggle = screen.getByRole("button", { name: /What is a join key/ });
-      expect(screen.queryByText(/nested data/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/store a whole list inside one row/)).not.toBeInTheDocument();
 
       await userEvent.click(toggle);
-      expect(screen.getByText(/nested data/)).toBeInTheDocument();
+      expect(screen.getByText(/store a whole list inside one row/)).toBeInTheDocument();
 
       await userEvent.click(toggle);
-      expect(screen.queryByText(/nested data/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/store a whole list inside one row/)).not.toBeInTheDocument();
     });
 
     test("selecting a column and applying calls generate with that key", async () => {
@@ -501,9 +501,9 @@ describe("DataUpload", () => {
       );
     });
 
-    test('"Proceed anyway" disables candidates and suppresses the warning', async () => {
+    test('"Continue without one" disables candidates and suppresses the warning', async () => {
       await renderToJoinKeys([{ column: "subject", makesUnique: true }]);
-      const proceedItem = screen.getByText(/Proceed anyway/).closest("li")!;
+      const proceedItem = screen.getByText(/Continue without one/).closest("li")!;
       await userEvent.click(within(proceedItem).getByRole("checkbox"));
 
       expect(within(screen.getByText("subject").closest("li")!).getByRole("checkbox")).toBeDisabled();
@@ -523,18 +523,18 @@ describe("DataUpload", () => {
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(screen.getByRole("button", { name: "Process files" })).toBeInTheDocument();
-      expect(screen.queryByText(/Rows need a unique identifier/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/needs a column that tells its rows apart/)).not.toBeInTheDocument();
       expect(meta.generate).not.toHaveBeenCalled();
     });
 
-    test("Re-configure join keys button appears in the done phase after processing", async () => {
+    test("Change join keys button appears in the done phase after processing", async () => {
       await renderToJoinKeys([{ column: "subject", makesUnique: true }]);
       await userEvent.click(screen.getByRole("button", { name: "Apply and process files" }));
 
       // After applying, processing completes and phase becomes 'done'.
       // joinKeyCandidates is non-empty, so the Re-configure button should appear.
       expect(
-        await screen.findByRole("button", { name: "Re-configure join keys" }),
+        await screen.findByRole("button", { name: "Change join keys" }),
       ).toBeInTheDocument();
     });
   });

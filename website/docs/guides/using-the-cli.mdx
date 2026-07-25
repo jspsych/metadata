@@ -23,7 +23,7 @@ You'll need **Node.js 18+** (check with `node --version`; install from [nodejs.o
 npx @jspsych/metadata-cli
 ```
 
-The first run downloads the tool automatically; after that it launches immediately and starts asking the questions below. Every step is identical on **macOS, Windows, and Linux** — only the way you type a folder path differs (see step 5). Any modern terminal works: Terminal on macOS, PowerShell or Windows Terminal on Windows.
+The first run downloads the tool automatically; after that it launches immediately. Every step is identical on **macOS, Windows, and Linux** — only the way you type a folder path differs (see step 5). Any modern terminal works: Terminal on macOS, PowerShell or Windows Terminal on Windows.
 
 </Step>
 
@@ -91,7 +91,9 @@ The prompt is the same on every platform; only the path format differs.
 <details>
 <summary>Which file formats are accepted?</summary>
 
-**CSV**, a **JSON array** (`[ {…}, {…} ]`), the **`{ "trials": [...] }` wrapper** (e.g. OSF exports), or **JSON-Lines (`.jsonl`)**. JSON and JSON-Lines are converted to CSV in `data/`. CSV content is kept as-is where possible. Originals are preserved under `data/raw/` whenever the output is not a byte-for-byte, same-named copy of the input (converted JSON, re-serialised CSVs, renamed CSVs). Other file types are ignored.
+**CSV**, a **JSON array** (`[ {…}, {…} ]`), the **`{ "trials": [...] }` wrapper** (e.g. OSF exports), or **JSON-Lines (`.jsonl`)**. Anything else is ignored.
+
+JSON and JSON-Lines are converted to CSV in `data/`; CSV content is kept as-is where possible. Whenever a file has to change on the way in — a JSON file converted to CSV, or a CSV renamed or rewritten — the untouched original is also saved under `data/raw/`.
 
 </details>
 
@@ -191,7 +193,7 @@ If a **required field** is missing, it prompts you to supply it before finishing
 ```
 my-experiment/
 ├── data/                       Psych-DS compliant copies of your data
-│   └── raw/                     originals, if inputs were JSON/JSON-Lines
+│   └── raw/                     your untouched originals, if anything changed
 ├── dataset_description.json    generated metadata
 ├── README.md                   placeholder for a description
 └── CHANGES.md                  placeholder for a changelog

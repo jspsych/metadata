@@ -44,7 +44,7 @@ describe("PreviewDrawer", () => {
 
   test("clicking inside the dialog content does not close it", async () => {
     render(<PreviewDrawer jsPsychMetadata={makeMeta({ name: "x" })} onClose={onClose} />);
-    await userEvent.click(screen.getByText("JSON Preview"));
+    await userEvent.click(screen.getByText("JSON preview"));
     expect(onClose).not.toHaveBeenCalled();
   });
 

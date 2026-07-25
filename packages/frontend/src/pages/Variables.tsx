@@ -167,7 +167,7 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
                 />
                 {hasPluginDesc && (
                   <p className={styles.descCaption}>
-                    From plugin documentation — edit to save a custom description
+                    From the plugin's documentation. Edit it to add your own wording.
                   </p>
                 )}
               </div>
@@ -227,7 +227,8 @@ const Variables: React.FC<VariablesProps> = ({ jsPsychMetadata, onComplete }) =>
       <div className={styles.page}>
         <div className={styles.introRow}>
           <p className={styles.subtext}>
-            Review and edit {vars.length} variable{vars.length === 1 ? '' : 's'} detected from your data.
+            {vars.length} variable{vars.length === 1 ? '' : 's'} found in your data. Click one to read
+            or change its description.
           </p>
           <label className={styles.toggleSwitch}>
             <span className={styles.toggleLabel}>Expand all</span>

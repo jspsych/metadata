@@ -4,7 +4,7 @@ import {
   type WebFileTree,
   type PsychDSValidationOutput,
 } from 'psychds-validator/web/psychds-validator.js';
-import { DATASET_DESCRIPTION_FILENAME as FILENAME } from '../datasetLayout';
+import { DATASET_DESCRIPTION_FILENAME as FILENAME, datasetDocs } from '../datasetLayout';
 import type { DatasetFileSource } from '../staging/stagedFileStore';
 
 export interface ValidationIssue {
@@ -59,6 +59,7 @@ function insertFile(tree: WebFileTree, path: string, file: Blob) {
 async function buildFileTree(
   metadataJson: string,
   dataFiles?: DatasetFileSource,
+  zipProjectName?: string,
 ): Promise<WebFileTree> {
   const tree: WebFileTree = {
     [FILENAME]: { type: 'file', file: new Blob([metadataJson]) },
@@ -70,6 +71,16 @@ async function buildFileTree(
       insertFile(tree, path, file);
     }
   }
+  // Validate the dataset the user is actually going to end up with. The zip download writes a
+  // placeholder README.md and CHANGES.md, so include the identical files here — otherwise the
+  // run reports MISSING_README_DOC / MISSING_CHANGES_DOC for documents the download does contain.
+  // Only when a zip is on offer: with no data files the user saves the bare metadata JSON, and
+  // those warnings are then real advice about their own folder.
+  if (zipProjectName !== undefined) {
+    for (const { path, contents } of datasetDocs(zipProjectName)) {
+      insertFile(tree, path, new Blob([contents]));
+    }
+  }
   return tree;
 }
 
@@ -78,24 +89,28 @@ async function buildFileTree(
  * metadata plus the user's data files. Requires network access — the validator
  * fetches the Psych-DS schema and schema.org context at runtime.
  *
- * @param metadataJson  Serialized dataset_description.json.
- * @param dataFiles     Lazy source of the Psych-DS `data/` payload: dataset-relative path
- *                      (e.g. `data/subject-sub01_data.csv`) -> file Blob, read one at a time.
+ * @param metadataJson    Serialized dataset_description.json.
+ * @param dataFiles       Lazy source of the Psych-DS `data/` payload: dataset-relative path
+ *                        (e.g. `data/subject-sub01_data.csv`) -> file Blob, read one at a time.
+ * @param zipProjectName  Project name when the user will download a zip, which ships placeholder
+ *                        README.md / CHANGES.md files — pass it so those are validated too. Omit
+ *                        when only the bare metadata JSON is being saved.
  */
 export async function validatePsychDS(
   metadataJson: string,
   dataFiles?: DatasetFileSource,
+  zipProjectName?: string,
 ): Promise<PsychDSValidationResult> {
   ensureJsonldGlobal();
 
-  const tree = await buildFileTree(metadataJson, dataFiles);
+  const tree = await buildFileTree(metadataJson, dataFiles, zipProjectName);
 
   let output: PsychDSValidationOutput;
   try {
     // 'latest' (rather than a pinned version) keeps results consistent with the
-    // CLI (`npx @jspsych/cli validate`) and the deployed web validator, which
-    // both use latest; pinning also risks requesting a schema version the
-    // schema server doesn't have, which would break validation outright.
+    // standalone validator (`npx psychds-validator`) and the deployed web
+    // validator, which both use latest; pinning also risks requesting a schema
+    // version the schema server doesn't have, which would break validation outright.
     output = await validateWeb(tree, { schema: 'latest' });
   } catch (err) {
     console.error('Psych-DS validation could not run:', err);

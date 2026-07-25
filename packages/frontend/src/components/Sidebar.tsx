@@ -110,7 +110,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           <h3 id="startover-title" className={styles.dialogTitle}>Start over?</h3>
           <p id="startover-desc" className={styles.dialogText}>
-            All progress will be lost and you'll return to the welcome screen.
+            This clears the data you uploaded and everything you've entered, and takes you back to
+            the start screen. Your own files on disk are not touched.
           </p>
           <div className={styles.dialogButtons}>
             <button className={styles.confirmYes} onClick={onStartOver}>

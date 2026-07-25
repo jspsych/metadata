@@ -3,14 +3,14 @@ import JsPsychMetadata from '@jspsych/metadata';
 import styles from './ProjectInfo.module.css';
 
 export const OPTIONAL_FIELDS: { key: string; label: string; hint: string; help?: string; options?: readonly string[] }[] = [
-  { key: 'license',    label: 'License',    hint: 'URL or SPDX identifier for the license', help: 'A license tells others what they can do with your data. Common choices for open research data: CC0 (public domain — no restrictions), CC-BY-4.0 (free to use with attribution). You can enter a standard identifier (e.g. CC-BY-4.0) or a URL to the full license text. If your institution has a data-sharing policy, check there first.' },
-  { key: 'keywords',   label: 'Keywords',   hint: 'Comma-separated keywords to assist search' },
-  { key: 'citation',   label: 'Citation',   hint: 'How to cite this dataset (URL or scholarly reference)' },
-  { key: 'url',        label: 'URL',        hint: 'Canonical source URL for this dataset' },
-  { key: 'funder',     label: 'Funder',     hint: 'Source(s) of funding — grant numbers or organization names' },
-  { key: 'identifier', label: 'Identifier', hint: 'Unique identifier such as a DOI or PMID' },
-  { key: 'privacyPolicy', label: 'Privacy policy', hint: 'How data access is restricted for this dataset', options: ['', 'open', 'private', 'open_deidentified', 'open_redacted'],
-    help: 'Choose the option that matches your IRB approval or data-sharing agreement:\n• open — data can be shared publicly without restriction\n• open_deidentified — data can be shared after removing directly identifying information (names, dates of birth, etc.)\n• open_redacted — data can be shared after removing specific sensitive fields\n• private — data is not to be shared outside your team' },
+  { key: 'license',    label: 'License',    hint: 'A standard license name like CC-BY-4.0, or a link to the license text', help: 'A license tells others what they may do with your data. Common choices for open research data: CC0 (public domain — no restrictions) and CC-BY-4.0 (free to use as long as you are credited). Enter the short name (e.g. CC-BY-4.0) or a link to the full text. If your institution has a data-sharing policy, check there first.' },
+  { key: 'keywords',   label: 'Keywords',   hint: 'Terms that help people find this dataset, separated by commas (e.g. stroop, attention)' },
+  { key: 'citation',   label: 'Citation',   hint: 'How you would like this dataset cited — a reference or a link' },
+  { key: 'url',        label: 'URL',        hint: 'Where this dataset lives online (e.g. its OSF page)' },
+  { key: 'funder',     label: 'Funder',     hint: 'Who funded the work — organization names, grant numbers, or both' },
+  { key: 'identifier', label: 'Identifier', hint: 'A permanent ID for this dataset, such as a DOI' },
+  { key: 'privacyPolicy', label: 'Sharing restrictions', hint: 'Who this dataset may be shared with. Saved as privacyPolicy.', options: ['', 'open', 'private', 'open_deidentified', 'open_redacted'],
+    help: 'Pick the option that matches your IRB approval or data-sharing agreement:\n• open — can be shared publicly, as is\n• open_deidentified — can be shared once directly identifying information (names, dates of birth, and so on) is removed\n• open_redacted — can be shared once specific sensitive fields are removed\n• private — must not leave your team' },
 ];
 
 export type MetadataLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
@@ -123,7 +123,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
         setLoadStatus('loaded');
       } catch {
         setLoadStatus('error');
-        setError('Failed to parse the metadata file — check that it is valid JSON.');
+        setError("We couldn't read that metadata file. Check that it is valid JSON, then try again.");
         // Record the attempt (so it isn't retried) and propagate the failure so the Data step
         // isn't pre-completed or shown as "variables loaded from existing metadata".
         onSessionChange({ ...session, loadStatus: 'error', loadToken: fileToken });
@@ -131,7 +131,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
     };
     reader.onerror = () => {
       setLoadStatus('error');
-      setError('Failed to read the file.');
+      setError("We couldn't read that file. Try choosing it again.");
       onSessionChange({ ...session, loadStatus: 'error', loadToken: fileToken });
     };
     reader.readAsText(existingMetadataFile);
@@ -189,14 +189,14 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
           applyUpload(parsed, true);
         }
       } catch {
-        setError('Could not parse the uploaded JSON file — check that it is valid.');
+        setError("We couldn't read that JSON file. Check that it is valid JSON, then try again.");
       }
     };
     reader.readAsText(file);
   };
 
   const handleContinue = () => {
-    if (!session.name.trim()) { setError('Project name is required.'); return; }
+    if (!session.name.trim()) { setError('Enter a project name to continue.'); return; }
     setError('');
     applyProjectInfoFields(jsPsychMetadata, session);
     onComplete();
@@ -242,15 +242,15 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
               aria-expanded={uploadHelpOpen}
               aria-label="Help for pre-fill from JSON"
             >ⓘ</button>
-            <span className={styles.uploadHint}>Populate fields from an existing metadata file</span>
+            <span className={styles.uploadHint}>Fill these fields from a metadata file you already have</span>
           </div>
           {uploadHelpOpen && (
             <div className={styles.helpBlock}>
-              Accepts any <code>.json</code> file that contains one or more of the following fields:
+              Any <code>.json</code> file will do, as long as it contains one or more of these fields:
               <br /><br />
               <code>name</code>, <code>description</code>, <code>license</code>, <code>keywords</code>, <code>citation</code>, <code>url</code>, <code>funder</code>, <code>identifier</code>, <code>privacyPolicy</code>
               <br /><br />
-              Array values (e.g. <code>"keywords": ["stroop", "rt"]</code>) are joined as comma-separated text. Unrecognized fields are ignored.
+              Lists (e.g. <code>"keywords": ["stroop", "rt"]</code>) become comma-separated text. Anything else in the file is ignored.
               <br /><br />
               Example:
               <pre className={styles.uploadHelpExample}>{`{
@@ -269,8 +269,8 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
             ? `"${conflictFields[0]}"`
             : conflictFields.map(f => `"${f}"`).join(' and ');
           const msg = count === 1
-            ? `The uploaded file has a different ${fieldStr} than what you've already entered.`
-            : `The uploaded file has different values for ${fieldStr} than what you've already entered.`;
+            ? `The file you uploaded has a different ${fieldStr} from the one you typed. Which would you like to keep?`
+            : `The file you uploaded has different values for ${fieldStr} from the ones you typed. Which would you like to keep?`;
           return (
             <div className={styles.conflictCallout}>
               <div className={styles.conflictMsgRow}>
@@ -307,10 +307,10 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
               )}
               <div className={styles.conflictBtns}>
                 <button type="button" className={styles.conflictYes} onClick={() => applyUpload(pendingUpload, true)}>
-                  Yes, overwrite
+                  Use the uploaded values
                 </button>
                 <button type="button" className={styles.conflictNo} onClick={() => applyUpload(pendingUpload, false)}>
-                  No, keep mine
+                  Keep what I typed
                 </button>
               </div>
             </div>
@@ -321,7 +321,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
           <label className={styles.label} htmlFor="project-name">
             Project name <span className={styles.required}>*</span>
           </label>
-          <p className={styles.hint}>The name of your dataset — any format works (e.g. StroopTask2024, my-stroop-experiment, stroop_study)</p>
+          <p className={styles.hint}>Names your dataset and the folder you download. Any style works (e.g. StroopTask2024, my-stroop-experiment, stroop_study)</p>
           <input
             id="project-name"
             className={styles.input}
@@ -352,7 +352,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({
               <em>Example: "Stroop task data from 40 undergraduates (20 control, 20 ADHD), measuring response time and accuracy across congruent and incongruent conditions."</em>
             </div>
           )}
-          <p className={styles.hint}>Briefly describe your dataset. If left blank, defaults to "No description provided."</p>
+          <p className={styles.hint}>Psych-DS requires a description, so leaving this blank records "No description provided."</p>
           <textarea
             id="project-description"
             className={styles.textarea}

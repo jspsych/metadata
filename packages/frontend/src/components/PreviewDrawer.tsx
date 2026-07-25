@@ -37,7 +37,7 @@ const PreviewDrawer: React.FC<PreviewDrawerProps> = ({ jsPsychMetadata, onClose 
       onClick={handleClick}
     >
       <div className={styles.drawerHeader}>
-        <span className={styles.drawerTitle}>JSON Preview</span>
+        <span className={styles.drawerTitle}>JSON preview</span>
         <button className={styles.closeBtn} onClick={onClose} aria-label="Close preview">×</button>
       </div>
       <div className={styles.drawerBody}>

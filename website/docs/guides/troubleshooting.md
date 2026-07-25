@@ -11,50 +11,54 @@ Common issues when generating metadata with the web wizard or the CLI, and how t
 ## Validation
 
 **"Missing README" / "Missing CHANGES" warnings.**
-Expected when the wizard validates in the browser — those files aren't part of the in-browser check. The downloaded project includes both, so the warnings clear when you validate the unzipped folder with the [Psych-DS validator](https://psych-ds.github.io/validator/). Warnings do not cause validation to fail, but they may indicate recommended metadata is missing.
+The wizard includes a placeholder `README.md` and `CHANGES.md` in the project you download, and validates them along with everything else, so these warnings shouldn't appear there. You will see them if you save only `dataset_description.json`, or if you validate a folder of your own that has no such files — add the two files to clear them.
+
+More generally: warnings never make validation fail. They flag recommended metadata or files you haven't added, so they're worth reading, but a dataset with warnings is still valid.
 
 **`JSON_KEY_REQUIRED: … missing required field(s)`.**
-Your `dataset_description.json` is missing a required field (often `description`). Fill it in on the wizard's Project info step; in the CLI running interactively you'll be prompted to add it before finishing. Add the field and generate again.
+Your `dataset_description.json` is missing a field Psych-DS requires — usually `description`. Fill it in on the wizard's Project info step, or, in the CLI, at the prompt that appears before it finishes. Then generate again.
 
 **`CSV_HEADER_MISSING`, or a file fails validation for an empty header.**
-An empty or header-less CSV in your data folder. Remove blank or 0-byte CSV files before running.
+One of your CSV files is empty or has no header row. Delete blank and 0-byte CSV files from your data folder, then run again.
 
 ## File names
 
 **"These filenames don't follow the Psych-DS pattern."**
-Psych-DS expects `keyword-value_data.csv` (e.g. `subject-01_data.csv`). In **interactive** mode the tool offers renaming strategies with a live preview on your real filenames; in **non-interactive** mode a non-compliant name is a hard error, so rename before running. See [Data file naming](../reference/cli-reference.md#data-file-naming).
+Psych-DS expects data files to be named `keyword-value_data.csv` (e.g. `subject-01_data.csv`). Normally the tool offers to rename them for you, showing a preview on your actual filenames first. The exception is a scripted run with no prompts, where a name that doesn't match is a hard error — rename the files yourself before running. See [Data file naming](../reference/cli-reference.md#data-file-naming).
 
 **A validator warning about an "unofficial keyword."**
-A name like `group-a_data.csv` is technically valid but uses a keyword outside the official set, which draws a warning. The tool offers to rename these too, or you can pick an [official keyword](../reference/cli-reference.md#data-file-naming) (`subject`, `session`, `task`, …).
+A name like `group-a_data.csv` is legal, but `group` isn't one of the keywords Psych-DS defines, so the validator mentions it. You can ignore it, let the tool rename the files, or switch to an [official keyword](../reference/cli-reference.md#data-file-naming) such as `subject`, `session`, or `task`.
 
 ## Files not picked up
 
 **Some files were ignored.**
-Only `.csv`, `.json`, and `.jsonl` files are processed; other types are skipped. The tool also reads the data folder and **one** level of subfolders — anything nested deeper is ignored. See [Folder depth](../reference/cli-reference.md#folder-depth).
+Two things to check: only `.csv`, `.json`, and `.jsonl` files are read, and the tool looks in your data folder plus **one** level of subfolders, so anything buried deeper is never seen. See [Folder depth](../reference/cli-reference.md#folder-depth).
 
 **A JSON file wasn't recognized.**
-JSON input must be a trial **array** (`[ {…}, {…} ]`) or the `{ "trials": [...] }` wrapper. A JSON object in any other shape is skipped. See [Accepted formats](../reference/cli-reference.md#accepted-formats).
+The tool expects a jsPsych trial list: either an array of trials (`[ {…}, {…} ]`) or the `{ "trials": [...] }` wrapper some services export. JSON in any other shape is skipped. See [Accepted formats](../reference/cli-reference.md#accepted-formats).
 
 ## Join keys (nested arrays)
 
 **The tool asks you to choose a "join key."**
-A file contains nested arrays (e.g. a survey trial holding several responses) and `trial_index` doesn't uniquely identify each row — common in merged multi-participant files where `trial_index` resets per person. Pick one or more columns marked **sufficient alone** until every row is unique, then continue. See [Nested arrays and join keys](../reference/cli-reference.md#nested-arrays-and-join-keys).
+One of your files stores a list inside a single trial, and the rows extracted from it need a column that points back to the trial they came from. `trial_index` normally does the job, but if you merged several participants into one file it restarts at 0 for each of them.
+
+Tick columns marked **sufficient alone** until every row is unique, then continue. See [Nested arrays and join keys](../reference/cli-reference.md#nested-arrays-and-join-keys).
 
 ## File formats and encoding
 
-**A CSV parses with a garbled first column name (e.g. `ï»¿id`).**
-A UTF-8 byte-order mark (BOM) at the start of the file. The tools strip the BOM automatically; if you see this on an older version, update — or re-save the file as UTF-8 without a BOM.
+**A CSV's first column name comes out garbled (e.g. `ï»¿id`).**
+Those stray characters are a byte-order mark, an invisible marker some programs write at the start of a file. Current versions remove it automatically, so update if you're on an older one — or re-save the file as UTF-8 without a byte-order mark.
 
 **A blank leading column disappeared.**
-The unnamed row-index column that some exporters and R prepend is dropped on purpose. This is expected, not data loss.
+That's the unnamed row-number column R and some export tools add. It's dropped on purpose, since it isn't data. Nothing of yours was lost.
 
 ## Variable descriptions
 
 **A variable's description is `unknown` or blank.**
-Descriptions are looked up from the jsPsych plugin that produced each column, so columns the tool doesn't recognize — custom fields, or data not produced by a plugin — have no automatic description. Fill them in on the wizard's Variables step, at the CLI's prompt, or with a [metadata options file](./customizing-output.md).
+Descriptions come from the jsPsych plugin that produced each column, so anything a plugin didn't produce — data you added yourself, or custom fields — has nothing to look up. Write those descriptions on the wizard's Variables step, at the CLI's prompt, or in a [metadata options file](./customizing-output.md).
 
-**Descriptions are missing for plugins you know have them.**
-Description lookup fetches plugin source over the network. If you're offline or the request is blocked, descriptions can't be retrieved — reconnect and run again, or add them manually.
+**Descriptions are missing for plugins you know document them.**
+Looking up a description means fetching the plugin's source over the internet. If you were offline, or a firewall blocked the request, nothing comes back. Reconnect and run again, or write those descriptions yourself.
 
 ---
 

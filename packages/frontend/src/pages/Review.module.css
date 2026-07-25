@@ -122,21 +122,6 @@
   line-height: 1.5;
 }
 
-.cliBlock {
-  margin: 0 0 0.75rem;
-  padding: 0.45rem 0.7rem;
-  background: var(--c-border-sub);
-  border: 1px solid var(--c-border);
-  border-radius: 5px;
-  font-family: 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 0.82rem;
-  color: var(--c-ink-2);
-}
-
-.cliBlock:last-child {
-  margin-bottom: 0;
-}
-
 /* In-browser validation */
 
 .validateBtn {
@@ -260,22 +245,4 @@
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.cliAlt {
-  margin-top: 1rem;
-  border-top: 1px solid var(--c-border);
-  padding-top: 0.85rem;
-}
-
-.cliAltSummary {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--c-ink-3);
-  cursor: pointer;
-  margin-bottom: 0.6rem;
-}
-
-.cliAltSummary:hover {
-  color: var(--c-ink-2);
 }

@@ -35,7 +35,7 @@ describe("AppShell + real ProjectInfo (existing project)", () => {
 
     // Continue — existing metadata is loaded, so Data is pre-completed and we skip to Variables.
     await userEvent.click(screen.getByRole("button", { name: "Continue →" }));
-    await screen.findByText(/Review and edit .* variables? detected/);
+    await screen.findByText(/variables? found in your data/);
 
     // Simulate an edit made on another step: delete a variable directly on the instance.
     meta.deleteVariable("rt");
@@ -58,14 +58,14 @@ describe("AppShell + real ProjectInfo (existing project)", () => {
 
     render(<AppShell jsPsychMetadata={meta} existingMetadataFile={badFile} onStartOver={jest.fn()} />);
 
-    await screen.findByText(/Failed to parse the metadata file/);
+    await screen.findByText(/We couldn.t read that metadata file/);
 
     // Continuing must land on the Data step (not skip it), and Data must NOT show the
     // "variables loaded from existing metadata" banner.
     await userEvent.type(screen.getByRole("textbox", { name: /Project name/ }), "Manual");
     await userEvent.click(screen.getByRole("button", { name: "Continue →" }));
 
-    expect(await screen.findByText(/Select your data folder/)).toBeInTheDocument();
+    expect(await screen.findByText(/Choose the folder holding your data files/)).toBeInTheDocument();
     expect(screen.queryByText(/Variables loaded from existing metadata/)).not.toBeInTheDocument();
   });
 });
