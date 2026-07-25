@@ -13,7 +13,7 @@ Common issues when generating metadata with the web wizard or the CLI, and how t
 **"Missing README" / "Missing CHANGES" warnings.**
 The wizard includes a placeholder `README.md` and `CHANGES.md` in the project you download, and validates them along with everything else, so these warnings shouldn't appear there. You will see them if you save only `dataset_description.json`, or if you validate a folder of your own that has no such files — add the two files to clear them.
 
-More generally: warnings never make validation fail. They flag recommended metadata you haven't provided, so they're worth reading, but a dataset with warnings is still valid.
+More generally: warnings never make validation fail. They flag recommended metadata or files you haven't added, so they're worth reading, but a dataset with warnings is still valid.
 
 **`JSON_KEY_REQUIRED: … missing required field(s)`.**
 Your `dataset_description.json` is missing a field Psych-DS requires — usually `description`. Fill it in on the wizard's Project info step, or, in the CLI, at the prompt that appears before it finishes. Then generate again.

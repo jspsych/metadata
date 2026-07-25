@@ -244,8 +244,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
               <>
                 <p className={styles.issueGroupLabel}>Warnings</p>
                 <p className={styles.warnNote}>
-                  Warnings don't make a dataset invalid — they point at recommended metadata you
-                  haven't filled in.
+                  Warnings don't make a dataset invalid — they point at recommended metadata or
+                  files you haven't added yet.
                 </p>
                 <ul className={styles.issueList}>
                   {valResult.warnings.map((issue, i) => (

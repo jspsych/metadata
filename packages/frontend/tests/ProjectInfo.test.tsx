@@ -236,7 +236,7 @@ describe("ProjectInfo", () => {
       expect(screen.getByText(/Lists \(e\.g\./)).toBeInTheDocument();
 
       await userEvent.click(btn);
-      expect(screen.queryByText(/Array values/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Lists \(e\.g\./)).not.toBeInTheDocument();
     });
   });
 
