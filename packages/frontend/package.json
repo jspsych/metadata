@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@fontsource-variable/lexend": "^5.2.11",
-    "@jspsych/metadata": "^0.0.3",
+    "@jspsych/metadata": "^0.1.0",
     "fflate": "^0.8.3",
     "jsonld": "^8.3.2",
     "jszip": "^3.10.1",
