@@ -68,7 +68,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, embedded = false }) => {
           <span className={styles.cardIcon}>+</span>
           <span className={styles.cardTitle}>Create new project</span>
           <span className={styles.cardDesc}>
-            Start from scratch with your experiment data files
+            Start from scratch with the data files from your experiment
           </span>
         </button>
 
@@ -76,7 +76,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, embedded = false }) => {
           <span className={styles.cardIconAmber}>↑</span>
           <span className={styles.cardTitle}>Open existing project</span>
           <span className={styles.cardDesc}>
-            Upload a <code>dataset_description.json</code> to continue editing
+            Upload a <code>dataset_description.json</code> you generated before, to keep editing it
           </span>
         </button>
       </div>

@@ -93,7 +93,7 @@ describe("Variables", () => {
     test("renders the total variable count in the intro text", () => {
       const meta = makeMeta([unknownVar("rt"), knownVar("stimulus")]);
       render(<Variables jsPsychMetadata={meta} onComplete={onComplete} />);
-      expect(screen.getByText(/2 variables detected/)).toBeInTheDocument();
+      expect(screen.getByText(/2 variables found in your data/)).toBeInTheDocument();
     });
 
     test("renders cleanly with zero variables", () => {
@@ -291,7 +291,7 @@ describe("Variables", () => {
 
       await userEvent.click(within(varRow("rt")).getByRole("button")); // expand
       expect(
-        within(varRow("rt")).getByText(/From plugin documentation/),
+        within(varRow("rt")).getByText(/From the plugin's documentation/),
       ).toBeInTheDocument();
     });
   });

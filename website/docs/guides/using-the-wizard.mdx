@@ -16,11 +16,13 @@ When you open it, pick a starting point:
 - **Create new project** — start from scratch with your data files (the path below).
 - **Open existing project** — upload an existing `dataset_description.json` to keep editing it, or to refresh the metadata after collecting more data.
 
+At any point, the **`{}` Preview** button in the corner shows the metadata file as it stands so far.
+
 <Steps>
 
 <Step n={1} title="Project info">
 
-Give the dataset a **name** (required — it becomes the identifier and the downloaded folder name) and a plain-English **description**. Optional fields — license, funding source, keywords, citation — fill in the recommended Psych-DS metadata.
+Give the dataset a **name** (required — it identifies the dataset and names the folder you download) and a plain-English **description** of what it contains. The optional fields — license, funder, keywords, citation — cover the rest of the metadata Psych-DS recommends.
 
 <details>
 <summary>Starting from an existing project?</summary>
@@ -31,9 +33,9 @@ You can upload an existing `dataset_description.json` here to pre-fill every fie
 
 </Step>
 
-<Step n={2} title="Data — upload your raw data files">
+<Step n={2} title="Upload your data">
 
-Click **Choose folder** to pick a directory of data files, or **Upload zip** to upload a `.zip`. Each file shows a status indicator once it's processed. Your originals are never modified.
+Click **Choose folder** to pick the folder holding your data files, or **Upload .zip** if they're in an archive. Then click **Process files** — each file gets a ✓, a — (skipped), or a ✗ (couldn't be read) as it goes.
 
 <details>
 <summary>Which file formats can I upload?</summary>
@@ -43,16 +45,18 @@ Click **Choose folder** to pick a directory of data files, or **Upload zip** to 
 - **`{ "trials": [...] }` wrapper** — e.g. OSF exports; unwrapped automatically.
 - **JSON-Lines (`.jsonl`)** — one JSON value per line.
 
-JSON and JSON-Lines are converted to Psych-DS-named CSV (e.g. `data/subject-sub01_data.csv`) so the validator and the downloaded zip see compliant tables. Your originals are preserved untouched under `data/raw/` whenever the staged output is not a byte-for-byte, same-named copy of the upload — converted JSON, re-serialised CSVs, and renamed CSVs alike.
+JSON and JSON-Lines are converted to CSV and given a Psych-DS name (e.g. `data/subject-sub01_data.csv`).
+
+Your original files are never modified. Whenever a file has to change on the way in — a JSON file converted to CSV, or a CSV renamed or rewritten — the untouched original is also saved under `data/raw/` in the download.
 
 </details>
 
 <details>
 <summary>What's a "join key" and when will I be asked for one?</summary>
 
-If your files contain **nested arrays** (e.g. a survey trial holding multiple responses), each nested item has to be matched back to its parent row to store it as a flat CSV. A **join key** is a column whose values are unique for every row.
+Some trials store a whole list inside a single row — a survey trial holding several responses, for example. Those lists get pulled out into their own CSV tables, and each extracted row needs a way to point back to the trial it came from. A **join key** is the column (or combination of columns) that does this: its values must be different for every row.
 
-The wizard checks whether `trial_index` uniquely identifies each row; if it doesn't (for example, merged multi-participant files where `trial_index` resets to 0 per person), a chooser appears. Columns tagged **sufficient alone** make every row unique by themselves (often `participant_id`); pick one or more until each row is uniquely identified, then **Apply and process files**. A **Re-configure join keys** button stays available if you need to change it later.
+The wizard tries `trial_index` first. If that isn't enough — most often because you merged several participants into one file, and `trial_index` starts over at 0 for each of them — it asks you to pick. Columns marked **sufficient alone** (often `participant_id`) are enough by themselves; tick columns until every row is unique, then choose **Apply and process files**. You can revisit the choice later with **Change join keys**.
 
 </details>
 
@@ -60,21 +64,22 @@ The wizard checks whether `trial_index` uniquely identifies each row; if it does
 
 <Step n={3} title="Variables">
 
-The wizard detects every variable in your data and looks up what each one means from the jsPsych plugin that produced it. Review the list and fill in anything it couldn't identify automatically.
+The wizard finds every variable in your data and looks up what each one means from the jsPsych plugin that produced it. Review the list and fill in anything it couldn't identify.
 
-- Variables with **unknown descriptions** appear expanded at the top; known ones start collapsed (**Expand all / Collapse all** toggles them).
-- Each row has a **Description** field and a **Type** dropdown — editing either updates the metadata immediately.
+- Anything it couldn't describe is grouped under **Missing descriptions** at the top, with a running count of how many you've filled in. Everything else sits under **Other variables**.
+- Click a variable to open it. It has a **Description** box and a **Type** dropdown; both save as you type.
+- Filling these in is optional.
 
 </Step>
 
 <Step n={4} title="Authors">
 
-Add the people who contributed to the dataset. Click **Add author**, type a name, and press Tab to commit it. Expand a row for optional fields: given/family name, author type, and ORCID.
+Add the people who contributed to the dataset — optional, and you can come back to it later. Type a name, then click away from the box to save it; use **+ Add another author** for the next one. Open **Optional fields** on a card to add an ORCID, and the rarely-needed given name, family name, and author type.
 
 <details>
 <summary>Adding lots of authors at once</summary>
 
-**Bulk import** lets you paste a list of names (one per line, optionally followed by an ORCID) to add many authors at once. Invalid ORCIDs are flagged with a warning.
+**+ Add multiple authors at once** lets you paste a list — one name per line, with an optional ORCID after a comma. Any ORCID that isn't in the `0000-0001-2345-6789` format is skipped, and the wizard tells you which names it affected.
 
 </details>
 
@@ -82,15 +87,19 @@ Add the people who contributed to the dataset. Click **Add author**, type a name
 
 <Step n={5} title="Review & download">
 
-Inspect the generated `dataset_description.json` in the syntax-highlighted preview, then download your project.
+Read through the generated `dataset_description.json`, go back to any step to change something, then download.
 
-- **Download `<project-name>.zip`** gives a complete Psych-DS project: `dataset_description.json`, `README.md`, `CHANGES.md`, and your `data/` folder. (No data files? A **Save `dataset_description.json`** button appears instead.)
-- **Validate dataset** runs the Psych-DS validator in your browser and lists any errors and warnings inline.
+- **Download `<project-name>.zip`** gives you a complete Psych-DS project: `dataset_description.json`, `README.md`, `CHANGES.md`, and your `data/` folder. (If you didn't upload any data, you get a **Save `dataset_description.json`** button instead.)
+- **Validate dataset** checks the result against Psych-DS right there in your browser and lists any errors and warnings. It needs an internet connection to fetch the standard's schema.
 
 <details>
-<summary>About the validation warnings</summary>
+<summary>Errors and warnings</summary>
 
-Missing `README` / `CHANGES` warnings are expected in the in-browser check — the downloaded zip includes both files, so they clear when you validate the unzipped folder with the [Psych-DS web validator](https://psych-ds.github.io/validator/). The **`{}` Preview** pill (on every step except Review) opens a live JSON snapshot at any time.
+**Errors** have to be fixed — the dataset isn't Psych-DS compliant until they are. Each one names the rule it broke and the files or columns at fault.
+
+**Warnings** never make validation fail. They point at recommended metadata you haven't filled in — an optional field, a suggested folder — so treat them as a checklist rather than a problem.
+
+The check covers exactly what you're about to download, `README.md` and `CHANGES.md` included, so there's no need to validate the project again afterwards.
 
 </details>
 

@@ -89,6 +89,12 @@ const dataFileType = (name: string): string => {
   return ext === 'jsonl' ? 'json' : ext;
 };
 
+/**
+ * The readable part of a thrown value, for the per-file status list. `String(err)` on an Error
+ * yields "Error: …", and that prefix is noise to someone scanning which of their files failed.
+ */
+const errorDetail = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
 /** Filename without its extension (e.g. "sub01.json" → "sub01"). */
 const fileStem = (name: string): string => name.replace(/\.[^./]+$/, '');
 
@@ -123,8 +129,8 @@ const disambiguateFlatFilename = (name: string, used: Set<string>): string => {
 const ReplaceConfirm: React.FC<{ onConfirm: () => void; onCancel: () => void }> = ({ onConfirm, onCancel }) => (
   <div className={styles.replaceConfirm} role="alertdialog" aria-labelledby="replace-confirm-title">
     <p id="replace-confirm-title" className={styles.replaceConfirmMsg}>
-      Replace all uploaded data? This discards the data you already staged and the variables generated
-      from it, then lets you pick a new folder or zip.
+      Replace all uploaded data? This throws away the files you've uploaded and every variable found
+      in them, then lets you pick a new folder or .zip. Your own files on disk are not touched.
     </p>
     <div className={styles.replaceConfirmBtns}>
       <button className={styles.replaceConfirmYes} onClick={onConfirm}>Yes, replace</button>
@@ -273,7 +279,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
         extracted.push(file);
       }
       if (extracted.length === 0) {
-        setPickError('No readable files found in the zip archive.');
+        setPickError("That .zip doesn't contain any files we can read. Check that your data files are inside it, then try again.");
         return;
       }
       setBatch(extracted);
@@ -281,7 +287,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
       setSourceName(zipFile.name.replace(/\.zip$/i, ''));
       setPhase('ready');
     } catch {
-      setPickError('Could not read the zip file — make sure it is a valid .zip archive.');
+      setPickError("We couldn't open that file. Check that it is a valid .zip archive, then try again.");
     }
   };
 
@@ -385,13 +391,13 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
       const filePath = file.webkitRelativePath || file.name;
       if (filePath === 'dataset_description.json' || filePath.endsWith('/dataset_description.json')) {
-        update(i, { status: 'skipped', detail: 'existing metadata file' });
+        update(i, { status: 'skipped', detail: 'this is a metadata file, not data' });
         continue;
       }
 
       const type = dataFileType(file.name);
       if (type !== 'json' && type !== 'csv') {
-        update(i, { status: 'skipped', detail: 'unsupported file type' });
+        update(i, { status: 'skipped', detail: 'not a .csv, .json, or .jsonl file' });
         continue;
       }
 
@@ -401,7 +407,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
       try {
         content = await readFileAsText(file);
       } catch (e) {
-        update(i, { status: 'error', detail: String(e) });
+        update(i, { status: 'error', detail: errorDetail(e) });
         continue;
       }
 
@@ -423,7 +429,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           const stats: { synthesizedSourceRecordId?: boolean } = {};
           const json = parseJsonData(content, { tagSourceRecordId: true }, stats);
           if (!Array.isArray(json)) {
-            update(i, { status: 'skipped', detail: 'not a jsPsych trial array' });
+            update(i, { status: 'skipped', detail: "doesn't look like a jsPsych trial list" });
             continue;
           }
           mainRows = json;
@@ -485,7 +491,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
         update(i, { status: 'success' });
       } catch (e) {
-        update(i, { status: 'error', detail: String(e) });
+        update(i, { status: 'error', detail: errorDetail(e) });
       }
     }
 
@@ -532,7 +538,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
         await runGenerate(['trial_index'], true, fetched);
       } catch (e) {
         if (cancelled) return;
-        setPickError(`Could not load the ${sample.label} dataset. ${String(e)}`);
+        setPickError(
+          `We couldn't load the ${sample.label} dataset. Check your internet connection and ` +
+          `reload the page, or upload your own data instead. (${errorDetail(e)})`,
+        );
         setPhase('idle');
       }
     })();
@@ -571,21 +580,22 @@ const DataUpload: React.FC<DataUploadProps> = ({
           <div>
             <strong>Variables loaded from existing metadata</strong>
             <p className={styles.hasDataSub}>
-              All variable descriptions, types, and levels were loaded from your{' '}
-              <code>dataset_description.json</code>. No data upload is needed.
+              Your <code>dataset_description.json</code> already describes every variable, so you
+              can go straight on.
             </p>
           </div>
         </div>
         <p className={styles.fromExistingOptional}>
-          Optionally, upload your data folder to add new variables or refresh levels and ranges.
+          Upload your data folder only if you want to pick up new variables, or refresh the recorded
+          value ranges and levels after collecting more data.
         </p>
         <div className={styles.pickerRow}>
           <button className={styles.browseBtn} onClick={() => requestPick('folder', 'replace')}>
-            Upload data folder (optional)
+            Choose folder
           </button>
           <span className={styles.pickerOr}>or</span>
           <button className={styles.browseBtn} onClick={() => requestPick('zip', 'replace')}>
-            Upload .zip (optional)
+            Upload .zip
           </button>
         </div>
         <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFolderChange} {...{ webkitdirectory: '' }} />
@@ -613,7 +623,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           <div>
             <strong>Data already processed</strong>
             <p className={styles.hasDataSub}>
-              {varCount} variable{varCount !== 1 ? 's' : ''} generated.
+              {varCount} variable{varCount !== 1 ? 's' : ''} found in your data.
             </p>
           </div>
         </div>
@@ -636,7 +646,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           </button>
           {joinKeyCandidates.length > 0 && files.length > 0 && (
             <button className={styles.reConfigureBtn} onClick={() => enterReConfigureJoinKeys('hasData')}>
-              Re-configure join keys
+              Change join keys
             </button>
           )}
         </div>
@@ -673,7 +683,8 @@ const DataUpload: React.FC<DataUploadProps> = ({
       <h2 className="srOnly">Data</h2>
       <div className={styles.page}>
       <p className={styles.description}>
-        Select your data folder or upload a .zip archive. CSV and JSON files will be processed; other file types are skipped.
+        Choose the folder holding your data files, or upload a .zip. CSV, JSON, and JSON-Lines files are
+        read; anything else is skipped. Your original files are never modified.
       </p>
 
       {/* Pickers */}
@@ -740,12 +751,12 @@ const DataUpload: React.FC<DataUploadProps> = ({
           <div className={styles.joinKeyWarning}>
             <span className={styles.warnIcon}>⚠</span>
             <div>
-              <strong>Rows need a unique identifier</strong>
+              <strong>This file needs a column that tells its rows apart</strong>
               <p className={styles.joinKeyFile}>{joinKeyProblemFile}</p>
               <p className={styles.joinKeyExplainer}>
-                <code>trial_index</code> resets to 0 for each participant in merged files, so it
-                can't tell rows apart on its own. Pick an additional column below to form a{' '}
-                <strong>join key</strong> — a unique row identifier.
+                <code>trial_index</code> isn't unique here — usually because several participants
+                were merged into one file, and it starts over at 0 for each of them. Tick another
+                column below so that together they identify every row.
               </p>
             </div>
           </div>
@@ -760,18 +771,18 @@ const DataUpload: React.FC<DataUploadProps> = ({
           {showJoinKeyHelp && (
             <div className={styles.helpText}>
               <p>
-                jsPsych experiments sometimes produce <strong>nested data</strong> — for example,
-                a survey trial might contain multiple responses stored as an array inside a single row.
-                To save this as a flat table (CSV), each nested item needs to be matched back to
-                its parent row.
+                Some jsPsych trials store a whole list inside one row — a survey trial holding
+                several responses, for example. Psych-DS datasets are flat tables, so those lists
+                get pulled out into their own CSV files, and every extracted row needs a way to
+                point back to the trial it came from.
               </p>
               <p>
-                A <strong>join key</strong> is a column (or combination of columns) whose values
-                are unique for every row, so that nested items can be correctly linked.{' '}
-                <code>trial_index</code> works fine in single-participant files, but if you merged
-                data from multiple participants, each participant resets <code>trial_index</code>{' '}
-                to 0 — making it non-unique. Adding a column like <code>subject</code> restores
-                uniqueness.
+                A <strong>join key</strong> is the column, or combination of columns, that does
+                this. Its values have to be different for every row.{' '}
+                <code>trial_index</code> is enough on its own in a single-participant file. But
+                once you merge several participants together it starts over at 0 for each of them,
+                so it no longer identifies a row by itself — adding something like{' '}
+                <code>subject</code> fixes that.
               </p>
             </div>
           )}
@@ -801,7 +812,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
                 onChange={() => { setProceedAnyway(p => !p); setSelectedKeys(['trial_index']); }}
               />
               <span className={styles.proceedLabel}>
-                Proceed anyway — extracted CSVs may have duplicate rows
+                Continue without one — the extracted files may contain duplicate rows
               </span>
             </li>
           </ul>
@@ -823,10 +834,19 @@ const DataUpload: React.FC<DataUploadProps> = ({
           <p className={styles.processSummary} aria-live="polite">
             {(() => {
               const total = fileStatuses.length;
-              const done = fileStatuses.filter(s => s.status !== 'pending' && s.status !== 'loading').length;
-              return phase === 'processing'
-                ? `Processing… ${done} of ${total} file${total !== 1 ? 's' : ''} processed.`
-                : `Done. ${done} of ${total} file${total !== 1 ? 's' : ''} processed.`;
+              if (phase === 'processing') {
+                const done = fileStatuses.filter(s => s.status !== 'pending' && s.status !== 'loading').length;
+                return `Processing… ${done} of ${total} file${total !== 1 ? 's' : ''} done.`;
+              }
+              // Report the outcome, not just the count: "4 of 4 processed" reads as success even
+              // when some of those four were skipped or failed.
+              const count = (status: FileStatus['status']) =>
+                fileStatuses.filter(s => s.status === status).length;
+              const read = count('success');
+              const parts = [`${read} file${read !== 1 ? 's' : ''} read`];
+              if (count('skipped') > 0) parts.push(`${count('skipped')} skipped`);
+              if (count('error') > 0) parts.push(`${count('error')} could not be read`);
+              return `Finished. ${parts.join(', ')}.`;
             })()}
           </p>
           <ul className={styles.statusList}>
@@ -848,7 +868,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
           </button>
           {joinKeyCandidates.length > 0 && (
             <button className={styles.reConfigureBtn} onClick={() => enterReConfigureJoinKeys('done')}>
-              Re-configure join keys
+              Change join keys
             </button>
           )}
         </div>

@@ -12,18 +12,12 @@
 // downloaded via an object URL.
 
 import { Zip, AsyncZipDeflate } from 'fflate';
-import { DATASET_DESCRIPTION_FILENAME } from '../datasetLayout';
+import { DATASET_DESCRIPTION_FILENAME, datasetDocs } from '../datasetLayout';
 import { blobDownload } from '../download';
 import type { DatasetFileSource } from './stagedFileStore';
 
 /** Slice size for feeding a file into the deflater — bounds peak heap to ~one slice per file. */
 const PUSH_CHUNK_BYTES = 1 << 20; // 1 MiB
-
-const readmeContents = (projectName: string): string =>
-  `# ${projectName}\nHuman-readable description of the project and dataset.`;
-
-const CHANGES_CONTENTS =
-  'For version tracking — if the dataset is updated after being uploaded/shared, changes (with human-readable descriptions) may be recorded here.';
 
 export interface BuildDatasetZipOptions {
   /** Serialized dataset_description.json (written at the archive root). */
@@ -100,8 +94,9 @@ async function buildZip(opts: BuildDatasetZipOptions, onChunk: (dat: Uint8Array)
             await addEntrySequential(path, blob);
           }
         }
-        await addEntrySequential('README.md', new Blob([readmeContents(opts.projectName)]));
-        await addEntrySequential('CHANGES.md', new Blob([CHANGES_CONTENTS]));
+        for (const { path, contents } of datasetDocs(opts.projectName)) {
+          await addEntrySequential(path, new Blob([contents]));
+        }
         zip.end();
       } catch (e) {
         fail(e);

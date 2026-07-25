@@ -69,6 +69,28 @@ describe("validatePsychDS", () => {
     await expect(blobText(raw.contents["sub01.json"].file)).resolves.toBe("[]");
   });
 
+  // The zip download ships placeholder README.md / CHANGES.md. Validating without them reported
+  // MISSING_README_DOC / MISSING_CHANGES_DOC against documents the download actually contains, so
+  // the tree carries the same two files whenever a zip is what the user will get.
+  test("includes the zip's README/CHANGES placeholders when a project name is given", async () => {
+    mockValidateWeb.mockResolvedValue(validatorOutput([]));
+    await validatePsychDS("{}", undefined, "my-study");
+
+    const [tree] = mockValidateWeb.mock.calls[0];
+    expect(tree["README.md"].type).toBe("file");
+    expect(tree["CHANGES.md"].type).toBe("file");
+    await expect(blobText(tree["README.md"].file)).resolves.toContain("# my-study");
+  });
+
+  test("omits README/CHANGES when only the bare metadata file is being saved", async () => {
+    mockValidateWeb.mockResolvedValue(validatorOutput([]));
+    await validatePsychDS("{}");
+
+    const [tree] = mockValidateWeb.mock.calls[0];
+    expect(tree["README.md"]).toBeUndefined();
+    expect(tree["CHANGES.md"]).toBeUndefined();
+  });
+
   test("reports valid when the validator finds no issues", async () => {
     mockValidateWeb.mockResolvedValue(validatorOutput([]));
     const result = await validatePsychDS("{}");

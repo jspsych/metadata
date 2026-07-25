@@ -30,11 +30,6 @@ function sanitizeFilename(name: string): string {
   return cleaned || 'dataset';
 }
 
-// Warnings the downloadable zip already resolves: it ships a README.md and CHANGES.md the
-// in-browser validator can't see (it only checks the metadata + data files). When these show
-// up, we reassure the user rather than letting them think the dataset is incomplete.
-const ZIP_RESOLVED_WARNINGS = new Set(['MISSING_README_DOC', 'MISSING_CHANGES_DOC']);
-
 const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloaded }) => {
   const [downloaded, setDownloaded] = useState(false);
   const [zipped, setZipped] = useState(false);
@@ -110,7 +105,13 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
     try {
       // Lazy-loaded so the ~260 KB validator bundle stays out of the initial load.
       const { validatePsychDS } = await import('../validation/validatePsychDS');
-      const result = await validatePsychDS(metadataJson, dataFiles ?? undefined);
+      // hasDataFiles ⇒ the user downloads a zip, which ships README.md / CHANGES.md; pass the
+      // project name so those are validated alongside the metadata and data.
+      const result = await validatePsychDS(
+        metadataJson,
+        dataFiles ?? undefined,
+        hasDataFiles ? projectName : undefined,
+      );
       setValResult(result);
       setValStatus('done');
     } catch (err) {
@@ -118,7 +119,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
       setValError(
         err instanceof Error && err.name === 'ValidationUnavailableError'
           ? err.message
-          : `Validation failed unexpectedly: ${err instanceof Error ? err.message : String(err)}`,
+          : `Validation couldn't finish: ${err instanceof Error ? err.message : String(err)}`,
       );
       setValStatus('unavailable');
     }
@@ -162,7 +163,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
               </button>
               {usesFilePicker && !downloaded && (
                 <p className={styles.saveHint}>
-                  Navigate to your dataset folder in the save dialog so the file lands next to your <code className={styles.code}>data/</code> folder.
+                  In the save dialog, pick your existing dataset folder so this file sits next to your <code className={styles.code}>data/</code> folder.
                 </p>
               )}
             </div>
@@ -174,7 +175,7 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
             </button>
             {usesFilePicker && !downloaded && (
               <p className={styles.saveHint}>
-                Navigate to your dataset folder in the save dialog so the file lands next to your <code className={styles.code}>data/</code> folder — then it's ready to validate.
+                In the save dialog, pick your existing dataset folder so this file sits next to your <code className={styles.code}>data/</code> folder — then it's ready to validate.
               </p>
             )}
           </div>
@@ -185,8 +186,8 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
         <p className={styles.validatorTitle}>Validate your dataset</p>
         <p className={styles.validatorText}>
           Check this metadata{hasDataFiles ? ' and your data files' : ''} against the
-          Psych-DS standard right here. Validation runs in your browser and needs an
-          internet connection to fetch the schema.
+          Psych-DS standard without leaving the page. It runs in your browser, and needs
+          an internet connection to fetch the standard's schema.
         </p>
 
         <button
@@ -242,17 +243,10 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
             {valResult.warnings.length > 0 && (
               <>
                 <p className={styles.issueGroupLabel}>Warnings</p>
-                {hasDataFiles && valResult.warnings.some((w) => ZIP_RESOLVED_WARNINGS.has(w.key)) && (
-                  <p className={styles.warnNote}>
-                    Heads up: warnings about a missing <code className={styles.code}>README</code> or{' '}
-                    <code className={styles.code}>CHANGES</code> file are expected here — in-browser
-                    validation only checks the metadata and your data files. The{' '}
-                    <code className={styles.code}>{projectName}.zip</code> download already includes{' '}
-                    <code className={styles.code}>README.md</code> and{' '}
-                    <code className={styles.code}>CHANGES.md</code>, so these clear once you validate
-                    the downloaded dataset (e.g. with <code className={styles.code}>npx @jspsych/cli validate</code>).
-                  </p>
-                )}
+                <p className={styles.warnNote}>
+                  Warnings don't make a dataset invalid — they point at recommended metadata you
+                  haven't filled in.
+                </p>
                 <ul className={styles.issueList}>
                   {valResult.warnings.map((issue, i) => (
                     <li key={`w${i}`} className={`${styles.issueItem} ${styles.issueWarn}`}>
@@ -269,15 +263,6 @@ const Review: React.FC<ReviewProps> = ({ jsPsychMetadata, dataFiles, onDownloade
           </>
         )}
         </div>
-
-        <details className={styles.cliAlt}>
-          <summary className={styles.cliAltSummary}>Prefer the command line?</summary>
-          <p className={styles.validatorText}>
-            Once <code className={styles.code}>dataset_description.json</code> is in your dataset folder, run:
-          </p>
-          <pre className={styles.cliBlock}>npx @jspsych/cli validate</pre>
-          <pre className={styles.cliBlock}>npx @jspsych/cli validate --psych-ds-dir ./your-dataset</pre>
-        </details>
       </div>
     </div>
     </>

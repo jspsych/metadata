@@ -78,7 +78,7 @@ describe("ProjectInfo", () => {
       );
       await userEvent.click(screen.getByRole("button", { name: "Continue →" }));
 
-      expect(screen.getByText("Project name is required.")).toBeInTheDocument();
+      expect(screen.getByText("Enter a project name to continue.")).toBeInTheDocument();
       expect(onComplete).not.toHaveBeenCalled();
     });
 
@@ -168,7 +168,7 @@ describe("ProjectInfo", () => {
           onComplete={onComplete}
         />,
       );
-      expect(screen.getByLabelText("Privacy policy")).toBeInstanceOf(HTMLSelectElement);
+      expect(screen.getByLabelText("Sharing restrictions")).toBeInstanceOf(HTMLSelectElement);
     });
 
     test("changing an optional field calls onSessionChange", async () => {
@@ -233,7 +233,7 @@ describe("ProjectInfo", () => {
       );
       const btn = screen.getByRole("button", { name: "Help for pre-fill from JSON" });
       await userEvent.click(btn);
-      expect(screen.getByText(/Array values/)).toBeInTheDocument();
+      expect(screen.getByText(/Lists \(e\.g\./)).toBeInTheDocument();
 
       await userEvent.click(btn);
       expect(screen.queryByText(/Array values/)).not.toBeInTheDocument();
@@ -293,8 +293,8 @@ describe("ProjectInfo", () => {
       uploadJson(container, { name: "Uploaded" });
 
       expect(await screen.findByText(/different "name"/)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Yes, overwrite" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "No, keep mine" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Use the uploaded values" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Keep what I typed" })).toBeInTheDocument();
     });
 
     test("conflict: 'See details' expands current vs uploaded comparison", async () => {
@@ -313,7 +313,7 @@ describe("ProjectInfo", () => {
       expect(screen.getByText("Different Name")).toBeInTheDocument();
     });
 
-    test("conflict: 'Yes, overwrite' calls onSessionChange with uploaded values", async () => {
+    test("conflict: 'Use the uploaded values' calls onSessionChange with uploaded values", async () => {
       const { container } = render(
         <ProjectInfo
           jsPsychMetadata={meta}
@@ -323,15 +323,15 @@ describe("ProjectInfo", () => {
         />,
       );
       uploadJson(container, { name: "Uploaded" });
-      await userEvent.click(await screen.findByRole("button", { name: "Yes, overwrite" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Use the uploaded values" }));
 
       expect(onSessionChange).toHaveBeenCalledWith(
         expect.objectContaining({ name: "Uploaded" }),
       );
-      expect(screen.queryByRole("button", { name: "Yes, overwrite" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Use the uploaded values" })).not.toBeInTheDocument();
     });
 
-    test("conflict: 'No, keep mine' applies optional fields but keeps current name", async () => {
+    test("conflict: 'Keep what I typed' applies optional fields but keeps current name", async () => {
       const { container } = render(
         <ProjectInfo
           jsPsychMetadata={meta}
@@ -341,7 +341,7 @@ describe("ProjectInfo", () => {
         />,
       );
       uploadJson(container, { name: "Uploaded", license: "CC0" });
-      await userEvent.click(await screen.findByRole("button", { name: "No, keep mine" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Keep what I typed" }));
 
       const call = onSessionChange.mock.calls.at(-1)?.[0] as ProjectInfoSession;
       expect(call.name).toBe("Existing");

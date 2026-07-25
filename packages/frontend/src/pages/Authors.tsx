@@ -178,8 +178,8 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
 
     if (invalidOrcids.length > 0) {
       setBulkWarning(
-        `ORCID not saved for: ${invalidOrcids.join(', ')}. ` +
-        `ORCIDs must be in the format 0000-0001-2345-6789. Add them manually using the author cards above.`
+        `These authors were added, but their ORCID was not: ${invalidOrcids.join(', ')}. ` +
+        `An ORCID has to look like 0000-0001-2345-6789. Add theirs on the cards above.`
       );
     } else {
       setBulkWarning(null);
@@ -191,7 +191,8 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
       <h2 className="srOnly">Authors</h2>
       <div className={styles.page}>
       <p className={styles.subtext}>
-        Authors are optional. You can skip this step or add them later by re-opening existing metadata.
+        Authors are optional — skip this step if you like. To add them later, open your saved{' '}
+        <code>dataset_description.json</code> back up in the wizard.
       </p>
 
       <div className={styles.cardList}>
@@ -255,7 +256,7 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
 
                   <p className={styles.groupLabel} style={{ marginTop: '0.75rem' }}>Rarely needed</p>
                   <p className={styles.groupNote}>
-                    For schema.org compatibility — most researchers can skip these.
+                    Extra Schema.org detail. Most people can leave these blank.
                   </p>
 
                   <div className={styles.fieldRow}>
@@ -284,9 +285,9 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
                   </div>
 
                   <div className={styles.field}>
-                    <label className={styles.label} htmlFor={`author-type-${row.id}`}>@type</label>
+                    <label className={styles.label} htmlFor={`author-type-${row.id}`}>Author type</label>
                     <p className={styles.fieldHint}>
-                      Usually "Person" or "Organization". Leave blank if unsure.
+                      Person or Organization. Leave blank if you aren't sure — saved as <code>@type</code>.
                     </p>
                     <input
                       id={`author-type-${row.id}`}
@@ -330,7 +331,7 @@ const Authors: React.FC<AuthorsProps> = ({ jsPsychMetadata, onComplete }) => {
       ) : (
         <div className={styles.bulkPanel}>
           <p className={styles.bulkInstructions}>
-            One author per line. To include an ORCID, separate it from the name with a comma:
+            One author per line. To include an ORCID, put it after the name, separated by a comma:
           </p>
           <pre className={styles.bulkExample}>{'Jane Smith\nJohn Doe, 0000-0001-2345-6789\nAlice Lee, 0000-0002-3456-7890'}</pre>
           <textarea

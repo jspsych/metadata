@@ -93,9 +93,12 @@ describe("Review", () => {
     await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
 
     expect(await screen.findByText("✓ Valid Psych-DS dataset")).toBeInTheDocument();
+    // The third argument is the project name, passed only when a zip download is on offer, so
+    // the validator also sees the README.md / CHANGES.md that zip will contain.
     expect(mockValidate).toHaveBeenCalledWith(
       expect.stringContaining('"my-project"'),
       dataFiles,
+      "my-project",
     );
     // Button switches to re-validate after a run.
     expect(screen.getByRole("button", { name: "Re-validate" })).toBeInTheDocument();
@@ -127,25 +130,10 @@ describe("Review", () => {
     expect(screen.getByText("MISSING_README")).toBeInTheDocument();
   });
 
-  test("explains that README/CHANGES warnings are resolved by the zip download", async () => {
-    mockValidate.mockResolvedValue({
-      valid: true,
-      errors: [],
-      warnings: [
-        { key: "MISSING_README_DOC", reason: "include a README", evidence: [] },
-        { key: "MISSING_CHANGES_DOC", reason: "include a CHANGES", evidence: [] },
-      ],
-    });
-    const dataFiles = await storeWith([["data/subject-sub01_data.csv", "a,b\n1,2"]]);
-    render(<Review jsPsychMetadata={makeMetadata()} dataFiles={dataFiles} />);
-    await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
-
-    expect(await screen.findByText(/already includes/)).toHaveTextContent(
-      /README\.md.*CHANGES\.md/,
-    );
-  });
-
-  test("omits the README/CHANGES note when there is no zip (no data files)", async () => {
+  // With no data files the user saves the bare metadata JSON — no zip, so no README.md/CHANGES.md
+  // are produced and those warnings are genuine advice about their own folder. The project name is
+  // withheld in that case so the validator does not see documents that will not exist.
+  test("withholds the project name from validation when there is no zip (no data files)", async () => {
     mockValidate.mockResolvedValue({
       valid: true,
       errors: [],
@@ -155,7 +143,7 @@ describe("Review", () => {
     await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
 
     await screen.findByText("MISSING_README_DOC");
-    expect(screen.queryByText(/already includes/)).not.toBeInTheDocument();
+    expect(mockValidate).toHaveBeenCalledWith(expect.any(String), undefined, undefined);
   });
 
   test("shows the validator's own message when validation is unavailable", async () => {
@@ -176,13 +164,8 @@ describe("Review", () => {
     await userEvent.click(screen.getByRole("button", { name: "Validate dataset" }));
 
     expect(
-      await screen.findByText("Validation failed unexpectedly: boom"),
+      await screen.findByText("Validation couldn't finish: boom"),
     ).toBeInTheDocument();
   });
 
-  test("keeps the CLI instructions available as a fallback", () => {
-    render(<Review jsPsychMetadata={makeMetadata()} />);
-    expect(screen.getByText("Prefer the command line?")).toBeInTheDocument();
-    expect(screen.getByText("npx @jspsych/cli validate")).toBeInTheDocument();
-  });
 });
