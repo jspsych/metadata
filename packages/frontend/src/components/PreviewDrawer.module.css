@@ -23,6 +23,16 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
+/* Phone: there's no side rail to sit beside, so the drawer takes the screen.
+   (The --sidebar-w allowance above is meaningless once the nav is a top bar.) */
+@media (max-width: 700px) {
+  .drawer {
+    width: 100%;
+    max-width: 100%;
+    border-left: none;
+  }
+}
+
 @keyframes slideIn {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }

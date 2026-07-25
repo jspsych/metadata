@@ -3,7 +3,16 @@
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - var(--ifm-navbar-height) - 6rem);
+  /* dvh so the retractable URL bar on mobile doesn't push the page taller than
+     the screen; the vh line above is the fallback. */
+  min-height: calc(100dvh - var(--ifm-navbar-height) - 6rem);
   padding: 3rem 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .wrap {
+    padding: 2rem 1.15rem;
+  }
 }
 
 .inner {

@@ -236,6 +236,23 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* Phone: iOS Safari auto-zooms the page whenever a focused form control has a
+   font-size under 16px — every field here is ~14px, so tapping one would zoom
+   in and leave the layout scrolled sideways with no way back short of a pinch.
+   Holding the controls at 16px on small screens is the standard prevention.
+   Only the controls you actually type into: a checkbox or radio can't be zoomed
+   into, and forcing a font-size on one only risks disturbing a styled control
+   that sizes itself from it. !important because each page's CSS module sets its
+   own font-size on these controls by class, which outranks a bare element
+   selector. */
+@media (max-width: 700px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Respect users who ask for less motion: collapse transitions and the preview
    drawer's slide-in to a near-instant, non-animated state change. */
 @media (prefers-reduced-motion: reduce) {

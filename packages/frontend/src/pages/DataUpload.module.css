@@ -485,3 +485,42 @@
 .replaceConfirmYes:hover {
   filter: brightness(0.94);
 }
+
+/* ─── Phone ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  /* Button + "or" + folder name is too much for one phone line; let it wrap,
+     and let the (ellipsised) folder name shrink rather than push the row wide. */
+  .pickerRow {
+    flex-wrap: wrap;
+    gap: 0.6rem 0.85rem;
+  }
+
+  .folderName {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  /* Action rows keep their spacing but drop to a second line when needed. */
+  .joinKeyActions,
+  .replaceConfirmBtns {
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+  }
+
+  /* Size the lists to the viewport rather than to a fixed 220/260px. In portrait
+     that lands near the desktop cap; in landscape, where 40% of the height is
+     well under it, the list gives the rest of the page room instead of filling
+     the screen. dvh so the retractable URL bar doesn't inflate it; the vh line
+     is the fallback for browsers without dvh. */
+  .fileList,
+  .statusList {
+    max-height: 40vh;
+    max-height: 40dvh;
+  }
+
+  .continueBtn,
+  .processBtn {
+    width: 100%;
+  }
+}

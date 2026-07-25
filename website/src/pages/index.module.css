@@ -232,3 +232,55 @@
   font-size: 0.95rem;
   margin: 0;
 }
+
+/* --- Phone -------------------------------------------------------------- */
+
+/* The 900px step above already stacks the hero; this one is about the phone
+   itself — trimming the outer gutters and the display type, which still
+   overhangs a 375px screen at 2.4rem. */
+@media (max-width: 600px) {
+  .hero {
+    padding: 2.25rem 1.15rem 1.5rem;
+  }
+
+  .heroLogo {
+    height: 60px;
+    margin-bottom: 1.15rem;
+  }
+
+  .heroTitle {
+    font-size: 1.9rem;
+    letter-spacing: -0.02em;
+  }
+
+  .heroLede {
+    font-size: 1.05rem;
+  }
+
+  .pathCard {
+    padding: 1.15rem;
+  }
+
+  /* Side-by-side button + link would leave the button too narrow to read, so
+     they stack full-width — the link centres to stay aligned with the button
+     above it rather than hanging off its left edge. */
+  .pathCardActions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .pathLink {
+    text-align: center;
+  }
+
+  .features,
+  .showcase {
+    padding-left: 1.15rem;
+    padding-right: 1.15rem;
+  }
+
+  .showcaseCard {
+    padding: 1.25rem 1.15rem;
+  }
+}

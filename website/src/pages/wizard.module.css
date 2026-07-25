@@ -6,5 +6,20 @@
      4.5rem is the footer's single-row height; it wraps taller on narrow screens,
      where a small scroll is fine. */
   height: calc(100vh - var(--ifm-navbar-height) - 4.5rem);
+  /* Mobile browsers count their retractable URL bar in 100vh, so the frame
+     would hang below the fold until the bar hides. dvh tracks the bar as it
+     moves; the vh line above stays as the fallback for browsers without it. */
+  height: calc(100dvh - var(--ifm-navbar-height) - 4.5rem);
   border: 0;
+}
+
+/* Phone: the footer wraps to three rows here, so the 4.5rem single-row
+   allowance is far too small — subtracting it would still leave the frame
+   overhanging. Give the wizard the whole viewport below the navbar and let the
+   footer live below the fold; the wizard scrolls internally either way. */
+@media (max-width: 700px) {
+  .wizardFrame {
+    height: calc(100vh - var(--ifm-navbar-height));
+    height: calc(100dvh - var(--ifm-navbar-height));
+  }
 }

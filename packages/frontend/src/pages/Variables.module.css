@@ -374,3 +374,42 @@
 .continueBtn:hover {
   background-color: var(--c-cta-hover);
 }
+
+/* ─── Phone ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  /* Subtext and the "show system variables" switch stop competing for one line. */
+  .introRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  /* A long column name plus its badges no longer forces the row wider than the
+     screen — the name wraps and the badges keep their own line if they must. */
+  .rowHeader {
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .rowName {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Description over type, rather than a 140px column squeezing both. */
+  .bodyMain {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .rowBody {
+    padding: 0.6rem 0.75rem 0.85rem;
+  }
+
+  .continueBtn {
+    width: 100%;
+  }
+}
